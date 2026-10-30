@@ -21,14 +21,22 @@ public static class GameFactory
         var size = data.Game.MapSizes[settings.MapSize];
         var state = new GameState(settings, new GameMap(size.Width, size.Height));
 
+        MapGenerator.GenerateTerrain(state, data);
+        var names = MapGenerator.Shuffled(state, data.Map.PlayerVillageNames);
+
         for (var i = 0; i < slots.Count; i++)
         {
             var id = i + 1;
             var slot = slots[i];
             var player = new Player(id, slot.Name, slot.Nation, slot.IsAi) { CapitalVillageId = id };
             state.AddPlayer(player);
-            state.AddVillage(CreateStartingVillage(state, id, player.Id, StartPosition(i, state.Map), data));
+
+            var village = CreateStartingVillage(state, id, player.Id, MapGenerator.PlayerStart(state, data, i), data);
+            village.Name = names[i];
+            state.AddVillage(village);
         }
+
+        MapGenerator.PlaceBarbarians(state, data);
 
         return state;
     }
@@ -47,21 +55,5 @@ public static class GameFactory
 
         tile.VillageId = village.Id;
         return village;
-    }
-
-    // Placeholder placement: one player per map quadrant. Real map generation comes with the world map.
-    private static TileCoord StartPosition(int index, GameMap map)
-    {
-        var left = map.Width / 4;
-        var right = map.Width * 3 / 4;
-        var top = map.Height / 4;
-        var bottom = map.Height * 3 / 4;
-        return index switch
-        {
-            0 => new TileCoord(left, top),
-            1 => new TileCoord(right, bottom),
-            2 => new TileCoord(right, top),
-            _ => new TileCoord(left, bottom),
-        };
     }
 }

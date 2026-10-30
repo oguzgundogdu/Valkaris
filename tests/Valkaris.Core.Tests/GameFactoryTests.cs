@@ -17,7 +17,7 @@ public class GameFactoryTests
         var state = TestMatch.Create(players);
 
         Assert.Equal(players, state.Players.Count);
-        Assert.Equal(players, state.Villages.Count);
+        Assert.Equal(players, state.Villages.Values.Count(v => !v.IsBarbarian));
         foreach (var player in state.Players.Values)
         {
             var capital = state.Villages[player.CapitalVillageId];
@@ -67,7 +67,7 @@ public class GameFactoryTests
     {
         var state = TestMatch.Create(players: 4);
 
-        Assert.Equal(4, state.Villages.Values.Select(v => v.Position).Distinct().Count());
+        Assert.Equal(state.Villages.Count, state.Villages.Values.Select(v => v.Position).Distinct().Count());
         foreach (var village in state.Villages.Values)
             Assert.Equal(village.Id, state.Map.TileAt(village.Position).VillageId);
     }
