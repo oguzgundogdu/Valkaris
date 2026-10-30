@@ -242,6 +242,8 @@ internal static class GameDataValidator
             Error("protectedResourceShare", "must be between 0 and 1.");
         if (config.CatapultsPerLevelOfDamage < 1)
             Error("catapultsPerLevelOfDamage", "must be at least 1.");
+        if (config.TroopsPerScout < 1)
+            Error("troopsPerScout", "must be at least 1.");
     }
 
     private static void ValidateMap(MapConfig config, GameConfig game, BuildingsConfig buildings, List<string> errors)

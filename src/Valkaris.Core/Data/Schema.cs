@@ -123,6 +123,9 @@ public sealed record CombatConfig
     public required double ProtectedResourceShare { get; init; }
 
     public required int CatapultsPerLevelOfDamage { get; init; }
+
+    /// <summary>Scouts succeed if the garrison is no larger than this many troops for each scout.</summary>
+    public required int TroopsPerScout { get; init; }
 }
 
 /// <summary>data/map.json</summary>

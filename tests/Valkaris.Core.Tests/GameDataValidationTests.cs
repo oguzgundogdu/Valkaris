@@ -167,6 +167,7 @@ public class GameDataValidationTests
     [InlineData("protectedResourceShare", -0.1)]
     [InlineData("protectedResourceShare", 1.1)]
     [InlineData("catapultsPerLevelOfDamage", 0)]
+    [InlineData("troopsPerScout", 0)]
     public void InvalidCombatValue(string field, double value) =>
         AssertCombatInvalid(r => r[field] = value, field);
 
