@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
@@ -15,6 +16,7 @@ public partial class ResourceBar : PanelContainer
     private readonly Dictionary<ResourceType, Chip> _chips = new();
     private Label _clock = null!;
     private Button _pause = null!;
+    private Label _incoming = null!;
 
     public event Action? PauseRequested;
 
@@ -22,6 +24,7 @@ public partial class ResourceBar : PanelContainer
     {
         _clock = GetNode<Label>("%Clock");
         _pause = GetNode<Button>("%Pause");
+        _incoming = GetNode<Label>("%Incoming");
         _pause.Pressed += () => PauseRequested?.Invoke();
 
         var chips = GetNode<HBoxContainer>("%Chips");
@@ -71,5 +74,13 @@ public partial class ResourceBar : PanelContainer
         var remaining = session.State.Settings.MatchDurationSeconds - session.State.ElapsedTime;
         _clock.Text = Format.Time(remaining);
         _pause.Visible = session.CanPause;
+
+        var hostile = session.State.Movements
+            .Where(m => m.OwnerId != session.LocalPlayerId && session.State.Villages[m.ToVillageId].OwnerId == session.LocalPlayerId)
+            .OrderBy(m => m.ArrivalTime)
+            .FirstOrDefault();
+        _incoming.Visible = hostile is not null;
+        if (hostile is not null)
+            _incoming.Text = $"{hostile.Type} arriving in {Format.Time(hostile.ArrivalTime - session.State.ElapsedTime)}";
     }
 }

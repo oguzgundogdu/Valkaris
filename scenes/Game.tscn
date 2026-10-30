@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://src/Presentation/Toast.cs" id="6"]
 [ext_resource type="PackedScene" path="res://scenes/Overlay.tscn" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/TroopsPanel.tscn" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/SendPanel.tscn" id="9"]
 
 [node name="Game" type="Control"]
 layout_mode = 3
@@ -67,6 +68,11 @@ unique_name_in_owner = true
 layout_mode = 2
 
 [node name="Troops" parent="Layout/Margin/Columns/Side" instance=ExtResource("8")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Send" parent="Layout/Margin/Columns/Side" instance=ExtResource("9")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2

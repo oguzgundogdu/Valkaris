@@ -160,6 +160,7 @@ public partial class UiTest : Control
         await Shot("village");
 
         await TestTroops();
+        await TestSend();
         await TestFeedback();
         await TestPause();
         TestDevOptions();
@@ -258,6 +259,58 @@ public partial class UiTest : Control
         SelectTile(BuildingType.Woodcutter);
         await Frames();
         Expect(panel.IsVisibleInTree(), "Clicking a tile returns to the Village tab");
+    }
+
+    private async Task TestSend()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var village = session.State.Villages[1];
+        var send = game.GetNode<SendPanel>("%Send");
+        var button = send.GetNode<Button>("%Send");
+        var reason = send.GetNode<Label>("%Reason");
+        var mission = send.GetNode<OptionButton>("%Mission");
+        var spearmen = send.GetNode<VBoxContainer>("%Units").GetNode(nameof(UnitType.Spearman));
+
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+        Expect(send.IsVisibleInTree(), "The Send tab opens");
+        Expect(mission.ItemCount == 2, "Reinforce isn't offered without a second village");
+        var target = send.GetNode<VBoxContainer>("%Targets").GetNode<Button>("Target2");
+        Expect(target.Text.StartsWith("Rival's village"), $"The target list names the rival, got '{target.Text}'");
+        Expect(button.Disabled && reason.Text == UiContent.RejectionText(CommandRejection.NoTroopsSelected), "No troops selected disables Send and says why");
+        Expect(send.GetNode<Label>("%None").Visible, "Nothing on the move yet");
+
+        spearmen.GetNode<Button>("Max").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        var present = village.TroopCount(UnitType.Spearman);
+        Expect((int)spearmen.GetNode<SpinBox>("Amount").Value == present, "Max selects the whole garrison");
+        Expect(send.GetNode<Label>("%Arrival").Text.StartsWith("Arrives in"), "The arrival time is previewed");
+        Expect(!send.GetNode<Control>("%CatapultRow").Visible, "No catapult target without catapults");
+        await Shot("send");
+
+        mission.Select(1);
+        await Frames();
+        button.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(village.TroopCount(UnitType.Spearman) == 0, "Sent troops leave the garrison");
+        Expect(session.State.Movements.Count == 1 && session.State.Movements[0].Type == MovementType.Raid, "The chosen mission is sent");
+        Expect((int)spearmen.GetNode<SpinBox>("Amount").Value == 0, "The form resets after sending");
+        var row = send.GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
+        Expect(row.GetNode<Label>("Title").Text == "Raid → Rival", "The movement is listed");
+        await Shot("moving");
+
+        session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
+        await Frames();
+        Expect(session.State.Reports.Count == 1, "The raid is fought on arrival");
+        if (session.State.Movements.Count > 0)
+        {
+            Expect(row.GetNode<Label>("Title").Text.StartsWith("Returning"), "Survivors are listed as returning");
+            session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
+            await Frames();
+        }
+        Expect(session.State.Movements.Count == 0, "Everyone is home");
+        Expect(send.GetNode<Label>("%None").Visible, "The list empties again");
     }
 
     private static int TrainPreviewMax(Valkaris.Core.Hosting.IGameSession session, UnitType unit) =>

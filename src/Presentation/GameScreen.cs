@@ -17,6 +17,7 @@ public partial class GameScreen : Control
     private QueuePanel _queuePanel = null!;
     private TabContainer _tabs = null!;
     private TroopsPanel _troopsPanel = null!;
+    private SendPanel _sendPanel = null!;
     private Toast _toast = null!;
     private Overlay _pauseOverlay = null!;
     private Overlay _leaveOverlay = null!;
@@ -38,6 +39,7 @@ public partial class GameScreen : Control
         _queuePanel = GetNode<QueuePanel>("%QueuePanel");
         _tabs = GetNode<TabContainer>("%Side");
         _troopsPanel = GetNode<TroopsPanel>("%Troops");
+        _sendPanel = GetNode<SendPanel>("%Send");
         _toast = GetNode<Toast>("%Toast");
         _pauseOverlay = GetNode<Overlay>("%PauseOverlay");
         _leaveOverlay = GetNode<Overlay>("%LeaveOverlay");
@@ -90,6 +92,7 @@ public partial class GameScreen : Control
     {
         Village,
         Troops,
+        Send,
     }
 
     public void ShowTab(SideTab tab) => _tabs.CurrentTab = (int)tab;
@@ -111,6 +114,9 @@ public partial class GameScreen : Control
             case SideTab.Troops:
                 _troopsPanel.Refresh(Session, village);
                 break;
+            case SideTab.Send:
+                _sendPanel.Refresh(Session, village);
+                break;
         }
     }
 
@@ -127,6 +133,10 @@ public partial class GameScreen : Control
             case BuildingCompleted completed when IsLocalVillage(completed.VillageId):
                 _villageView.Pulse(completed.Building);
                 _toast.ShowMessage($"{UiContent.Buildings[completed.Building].Name} reached level {completed.NewLevel}");
+                break;
+            case TroopsReturned returned when IsLocalVillage(returned.VillageId):
+                var loot = returned.Loot.Wood + returned.Loot.Stone + returned.Loot.Food;
+                _toast.ShowMessage(loot > 0 ? $"Troops returned with {Format.Amount(loot)} loot" : "Troops returned");
                 break;
             case TroopsTrained trained when IsLocalVillage(trained.VillageId):
                 _toast.ShowMessage($"{UiContent.Units[trained.Unit].Name} × {trained.Count} trained");
