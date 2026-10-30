@@ -86,7 +86,7 @@ public partial class Main : Control
 #endif
 
         var session = new LocalGameSession(state, _data, LocalPlayerId);
-        if (!IdleOpponents)
+        if (!IdleOpponents && !devOptions.IdleAi)
         {
             foreach (var slot in state.Players.Values.Where(p => p.IsAi))
             {
@@ -96,7 +96,7 @@ public partial class Main : Control
         }
 
         var screen = GameScene.Instantiate<GameScreen>();
-        screen.Init(session, devOptions.RivalAttackSeconds);
+        screen.Init(session);
         screen.ExitRequested += ShowStartScreen;
         SwitchTo(screen);
     }

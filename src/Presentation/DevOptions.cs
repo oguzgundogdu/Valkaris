@@ -6,24 +6,24 @@ using Valkaris.Core.Model;
 namespace Valkaris.Presentation;
 
 /// <summary>
-/// Dev-only match overrides from the command line: -- --dev-speed=20 --dev-duration=60 --dev-rival-attack=120 (seconds) --dev-scenario=villages.
+/// Dev-only match overrides from the command line: -- --dev-speed=20 --dev-duration=60 (seconds) --dev-scenario=villages --dev-idle-ai.
 /// Ignored in release builds, so exported games cannot use them.
 /// </summary>
-public sealed record DevOptions(double? Speed, double? DurationSeconds, double? RivalAttackSeconds, string? Scenario = null)
+public sealed record DevOptions(double? Speed, double? DurationSeconds, bool IdleAi, string? Scenario = null)
 {
     private const string SpeedArgument = "--dev-speed=";
     private const string DurationArgument = "--dev-duration=";
-    private const string RivalAttackArgument = "--dev-rival-attack=";
+    private const string IdleAiArgument = "--dev-idle-ai";
     private const string ScenarioArgument = "--dev-scenario=";
 
     public static DevOptions Parse(IEnumerable<string> arguments, bool isDebugBuild)
     {
         if (!isDebugBuild)
-            return new DevOptions(null, null, null);
+            return new DevOptions(null, null, false);
 
         double? speed = null;
         double? duration = null;
-        double? rivalAttack = null;
+        var idleAi = false;
         string? scenario = null;
         foreach (var argument in arguments)
         {
@@ -31,12 +31,12 @@ public sealed record DevOptions(double? Speed, double? DurationSeconds, double? 
                 speed = ParsePositive(argument[SpeedArgument.Length..]);
             else if (argument.StartsWith(DurationArgument, StringComparison.Ordinal))
                 duration = ParsePositive(argument[DurationArgument.Length..]);
-            else if (argument.StartsWith(RivalAttackArgument, StringComparison.Ordinal))
-                rivalAttack = ParsePositive(argument[RivalAttackArgument.Length..]);
+            else if (argument == IdleAiArgument)
+                idleAi = true;
             else if (argument.StartsWith(ScenarioArgument, StringComparison.Ordinal))
                 scenario = argument[ScenarioArgument.Length..];
         }
-        return new DevOptions(speed, duration, rivalAttack, scenario);
+        return new DevOptions(speed, duration, idleAi, scenario);
     }
 
     public GameSettings Apply(GameSettings settings) => settings with

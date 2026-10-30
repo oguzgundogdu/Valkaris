@@ -807,17 +807,17 @@ public partial class UiTest : Control
         await Frames();
     }
 
-    /// <summary>The defender's view, through the same dev path as --dev-rival-attack.</summary>
+    /// <summary>The defender's view, through the same path an AI uses.</summary>
     private async Task TestBeingAttacked(GameData data)
     {
         var settings = new GameSettings(TestDuration, 1, MapSize.Small);
         var slots = new[] { new PlayerSlot("You", Nation.Valdren, false), new PlayerSlot("Rival", Nation.Karuk, true) };
         var session = new LocalGameSession(GameFactory.CreateMatch(settings, slots, data), data, 1);
         var game = GD.Load<PackedScene>("res://scenes/Game.tscn").Instantiate<GameScreen>();
-        game.Init(session, devRivalAttackSeconds: 0.001);
+        game.Init(session);
         AddChild(game);
         await Frames();
-        session.Tick(0.01);
+        RivalAttacks(session);
         await Frames();
 
         Expect(session.State.Movements.Count == 1, "The rival sends its garrison");
@@ -931,9 +931,9 @@ public partial class UiTest : Control
         var release = DevOptions.Parse(arguments, isDebugBuild: false).Apply(settings);
         Expect(release == settings, "Dev arguments are ignored in release builds");
 
-        var rivalAttack = new[] { "--dev-rival-attack=90" };
-        Expect(DevOptions.Parse(rivalAttack, isDebugBuild: true).RivalAttackSeconds == 90, "The rival attack argument applies in debug builds");
-        Expect(DevOptions.Parse(rivalAttack, isDebugBuild: false).RivalAttackSeconds is null, "The rival attack argument is ignored in release builds");
+        var idleAi = new[] { "--dev-idle-ai" };
+        Expect(DevOptions.Parse(idleAi, isDebugBuild: true).IdleAi, "The idle AI argument applies in debug builds");
+        Expect(!DevOptions.Parse(idleAi, isDebugBuild: false).IdleAi, "The idle AI argument is ignored in release builds");
 
         var invalid = DevOptions.Parse(new[] { "--dev-speed=abc", "--dev-duration=-5" }, isDebugBuild: true).Apply(settings);
         Expect(invalid == settings, "Invalid dev arguments are ignored");
@@ -1102,7 +1102,15 @@ public partial class UiTest : Control
         }
     }
 
-    private async Task<(GameScreen Game, LocalGameSession Session)> StartMatch(GameData data, string? scenario, int players = 2, double? rivalAttackAt = null, double duration = TestDuration)
+    /// <summary>The rival sends everything it has at your capital, through the same path as any AI command.</summary>
+    private void RivalAttacks(LocalGameSession session)
+    {
+        var rival = session.State.Villages.Values.Where(v => v.OwnerId == 2).MaxBy(v => v.Troops.Values.Sum())!;
+        var troops = rival.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
+        Expect(session.SendAs(2, new SendTroopsCommand(rival.Id, 1, MovementType.Attack, troops)).Success, "The rival's attack is accepted");
+    }
+
+    private async Task<(GameScreen Game, LocalGameSession Session)> StartMatch(GameData data, string? scenario, int players = 2, bool rivalAttacks = false, double duration = TestDuration)
     {
         foreach (var child in GetChildren().OfType<GameScreen>())
             child.QueueFree();
@@ -1117,9 +1125,11 @@ public partial class UiTest : Control
 
         var session = new LocalGameSession(state, data, 1);
         var game = GD.Load<PackedScene>("res://scenes/Game.tscn").Instantiate<GameScreen>();
-        game.Init(session, rivalAttackAt);
+        game.Init(session);
         AddChild(game);
         await Frames();
+        if (rivalAttacks)
+            RivalAttacks(session);
         return (game, session);
     }
 
@@ -1542,8 +1552,7 @@ public partial class UiTest : Control
 
     private async Task<(GameScreen Game, LocalGameSession Session)> LoseCapital(GameData data)
     {
-        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages, rivalAttackAt: 0.001);
-        session.Tick(0.01);
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages, rivalAttacks: true);
         await Frames();
         await RunUntilCapitalLost(session);
         await Frames();
@@ -1618,8 +1627,7 @@ public partial class UiTest : Control
 
     private async Task TestWatchingAfterElimination(GameData data)
     {
-        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, players: 3, rivalAttackAt: 0.001);
-        session.Tick(0.01);
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, players: 3, rivalAttacks: true);
         await RunUntilArrived(session);
         await Frames();
 
@@ -1672,8 +1680,7 @@ public partial class UiTest : Control
         Expect(cells[13].EndsWith("(eliminated)"), "Eliminated players are marked");
         await Shot("end-victory");
 
-        (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, rivalAttackAt: 0.001);
-        session.Tick(0.01);
+        (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, rivalAttacks: true);
         await RunUntilArrived(session);
         end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
         Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Defeat", "Losing the last village loses");

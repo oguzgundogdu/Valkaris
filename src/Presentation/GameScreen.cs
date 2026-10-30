@@ -33,7 +33,6 @@ public partial class GameScreen : Control
     private bool _capitalSetAside;
     private bool _watching;
     private bool _confirmingLeave;
-    private double? _devRivalAttackAt;
     private BuildingType _selected = BuildingType.MainBuilding;
     private int? _currentVillageId;
     private VillageStrip _villageStrip = null!;
@@ -50,11 +49,10 @@ public partial class GameScreen : Control
 
     public void ExitToStart() => ExitRequested?.Invoke();
 
-    public void Init(IGameSession session, double? devRivalAttackSeconds = null)
+    public void Init(IGameSession session)
     {
         Session = session;
         _currentVillageId = session.State.Players[session.LocalPlayerId].CapitalVillageId!.Value;
-        _devRivalAttackAt = devRivalAttackSeconds;
     }
 
     public override void _Ready()
@@ -146,7 +144,6 @@ public partial class GameScreen : Control
     public override void _Process(double delta)
     {
         Session.Tick(delta);
-        RunDevRivalAttack();
 
         var village = ResolveCurrentVillage();
         _resourceBar.Refresh(Session, village, CurrentView);
@@ -204,20 +201,6 @@ public partial class GameScreen : Control
             CycleVillage(-1);
         else if (key.Keycode == Key.E)
             CycleVillage(1);
-    }
-
-    /// <summary>Dev only: the idle rival sends its whole garrison, so being attacked can be tried before AI exists.</summary>
-    private void RunDevRivalAttack()
-    {
-        if (_devRivalAttackAt is not { } time || Session.State.ElapsedTime < time || Session is not LocalGameSession local)
-            return;
-
-        _devRivalAttackAt = null;
-        var rival = Session.State.Villages.Values
-            .Where(v => v.OwnerId != Session.LocalPlayerId && !v.IsBarbarian)
-            .MaxBy(v => v.Troops.Values.Sum())!;
-        var home = Session.State.Players[Session.LocalPlayerId].CapitalVillageId!.Value;
-        local.SendAs(rival.OwnerId, new SendTroopsCommand(rival.Id, home, MovementType.Attack, rival.Troops.ToDictionary(t => t.Key, t => t.Value)));
     }
 
     private void CycleVillage(int direction)

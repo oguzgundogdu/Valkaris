@@ -139,7 +139,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 **Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
 
-**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-rival-attack=` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `DevScenario` sets up states the idle rival cannot reach (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`), for play and for the UI test. The rival attack exists because the rival is idle until the AI milestone; it goes through `LocalGameSession.SendAs`, the path the AI will use. `SendAs` is not on `IGameSession`, so the UI can never act as another player.
+**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `--dev-idle-ai` makes opponents stand still, for scripted tests and scenarios. `DevScenario` sets up late-game states for play and for the UI test (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`).
 
 ---
 
