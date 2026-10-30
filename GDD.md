@@ -50,8 +50,12 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
    - Talks only to `IGameSession` (state, data, `Send`, `Tick`, events). `Send` returns nothing and rejections arrive as an event, because a command sent over the network cannot answer immediately. Views read `State` fresh each frame, because a snapshot may replace it.
    - `LocalGameSession` runs everything in-process. Multiplayer adds another implementation of the same interface.
    - `BuildPreview` in Core is the single evaluation of the build rules, used by both `CommandHandler` and the UI, so rules are never duplicated in Presentation.
-4. **AI**
-   - AI players issue the same commands as human players through the same `CommandHandler`.
+4. **AI (`Valkaris.Ai`, a separate assembly with no access to Core's internals)**
+   - AI players issue the same commands as human players through the same `CommandHandler`, and check the same previews first.
+   - Decisions see the game only through `AiView`: what a player's own UI shows. It never exposes other players' garrisons, resources, buildings or loyalty, troop counts in incoming attacks, or whether a player is human. A guard test enforces this. The AI learns about targets from reports it took part in, starting from beliefs in `data/ai.json`, which stand for experience and are separate from the real garrison data.
+   - `LocalGameSession` runs agents (`IMatchAgent`) and stops at every event and decision, so what they do does not depend on the frame rate. Same seed, same match. AI memory lives on the host and is not in snapshots.
+   - Difficulty (Easy, Normal, Hard) is one profile per level in `ai.json`, on one code path, with no rule or information advantage. A test confirms the AI code never branches on the level.
+   - `tools/Valkaris.Sim` runs seeded AI-only matches headlessly and reports stats for balance work.
 
 ### 3.2 Rules
 - Every player-initiated state change happens through a command (`BuildCommand`, `TrainCommand`, `SendTroopsCommand`, `SetCapitalCommand`, ...).
@@ -84,6 +88,7 @@ public class Player
     public string Name;
     public Nation Nation;
     public bool IsAi;
+    public AiDifficulty? Difficulty;       // null for humans
     public bool IsEliminated;
     public int? CapitalVillageId;          // null during a new capital choice and after elimination
     public double? CapitalChoiceDeadline;  // real time; set only during the choice
@@ -132,7 +137,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 ## 4. Match Settings (chosen in lobby)
 
-- Number of players: 2–4 (human or AI slots; limits in `data/game.json`). A single slot is not allowed, since a player with no opponents would win instantly.
+- Number of players: 2–4 (human or AI slots; limits in `data/game.json`). A single slot is not allowed, since a player with no opponents would win instantly. The start screen offers 1–3 AI opponents at one difficulty until the lobby exists.
 - Match duration: configurable (e.g. 20 / 30 / 45 / 60 minutes)
 - Game speed multiplier (optional). Scales production, build, training and travel speed and loyalty regeneration. It does not scale match duration: a 30-minute match lasts 30 real minutes.
 - Map size (small / medium), set on the start screen until the lobby exists
@@ -313,7 +318,7 @@ Players must be able to manage their villages from both views.
 ### 11.3 Capital Rule
 - A capital cannot lose loyalty while its Main Building is above a threshold level.
   Attackers must first reduce the Main Building with Catapults, then send Lords.
-- If a player's capital is captured, they choose one of their remaining villages as the new capital through `SetCapitalCommand`, which is valid only during this choice. The penalty lowers its Main Building to a data-defined level, and queued upgrades with it. If they do not choose within a data-defined time (real seconds, not scaled by game speed), the village with the highest Main Building level is picked automatically, then the lowest id. AI players choose immediately.
+- If a player's capital is captured, they choose one of their remaining villages as the new capital through `SetCapitalCommand`, which is valid only during this choice. The penalty lowers its Main Building to a data-defined level, and queued upgrades with it. If they do not choose within a data-defined time (real seconds, not scaled by game speed), the village with the highest Main Building level is picked automatically, then the lowest id. AI players use the same command at once, weighing the penalty against safety. The timeout also covers an AI or disconnected player that does not act.
 - A player with no villages left is eliminated at once, and all their movements are removed, so an attack still travelling can never give them a village back.
 
 ### 11.4 Win Conditions
@@ -344,7 +349,7 @@ Players must be able to manage their villages from both views.
 4. **World map:** tile map, villages, movements, sending troops from the map.
 5. **Villages:** settlers, loyalty, Lord, capital rule, elimination, win conditions.
 5.5. **Resource transfers:** Marketplace, carriers, sending resources between your own villages.
-6. **AI:** simple rule-based AI (build economy → train → attack weakest neighbour).
+6. **AI:** rule-based AI playing the full game, difficulty levels, and a headless simulation tool.
 7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
 8. **Nations:** passive bonuses.
 9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).
