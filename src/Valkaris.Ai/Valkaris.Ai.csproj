@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>Valkaris.Ai</RootNamespace>
+  </PropertyGroup>
+
+  <!-- A separate assembly with no access to Core's internals, so the AI cannot change state except by commands. -->
+  <ItemGroup>
+    <ProjectReference Include="../Valkaris.Core/Valkaris.Core.csproj" />
+  </ItemGroup>
+
+</Project>
