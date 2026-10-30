@@ -109,8 +109,8 @@ public sealed class Simulation
             case MovementType.Return:
                 return CompleteReturn(movement);
             case MovementType.Reinforce:
-                AddTroops(_state.Villages[movement.ToVillageId], movement.Troops);
-                return new ReinforcementsArrived(movement.ArrivalTime, movement.ToVillageId);
+                AddTroops(_state.Villages[movement.ToVillageId!.Value], movement.Troops);
+                return new ReinforcementsArrived(movement.ArrivalTime, movement.ToVillageId!.Value);
             default:
                 return ResolveBattle(movement);
         }
@@ -118,7 +118,7 @@ public sealed class Simulation
 
     private BattleResolved ResolveBattle(Movement movement)
     {
-        var target = _state.Villages[movement.ToVillageId];
+        var target = _state.Villages[movement.ToVillageId!.Value];
         var defenders = target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
         var wallLevel = target.BuildingLevel(BuildingType.Wall);
 
@@ -233,7 +233,7 @@ public sealed class Simulation
 
     private TroopsReturned CompleteReturn(Movement movement)
     {
-        var home = _state.Villages[movement.ToVillageId];
+        var home = _state.Villages[movement.ToVillageId!.Value];
         AddTroops(home, movement.Troops);
         home.Resources = (home.Resources + movement.Loot).CappedAt(BuildingRules.VillageCapacity(_data, home));
         return new TroopsReturned(movement.ArrivalTime, home.Id, movement.Loot);
@@ -251,14 +251,14 @@ public sealed class Simulation
         if (survivors.Values.All(count => count == 0))
             return;
 
-        var from = _state.Villages[movement.ToVillageId];
+        var from = _state.Villages[movement.ToVillageId!.Value];
         var home = _state.Villages[movement.FromVillageId];
         var duration = UnitRules.TravelSeconds(_data, _state, from.Position, home.Position, survivors);
 
         _state.AddMovement(new Movement(
             _state.NextMovementId++,
             movement.OwnerId,
-            movement.ToVillageId,
+            movement.ToVillageId!.Value,
             movement.FromVillageId,
             MovementType.Return,
             survivors,

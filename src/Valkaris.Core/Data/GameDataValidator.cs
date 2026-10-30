@@ -5,7 +5,7 @@ namespace Valkaris.Core.Data;
 /// <summary>Checks values that parse correctly but would break the game. Reports every problem at once.</summary>
 internal static class GameDataValidator
 {
-    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map)
+    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map, VillagesConfig villages, ScoringConfig scoring)
     {
         var errors = new List<string>();
         ValidateBuildings(buildings, errors);
@@ -13,6 +13,8 @@ internal static class GameDataValidator
         ValidateUnits(units, buildings, errors);
         ValidateCombat(combat, errors);
         ValidateMap(map, game, buildings, errors);
+        ValidateVillages(villages, buildings, errors);
+        ValidateScoring(scoring, errors);
         return errors;
     }
 
@@ -79,6 +81,13 @@ internal static class GameDataValidator
                     $"must have {main.MaxLevel + 1} entries (Main Building levels 0 to {main.MaxLevel}), found {caps.Count}.");
             if (caps.Any(cap => cap < 0))
                 Error("maxOtherBuildingLevelByMainLevel", "must not contain negative levels.");
+
+            var limits = config.MaxVillagesByCapitalMainLevel;
+            if (limits.Count != main.MaxLevel + 1)
+                Error("maxVillagesByCapitalMainLevel",
+                    $"must have {main.MaxLevel + 1} entries (Main Building levels 0 to {main.MaxLevel}), found {limits.Count}.");
+            if (limits.Any(limit => limit < 1))
+                Error("maxVillagesByCapitalMainLevel", "must be at least 1 at every level.");
         }
     }
 
@@ -125,6 +134,25 @@ internal static class GameDataValidator
             if (count < 0)
                 Error($"startingTroops.{type}", "must not be negative.");
         }
+
+        var founded = game.FoundedVillage;
+        if (founded.Resources.Wood < 0 || founded.Resources.Stone < 0 || founded.Resources.Food < 0)
+            Error("foundedVillage.resources", "must not contain negative amounts.");
+
+        foreach (var type in Enum.GetValues<BuildingType>())
+        {
+            if (!founded.Buildings.ContainsKey(type))
+                Error($"foundedVillage.buildings.{type}", "is missing.");
+        }
+
+        foreach (var (type, level) in founded.Buildings)
+        {
+            if (level < 0 || (buildings.Buildings.TryGetValue(type, out var definition) && level > definition.MaxLevel))
+                Error($"foundedVillage.buildings.{type}", "is outside the building's levels.");
+        }
+
+        if (founded.Troops.Values.Any(count => count < 0))
+            Error("foundedVillage.troops", "must not contain negative counts.");
 
         if (game.MaxBuildQueueLength < 1)
             Error("maxBuildQueueLength", "must be at least 1.");
@@ -219,6 +247,8 @@ internal static class GameDataValidator
 
         if (config.MinVillageSpacing < 1)
             Error("minVillageSpacing", "must be at least 1.");
+        if (config.MinFoundingDistance < 1)
+            Error("minFoundingDistance", "must be at least 1.");
         if (config.StartJitter < 0)
             Error("startJitter", "must not be negative.");
         if (config.StartClearRadius < 0)
@@ -263,10 +293,58 @@ internal static class GameDataValidator
             }
         }
 
+        if (config.FoundedVillageNames.Count == 0 || config.FoundedVillageNames.Any(name => name.Length == 0))
+            Error("foundedVillageNames", "must be a non-empty list of names.");
         if (config.PlayerVillageNames.Count < game.MaxPlayers)
             Error("playerVillageNames", $"must have at least {game.MaxPlayers} names.");
         var mostBarbarians = config.BarbarianCounts.Count == 0 ? 0 : config.BarbarianCounts.Values.Max();
         if (config.BarbarianVillageNames.Count < mostBarbarians)
             Error("barbarianVillageNames", $"must have at least {mostBarbarians} names.");
+    }
+
+    private static void ValidateVillages(VillagesConfig config, BuildingsConfig buildings, List<string> errors)
+    {
+        void Error(string field, string problem) => errors.Add($"{GameData.VillagesFile}: {field} {problem}");
+
+        var loyalty = config.Loyalty;
+        if (loyalty.DropMin < 1)
+            Error("loyalty.dropMin", "must be at least 1.");
+        if (loyalty.DropMax < loyalty.DropMin)
+            Error("loyalty.dropMax", "must not be below dropMin.");
+        if (loyalty.AfterCapture is <= 0 or > Village.MaxLoyalty)
+            Error("loyalty.afterCapture", $"must be above 0 and at most {Village.MaxLoyalty}.");
+        if (loyalty.RegenPerSecond < 0)
+            Error("loyalty.regenPerSecond", "must not be negative.");
+        if (loyalty.RegenPerSecondPerMainLevel < 0)
+            Error("loyalty.regenPerSecondPerMainLevel", "must not be negative.");
+
+        var mainMax = buildings.Buildings.TryGetValue(BuildingType.MainBuilding, out var main) ? main.MaxLevel : int.MaxValue;
+        var capital = config.Capital;
+        if (capital.LockedAboveMainLevel < 0 || capital.LockedAboveMainLevel > mainMax)
+            Error("capital.lockedAboveMainLevel", $"must be between 0 and {mainMax}.");
+        if (capital.ChoiceSeconds <= 0)
+            Error("capital.choiceSeconds", "must be positive.");
+        if (capital.PenaltyMainLevel < 0 || capital.PenaltyMainLevel > mainMax)
+            Error("capital.penaltyMainLevel", $"must be between 0 and {mainMax}.");
+    }
+
+    private static void ValidateScoring(ScoringConfig config, List<string> errors)
+    {
+        void Error(string field, string problem) => errors.Add($"{GameData.ScoringFile}: {field} {problem}");
+
+        if (config.VillageWeight < 0)
+            Error("villageWeight", "must not be negative.");
+        if (config.PopulationWeight < 0)
+            Error("populationWeight", "must not be negative.");
+        if (config.CaptureWeight < 0)
+            Error("captureWeight", "must not be negative.");
+
+        foreach (var type in Enum.GetValues<BuildingType>())
+        {
+            if (!config.PopulationPerLevel.TryGetValue(type, out var weight))
+                Error($"populationPerLevel.{type}", "is missing.");
+            else if (weight < 0)
+                Error($"populationPerLevel.{type}", "must not be negative.");
+        }
     }
 }

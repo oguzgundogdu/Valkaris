@@ -50,8 +50,10 @@ public partial class WorldMapView : Control
 
     public Vector2 ViewToWorld(Vector2 view) => (view - _world.Position) / _zoom;
 
-    public static Vector2 VillageWorldPosition(Village village) =>
-        (new Vector2(village.Position.X, village.Position.Y) + new Vector2(0.5f, 0.5f)) * TileSize;
+    public static Vector2 VillageWorldPosition(Village village) => TileWorldPosition(village.Position);
+
+    public static Vector2 TileWorldPosition(TileCoord tile) =>
+        (new Vector2(tile.X, tile.Y) + new Vector2(0.5f, 0.5f)) * TileSize;
 
     public override void _Ready()
     {

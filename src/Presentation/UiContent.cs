@@ -35,6 +35,8 @@ public static class UiContent
         [UnitType.Swordsman] = new("Swordsman", "res://assets/icons/swordsman.svg"),
         [UnitType.Cavalry] = new("Cavalry", "res://assets/icons/cavalry.svg"),
         [UnitType.Catapult] = new("Catapult", "res://assets/icons/catapult.svg"),
+        [UnitType.Settler] = new("Settler", "res://assets/icons/settler.svg"),
+        [UnitType.Lord] = new("Lord", "res://assets/icons/lord.svg"),
     };
 
     private static readonly Color[] PlayerColours =
@@ -63,15 +65,17 @@ public static class UiContent
 
     /// <summary>The local player sees their own movements and anything heading for their villages.</summary>
     public static bool IsVisibleMovement(IGameSession session, Movement movement) =>
-        movement.OwnerId == session.LocalPlayerId || session.State.Villages[movement.ToVillageId].OwnerId == session.LocalPlayerId;
+        movement.OwnerId == session.LocalPlayerId
+        || (movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
 
     public static string DescribeMovement(IGameSession session, Movement movement)
     {
-        var village = session.State.Villages[movement.ToVillageId];
         if (movement.OwnerId != session.LocalPlayerId)
             return $"{movement.Type} from {OwnerName(session, movement.OwnerId)}";
+        if (movement.Type == MovementType.Settle)
+            return "Settler → new village";
         if (movement.Type != MovementType.Return)
-            return $"{movement.Type} → {village.Name}";
+            return $"{movement.Type} → {session.State.Villages[movement.ToVillageId!.Value].Name}";
 
         var loot = movement.Loot.Wood + movement.Loot.Stone + movement.Loot.Food;
         return loot > 0 ? $"Returning with {Format.Amount(loot)} loot" : "Returning";

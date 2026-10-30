@@ -20,7 +20,7 @@ public class GameFactoryTests
         Assert.Equal(players, state.Villages.Values.Count(v => !v.IsBarbarian));
         foreach (var player in state.Players.Values)
         {
-            var capital = state.Villages[player.CapitalVillageId];
+            var capital = state.Villages[player.CapitalVillageId!.Value];
             Assert.Equal(player.Id, capital.OwnerId);
             Assert.False(player.IsEliminated);
         }

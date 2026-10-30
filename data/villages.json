@@ -1,0 +1,14 @@
+{
+  "loyalty": {
+    "dropMin": 20,
+    "dropMax": 30,
+    "afterCapture": 40,
+    "regenPerSecond": 0.05,
+    "regenPerSecondPerMainLevel": 0.02
+  },
+  "capital": {
+    "lockedAboveMainLevel": 3,
+    "choiceSeconds": 60,
+    "penaltyMainLevel": 1
+  }
+}

@@ -42,6 +42,7 @@ public static class SendPreview
         {
             case MovementType.Attack or MovementType.Raid when to.OwnerId == from.OwnerId:
             case MovementType.Reinforce when to.OwnerId != from.OwnerId || to.Id == from.Id:
+            case MovementType.Settle:
             case MovementType.Return:
                 return CommandRejection.InvalidMission;
         }

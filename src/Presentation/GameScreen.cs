@@ -42,7 +42,7 @@ public partial class GameScreen : Control
     public void Init(IGameSession session, double? devRivalAttackSeconds = null)
     {
         Session = session;
-        _currentVillageId = session.State.Players[session.LocalPlayerId].CapitalVillageId;
+        _currentVillageId = session.State.Players[session.LocalPlayerId].CapitalVillageId!.Value;
         _devRivalAttackAt = devRivalAttackSeconds;
     }
 
@@ -137,7 +137,7 @@ public partial class GameScreen : Control
 
         _devRivalAttackAt = null;
         var rival = Session.State.Villages.Values.First(v => v.OwnerId != Session.LocalPlayerId && !v.IsBarbarian);
-        var home = Session.State.Players[Session.LocalPlayerId].CapitalVillageId;
+        var home = Session.State.Players[Session.LocalPlayerId].CapitalVillageId!.Value;
         local.SendAs(rival.OwnerId, new SendTroopsCommand(rival.Id, home, MovementType.Attack, rival.Troops.ToDictionary(t => t.Key, t => t.Value)));
     }
 

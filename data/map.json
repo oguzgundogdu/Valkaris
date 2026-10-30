@@ -1,6 +1,7 @@
 {
   "barbarianCounts": { "Small": 6, "Medium": 12 },
   "minVillageSpacing": 3,
+  "minFoundingDistance": 3,
   "startJitter": 1,
   "startClearRadius": 1,
   "terrain": {
@@ -30,6 +31,10 @@
     ]
   },
   "playerVillageNames": ["Brennhold", "Karvik", "Solmere", "Tarnwick"],
+  "foundedVillageNames": [
+    "Eastmarch", "Larkfield", "Newhaven", "Oakhollow", "Redbank", "Stonebridge",
+    "Sunmeadow", "Whitecross", "Ravensford", "Millbrook", "Highgate", "Elmstead"
+  ],
   "barbarianVillageNames": [
     "Ashfort", "Greywater", "Old Ridge", "Thornmoor", "Duskholt", "Fenwick",
     "Rookstone", "Hollowell", "Marrow", "Stagmere", "Blackfen", "Windrest"

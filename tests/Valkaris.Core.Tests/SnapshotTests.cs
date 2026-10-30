@@ -39,6 +39,10 @@ public class SnapshotTests
         state.ElapsedTime = 123.456;
         state.Players[2].IsEliminated = true;
         state.Players[3].CapitalVillageId = 2;
+        state.Players[1].CapitalVillageId = null;
+        state.Players[1].CapitalChoiceDeadline = 300.5;
+        state.Players[1].RecordCapture(7);
+        state.Outcome = new MatchOutcome(MatchEndReason.TimeUp, 123.456, new[] { 1, 3 }, new[] { new PlayerScore(1, 2, 30, 1, 155.5) });
 
         var village = state.Villages[1];
         village.OwnerId = 3;
@@ -48,6 +52,7 @@ public class SnapshotTests
         village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 3, 200.5, 300.75));
         village.AddTroops(UnitType.Cavalry, 7);
         village.Name = "Brennhold";
+        village.Loyalty = 62.5;
         village.BarbarianTier = 1;
         village.NextTroopRegenTime = 77.5;
         state.Map.Tiles[5].Terrain = Terrain.Water;
@@ -56,10 +61,11 @@ public class SnapshotTests
         var troops = new Dictionary<UnitType, int> { [UnitType.Cavalry] = 3, [UnitType.Catapult] = 1 };
         state.AddMovement(new Movement(4, 1, 1, 2, MovementType.Attack, troops, Resources.Zero, 100, 150.5, BuildingType.Wall));
         state.AddMovement(new Movement(5, 1, 2, 1, MovementType.Return, troops, new Resources(1, 2, 3), 100, 151, null));
+        state.AddMovement(new Movement(6, 1, 1, null, MovementType.Settle, troops, Resources.Zero, 100, 152, null, new TileCoord(3, 4)));
         state.AddReport(new BattleReport(
             2, 90.5, MovementType.Raid, 1, 2, 1, 2, troops, troops, troops, troops, 3, 120.5, 80.25, true,
-            new Resources(10, 20, 30), new CatapultDamage(BuildingType.Wall, 3, 2)));
-        state.NextMovementId = 6;
+            new Resources(10, 20, 30), new CatapultDamage(BuildingType.Wall, 3, 2), new LoyaltyChange(30, 0, true), CapitalProtected: true));
+        state.NextMovementId = 7;
         state.NextReportId = 3;
         state.NextRandom();
         return state;
@@ -96,11 +102,21 @@ public class SnapshotTests
         Assert.Equal(1, village.BarbarianTier);
         Assert.Equal(77.5, village.NextTroopRegenTime);
         Assert.Equal(Terrain.Water, restored.Map.Tiles[5].Terrain);
-        Assert.Equal(2, restored.Movements.Count);
+        Assert.Equal(3, restored.Movements.Count);
+        Assert.Null(restored.Players[1].CapitalVillageId);
+        Assert.Equal(300.5, restored.Players[1].CapitalChoiceDeadline);
+        Assert.Equal(new[] { 7 }, restored.Players[1].CapturedVillageIds);
+        Assert.Equal(new[] { 1, 3 }, restored.Outcome!.WinnerIds);
+        Assert.Equal(155.5, restored.Outcome.Scores[0].Score);
+        Assert.Equal(62.5, village.Loyalty);
+        Assert.Null(restored.Movements[2].ToVillageId);
+        Assert.Equal(new TileCoord(3, 4), restored.Movements[2].TargetTile);
+        Assert.Equal(new LoyaltyChange(30, 0, true), restored.Reports[0].Loyalty);
+        Assert.True(restored.Reports[0].CapitalProtected);
         Assert.Equal(BuildingType.Wall, restored.Movements[0].CatapultTarget);
         Assert.Equal(3, restored.Movements[1].Troops[UnitType.Cavalry]);
         Assert.Equal(new CatapultDamage(BuildingType.Wall, 3, 2), restored.Reports[0].CatapultDamage);
-        Assert.Equal(6, restored.NextMovementId);
+        Assert.Equal(7, restored.NextMovementId);
         Assert.Equal(3, restored.NextReportId);
         Assert.Equal(original.RngState, restored.RngState);
         Assert.Equal(village.Id, restored.Map.TileAt(village.Position).VillageId);

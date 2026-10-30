@@ -17,6 +17,8 @@ public enum UnitType
     Swordsman,
     Cavalry,
     Catapult,
+    Settler,
+    Lord,
 }
 
 public enum UnitClass
@@ -30,6 +32,7 @@ public enum MovementType
     Attack,
     Raid,
     Reinforce,
+    Settle,
     Return,
 }
 
@@ -59,4 +62,10 @@ public enum MapSize
 {
     Small,
     Medium,
+}
+
+public enum MatchEndReason
+{
+    LastPlayerStanding,
+    TimeUp,
 }

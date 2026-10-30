@@ -92,12 +92,12 @@ public partial class ResourceBar : PanelContainer
         _pause.Visible = session.CanPause;
 
         var hostile = session.State.Movements
-            .Where(m => m.OwnerId != session.LocalPlayerId && session.State.Villages[m.ToVillageId].OwnerId == session.LocalPlayerId)
+            .Where(m => m.OwnerId != session.LocalPlayerId && m.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId)
             .OrderBy(m => m.ArrivalTime)
             .FirstOrDefault();
         _incoming.Visible = hostile is not null;
         if (hostile is not null)
-            _incomingTarget = hostile.ToVillageId;
+            _incomingTarget = hostile.ToVillageId!.Value;
         if (hostile is not null)
             _incoming.Text = $"{hostile.Type} arriving in {Format.Time(hostile.ArrivalTime - session.State.ElapsedTime)}";
     }

@@ -5,6 +5,7 @@ namespace Valkaris.Core.Model;
 public sealed class Village
 {
     public const int BarbarianOwnerId = -1;
+    public const double MaxLoyalty = 100;
 
     private readonly Dictionary<BuildingType, int> _buildings = new();
     private readonly List<BuildQueueItem> _buildQueue = new();
@@ -27,6 +28,7 @@ public sealed class Village
     public int OwnerId { get; internal set; }
     public TileCoord Position { get; }
     public Resources Resources { get; internal set; }
+    public double Loyalty { get; internal set; } = MaxLoyalty;
     public IReadOnlyDictionary<BuildingType, int> Buildings { get; }
     public IReadOnlyList<BuildQueueItem> BuildQueue { get; }
     public IReadOnlyDictionary<UnitType, int> Troops { get; }
@@ -57,6 +59,12 @@ public sealed class Village
     internal void EnqueueTraining(TrainingQueueItem item) => _trainingQueue.Add(item);
 
     internal void DequeueTraining() => _trainingQueue.RemoveAt(0);
+
+    internal void ClearQueues()
+    {
+        _buildQueue.Clear();
+        _trainingQueue.Clear();
+    }
 
     /// <summary>Keeps queued upgrades consistent after the building lost levels.</summary>
     internal void LowerQueuedBuildTargets(BuildingType building, int levels)

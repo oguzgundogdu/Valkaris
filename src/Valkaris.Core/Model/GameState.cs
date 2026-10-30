@@ -37,6 +37,9 @@ public sealed class GameState
     public int NextMovementId { get; internal set; } = 1;
     public int NextReportId { get; internal set; } = 1;
 
+    /// <summary>Set once, when the match ends.</summary>
+    public MatchOutcome? Outcome { get; internal set; }
+
     /// <summary>The seeded generator's state, kept here so a restored snapshot continues identically.</summary>
     public ulong RngState { get; internal set; }
 

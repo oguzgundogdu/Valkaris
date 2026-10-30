@@ -48,13 +48,16 @@ public sealed record Movement(
     int Id,
     int OwnerId,
     int FromVillageId,
-    int ToVillageId,
+    int? ToVillageId,
     MovementType Type,
     IReadOnlyDictionary<UnitType, int> Troops,
     Resources Loot,
     double DepartureTime,
     double ArrivalTime,
-    BuildingType? CatapultTarget);
+    BuildingType? CatapultTarget,
+    TileCoord? TargetTile = null);
+
+public sealed record LoyaltyChange(double From, double To, bool Captured);
 
 public sealed record CatapultDamage(BuildingType Building, int FromLevel, int ToLevel);
 
@@ -76,4 +79,11 @@ public sealed record BattleReport(
     double DefencePower,
     bool AttackerWon,
     Resources Loot,
-    CatapultDamage? CatapultDamage);
+    CatapultDamage? CatapultDamage,
+    LoyaltyChange? Loyalty = null,
+    bool CapitalProtected = false);
+
+public sealed record PlayerScore(int PlayerId, int Villages, int Population, int Captures, double Score);
+
+/// <summary>How the match ended. A draw has more than one winner.</summary>
+public sealed record MatchOutcome(MatchEndReason Reason, double Time, IReadOnlyList<int> WinnerIds, IReadOnlyList<PlayerScore> Scores);

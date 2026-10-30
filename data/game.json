@@ -10,6 +10,19 @@
     "Wall": 0
   },
   "startingTroops": { "Spearman": 10 },
+  "foundedVillage": {
+    "resources": { "wood": 100, "stone": 100, "food": 100 },
+    "buildings": {
+      "MainBuilding": 1,
+      "Woodcutter": 1,
+      "Quarry": 1,
+      "Farm": 1,
+      "Warehouse": 1,
+      "Barracks": 0,
+      "Wall": 0
+    },
+    "troops": {}
+  },
   "maxBuildQueueLength": 2,
   "maxTrainingQueueLength": 2,
   "minPlayers": 2,

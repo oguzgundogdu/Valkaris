@@ -32,7 +32,8 @@ public static class SnapshotMapper
         state.Reports.ToList(),
         state.NextMovementId,
         state.NextReportId,
-        state.RngState);
+        state.RngState,
+        state.Outcome);
 
     private static PlayerSnapshot ToSnapshot(Player player) => new(
         player.Id,
@@ -40,7 +41,9 @@ public static class SnapshotMapper
         player.Nation,
         player.IsAi,
         player.IsEliminated,
-        player.CapitalVillageId);
+        player.CapitalVillageId,
+        player.CapitalChoiceDeadline,
+        player.CapturedVillageIds.ToList());
 
     private static VillageSnapshot ToSnapshot(Village village) => new(
         village.Id,
@@ -53,7 +56,8 @@ public static class SnapshotMapper
         village.TrainingQueue.ToList(),
         village.Name,
         village.BarbarianTier,
-        village.NextTroopRegenTime);
+        village.NextTroopRegenTime,
+        village.Loyalty);
 
     public static GameState Restore(GameStateSnapshot snapshot)
     {
@@ -74,6 +78,7 @@ public static class SnapshotMapper
             NextMovementId = snapshot.NextMovementId,
             NextReportId = snapshot.NextReportId,
             RngState = snapshot.RngState,
+            Outcome = snapshot.Outcome,
         };
 
         foreach (var movement in snapshot.Movements)
@@ -83,11 +88,15 @@ public static class SnapshotMapper
 
         foreach (var p in snapshot.Players)
         {
-            state.AddPlayer(new Player(p.Id, p.Name, p.Nation, p.IsAi)
+            var player = new Player(p.Id, p.Name, p.Nation, p.IsAi)
             {
                 IsEliminated = p.IsEliminated,
                 CapitalVillageId = p.CapitalVillageId,
-            });
+                CapitalChoiceDeadline = p.CapitalChoiceDeadline,
+            };
+            foreach (var villageId in p.CapturedVillageIds)
+                player.RecordCapture(villageId);
+            state.AddPlayer(player);
         }
 
         foreach (var v in snapshot.Villages)
@@ -98,6 +107,7 @@ public static class SnapshotMapper
                 Name = v.Name,
                 BarbarianTier = v.BarbarianTier,
                 NextTroopRegenTime = v.NextTroopRegenTime,
+                Loyalty = v.Loyalty,
             };
             foreach (var (type, level) in v.Buildings)
                 village.SetBuildingLevel(type, level);

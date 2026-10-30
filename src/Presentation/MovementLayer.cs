@@ -41,7 +41,9 @@ public partial class MovementLayer : Control
         foreach (var movement in session.State.Movements.Where(m => UiContent.IsVisibleMovement(session, m)))
         {
             var from = WorldMapView.VillageWorldPosition(session.State.Villages[movement.FromVillageId]);
-            var to = WorldMapView.VillageWorldPosition(session.State.Villages[movement.ToVillageId]);
+            var to = movement.ToVillageId is { } target
+                ? WorldMapView.VillageWorldPosition(session.State.Villages[target])
+                : WorldMapView.TileWorldPosition(movement.TargetTile!.Value);
             var colour = movement.OwnerId != session.LocalPlayerId ? Hostile
                 : movement.Type == MovementType.Return ? Returning
                 : Own;

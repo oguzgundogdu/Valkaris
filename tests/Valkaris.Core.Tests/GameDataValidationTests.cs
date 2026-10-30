@@ -230,6 +230,96 @@ public class GameDataValidationTests
     public void TooFewBarbarianVillageNames() =>
         AssertMapInvalid(r => r["barbarianVillageNames"] = new JsonArray("One"), "barbarianVillageNames");
 
+    private static void AssertVillagesInvalid(Action<JsonNode> mutate, string expectedField) =>
+        AssertInvalid(GameData.VillagesFile, mutate, expectedField);
+
+    private static void AssertScoringInvalid(Action<JsonNode> mutate, string expectedField) =>
+        AssertInvalid(GameData.ScoringFile, mutate, expectedField);
+
+    [Fact]
+    public void ShortVillageLimitTable() =>
+        AssertBuildingsInvalid(r => r["maxVillagesByCapitalMainLevel"] = new JsonArray(1, 2), "maxVillagesByCapitalMainLevel");
+
+    [Fact]
+    public void VillageLimitBelowOne() =>
+        AssertBuildingsInvalid(r => r["maxVillagesByCapitalMainLevel"]![0] = 0, "maxVillagesByCapitalMainLevel");
+
+    [Fact]
+    public void FoundedVillageNegativeResources() =>
+        AssertGameInvalid(r => r["foundedVillage"]!["resources"]!["wood"] = -1, "foundedVillage.resources");
+
+    [Fact]
+    public void FoundedVillageMissingBuilding() =>
+        AssertGameInvalid(r => r["foundedVillage"]!["buildings"]!.AsObject().Remove("Wall"), "foundedVillage.buildings.Wall");
+
+    [Fact]
+    public void FoundedVillageBuildingAboveMaxLevel() =>
+        AssertGameInvalid(r => r["foundedVillage"]!["buildings"]!["Wall"] = 99, "foundedVillage.buildings.Wall");
+
+    [Fact]
+    public void FoundedVillageNegativeTroops() =>
+        AssertGameInvalid(r => r["foundedVillage"]!["troops"]!["Spearman"] = -1, "foundedVillage.troops");
+
+    [Fact]
+    public void FoundingDistanceBelowOne() =>
+        AssertMapInvalid(r => r["minFoundingDistance"] = 0, "minFoundingDistance");
+
+    [Fact]
+    public void NoFoundedVillageNames() =>
+        AssertMapInvalid(r => r["foundedVillageNames"] = new JsonArray(), "foundedVillageNames");
+
+    [Fact]
+    public void LoyaltyDropMinBelowOne() =>
+        AssertVillagesInvalid(r => r["loyalty"]!["dropMin"] = 0, "loyalty.dropMin");
+
+    [Fact]
+    public void LoyaltyDropMaxBelowMin() =>
+        AssertVillagesInvalid(r => r["loyalty"]!["dropMax"] = 1, "loyalty.dropMax");
+
+    [Fact]
+    public void LoyaltyAfterCaptureOutOfRange() =>
+        AssertVillagesInvalid(r => r["loyalty"]!["afterCapture"] = 101, "loyalty.afterCapture");
+
+    [Fact]
+    public void NegativeLoyaltyRegen() =>
+        AssertVillagesInvalid(r => r["loyalty"]!["regenPerSecond"] = -1, "loyalty.regenPerSecond");
+
+    [Fact]
+    public void NegativeLoyaltyRegenPerLevel() =>
+        AssertVillagesInvalid(r => r["loyalty"]!["regenPerSecondPerMainLevel"] = -1, "loyalty.regenPerSecondPerMainLevel");
+
+    [Fact]
+    public void CapitalLockAboveMaxLevel() =>
+        AssertVillagesInvalid(r => r["capital"]!["lockedAboveMainLevel"] = 99, "capital.lockedAboveMainLevel");
+
+    [Fact]
+    public void CapitalChoiceSecondsNotPositive() =>
+        AssertVillagesInvalid(r => r["capital"]!["choiceSeconds"] = 0, "capital.choiceSeconds");
+
+    [Fact]
+    public void CapitalPenaltyAboveMaxLevel() =>
+        AssertVillagesInvalid(r => r["capital"]!["penaltyMainLevel"] = 99, "capital.penaltyMainLevel");
+
+    [Fact]
+    public void NegativeVillageWeight() =>
+        AssertScoringInvalid(r => r["villageWeight"] = -1, "villageWeight");
+
+    [Fact]
+    public void NegativePopulationWeight() =>
+        AssertScoringInvalid(r => r["populationWeight"] = -1, "populationWeight");
+
+    [Fact]
+    public void NegativeCaptureWeight() =>
+        AssertScoringInvalid(r => r["captureWeight"] = -1, "captureWeight");
+
+    [Fact]
+    public void MissingPopulationWeight() =>
+        AssertScoringInvalid(r => r["populationPerLevel"]!.AsObject().Remove("Wall"), "populationPerLevel.Wall");
+
+    [Fact]
+    public void NegativePopulationPerLevel() =>
+        AssertScoringInvalid(r => r["populationPerLevel"]!["Wall"] = -1, "populationPerLevel.Wall");
+
     [Fact]
     public void AllProblemsAreReportedTogether()
     {

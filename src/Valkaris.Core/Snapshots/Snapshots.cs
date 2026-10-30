@@ -15,7 +15,8 @@ public sealed record GameStateSnapshot(
     IReadOnlyList<BattleReport> Reports,
     int NextMovementId,
     int NextReportId,
-    ulong RngState);
+    ulong RngState,
+    MatchOutcome? Outcome);
 
 public sealed record PlayerSnapshot(
     int Id,
@@ -23,7 +24,9 @@ public sealed record PlayerSnapshot(
     Nation Nation,
     bool IsAi,
     bool IsEliminated,
-    int CapitalVillageId);
+    int? CapitalVillageId,
+    double? CapitalChoiceDeadline,
+    IReadOnlyList<int> CapturedVillageIds);
 
 public sealed record VillageSnapshot(
     int Id,
@@ -36,7 +39,8 @@ public sealed record VillageSnapshot(
     IReadOnlyList<TrainingQueueItem> TrainingQueue,
     string Name,
     int? BarbarianTier,
-    double? NextTroopRegenTime);
+    double? NextTroopRegenTime,
+    double Loyalty);
 
 public sealed record GameMapSnapshot(int Width, int Height, IReadOnlyList<MapTileSnapshot> Tiles);
 

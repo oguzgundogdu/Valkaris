@@ -44,6 +44,28 @@
       "cost": { "wood": 120, "stone": 150, "food": 300 },
       "trainingSeconds": 90,
       "requiredBarracksLevel": 5
+    },
+    "Settler": {
+      "class": "Infantry",
+      "attack": 1,
+      "defenceVsInfantry": 5,
+      "defenceVsCavalry": 5,
+      "speed": 0.1,
+      "lootCapacity": 0,
+      "cost": { "wood": 300, "stone": 300, "food": 500 },
+      "trainingSeconds": 120,
+      "requiredBarracksLevel": 3
+    },
+    "Lord": {
+      "class": "Infantry",
+      "attack": 20,
+      "defenceVsInfantry": 20,
+      "defenceVsCavalry": 20,
+      "speed": 0.08,
+      "lootCapacity": 0,
+      "cost": { "wood": 400, "stone": 500, "food": 800 },
+      "trainingSeconds": 180,
+      "requiredBarracksLevel": 5
     }
   }
 }
