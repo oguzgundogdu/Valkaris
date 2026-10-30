@@ -141,7 +141,6 @@ public class MapGeneratorTests
         foreach (var village in Match(3, MapSize.Medium).Villages.Values.Where(v => v.IsBarbarian))
         {
             var tier = Data.Map.Barbarians.Tiers[village.BarbarianTier!.Value];
-            Assert.EndsWith(tier.Name, village.Name);
             Assert.Equal(tier.Resources, village.Resources);
             foreach (var (unit, count) in tier.Garrison)
                 Assert.Equal(count, village.TroopCount(unit));

@@ -94,6 +94,17 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="StyleBoxFlat" id="button_secondary_pressed"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.851, 0.643, 0.255, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
 [sub_resource type="StyleBoxEmpty" id="focus"]
 
 [sub_resource type="StyleBoxFlat" id="bar_background"]
@@ -162,11 +173,11 @@ Button/styles/focus = SubResource("focus")
 SecondaryButton/base_type = &"Button"
 SecondaryButton/colors/font_color = Color(0.941, 0.902, 0.839, 1)
 SecondaryButton/colors/font_hover_color = Color(0.941, 0.902, 0.839, 1)
-SecondaryButton/colors/font_pressed_color = Color(0.941, 0.902, 0.839, 1)
+SecondaryButton/colors/font_pressed_color = Color(0.125, 0.098, 0.067, 1)
 SecondaryButton/colors/font_focus_color = Color(0.941, 0.902, 0.839, 1)
 SecondaryButton/styles/normal = SubResource("button_secondary")
 SecondaryButton/styles/hover = SubResource("button_secondary_hover")
-SecondaryButton/styles/pressed = SubResource("button_secondary")
+SecondaryButton/styles/pressed = SubResource("button_secondary_pressed")
 CardPanel/base_type = &"PanelContainer"
 CardPanel/styles/panel = SubResource("card")
 TopBarPanel/base_type = &"PanelContainer"

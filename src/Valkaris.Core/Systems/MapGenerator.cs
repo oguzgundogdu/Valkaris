@@ -78,7 +78,7 @@ internal static class MapGenerator
 
             var village = new Village(state.Villages.Keys.Max() + 1, Village.BarbarianOwnerId, spots[i])
             {
-                Name = $"{names[i]} {tier.Name}",
+                Name = names[i],
                 BarbarianTier = tierIndex,
                 Resources = tier.Resources,
             };

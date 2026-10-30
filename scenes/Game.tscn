@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/SendPanel.tscn" id="9"]
 [ext_resource type="PackedScene" path="res://scenes/ReportsPanel.tscn" id="10"]
 [ext_resource type="PackedScene" path="res://scenes/ReportDialog.tscn" id="11"]
+[ext_resource type="PackedScene" path="res://scenes/WorldMapView.tscn" id="12"]
 
 [node name="Game" type="Control"]
 layout_mode = 3
@@ -46,10 +47,28 @@ theme_override_constants/margin_bottom = 16
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="VillageView" parent="Layout/Margin/Columns" instance=ExtResource("5")]
-unique_name_in_owner = true
+[node name="MainArea" type="Control" parent="Layout/Margin/Columns"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="VillageView" parent="Layout/Margin/Columns/MainArea" instance=ExtResource("5")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WorldMapView" parent="Layout/Margin/Columns/MainArea" instance=ExtResource("12")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="Side" type="TabContainer" parent="Layout/Margin/Columns"]
 unique_name_in_owner = true

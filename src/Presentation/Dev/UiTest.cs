@@ -177,8 +177,58 @@ public partial class UiTest : Control
         await TestFeedback();
         await TestPause();
         TestDevOptions();
+        await TestViewSwitching();
         await TestLeaveMatch();
         await TestMatchEnd();
+    }
+
+    private async Task TestViewSwitching()
+    {
+        var game = Find<GameScreen>();
+        var bar = game.GetNode<ResourceBar>("%ResourceBar");
+        var villageView = game.GetNode<VillageView>("%VillageView");
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var pressM = new InputEventKey { Pressed = true, Keycode = Key.M };
+        var send = game.GetNode<SendPanel>("%Send");
+        var amount = send.GetNode<VBoxContainer>("%Units").GetNode(nameof(UnitType.Spearman)).GetNode<SpinBox>("Amount");
+
+        Expect(bar.GetNode<Button>("%ViewVillage").ButtonPressed, "The toggle starts on Village");
+
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+        amount.Value = 1;
+
+        bar.GetNode<Button>("%ViewWorld").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(world.Visible && !villageView.Visible, "The toggle opens the map");
+        Expect(bar.GetNode<Button>("%ViewWorld").ButtonPressed && !bar.GetNode<Button>("%ViewVillage").ButtonPressed, "The toggle shows the current view");
+        Expect(world.GetNode("World/Markers").GetChildCount() == game.Session.State.Villages.Count, "Every village has a marker");
+        Expect((int)amount.Value == 1, "The Send form survives switching to the map");
+        await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
+        Expect(world.Modulate.A == 1, "The fade finishes");
+        await Shot("map-small");
+
+        game._UnhandledKeyInput(pressM);
+        await Frames();
+        Expect(villageView.Visible && !world.Visible, "M returns to the village");
+        Expect((int)amount.Value == 1, "The Send form survives switching back");
+
+        game._UnhandledKeyInput(pressM);
+        await Frames();
+        Expect(world.Visible, "M opens the map");
+        game._UnhandledKeyInput(pressM);
+        await Frames();
+        amount.Value = 0;
+
+        // Typing in a number field must not switch views.
+        var line = amount.GetLineEdit();
+        line.GrabFocus();
+        await Frames();
+        Input.ParseInputEvent(new InputEventKey { Pressed = true, Keycode = Key.M, PhysicalKeycode = Key.M, Unicode = 'm' });
+        Input.FlushBufferedEvents();
+        await Frames();
+        Expect(game.CurrentView == GameScreen.MainView.Village, "M does nothing while typing in a number field");
+        line.ReleaseFocus();
     }
 
     private async Task TestLeaveMatch()
@@ -216,6 +266,11 @@ public partial class UiTest : Control
         await Frames();
         var fresh = Find<GameScreen>().Session;
         Expect(!ReferenceEquals(fresh, session) && !fresh.IsPaused && fresh.State.ElapsedTime < 1, "A new match starts fresh after leaving");
+        Find<GameScreen>().ShowView(GameScreen.MainView.World);
+        await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
+        await Shot("map-medium");
+        Find<GameScreen>().ShowView(GameScreen.MainView.Village);
+        await Frames();
         var medium = fresh.Data.Game.MapSizes[MapSize.Medium];
         Expect(fresh.State.Settings.MapSize == MapSize.Medium && fresh.State.Map.Width == medium.Width && fresh.State.Map.Height == medium.Height, "The chosen map size is used");
     }

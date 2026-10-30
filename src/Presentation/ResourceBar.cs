@@ -18,7 +18,11 @@ public partial class ResourceBar : PanelContainer
     private Button _pause = null!;
     private Label _incoming = null!;
 
+    private Button _viewVillage = null!;
+    private Button _viewWorld = null!;
+
     public event Action? PauseRequested;
+    public event Action<GameScreen.MainView>? ViewRequested;
 
     public override void _Ready()
     {
@@ -26,6 +30,11 @@ public partial class ResourceBar : PanelContainer
         _pause = GetNode<Button>("%Pause");
         _incoming = GetNode<Label>("%Incoming");
         _pause.Pressed += () => PauseRequested?.Invoke();
+
+        _viewVillage = GetNode<Button>("%ViewVillage");
+        _viewWorld = GetNode<Button>("%ViewWorld");
+        _viewVillage.Pressed += () => ViewRequested?.Invoke(GameScreen.MainView.Village);
+        _viewWorld.Pressed += () => ViewRequested?.Invoke(GameScreen.MainView.World);
 
         var chips = GetNode<HBoxContainer>("%Chips");
         foreach (var type in Enum.GetValues<ResourceType>())
@@ -57,8 +66,11 @@ public partial class ResourceBar : PanelContainer
         return new Chip(amount, capacity, rate);
     }
 
-    public void Refresh(IGameSession session, Village village)
+    public void Refresh(IGameSession session, Village village, GameScreen.MainView view)
     {
+        _viewVillage.ButtonPressed = view == GameScreen.MainView.Village;
+        _viewWorld.ButtonPressed = view == GameScreen.MainView.World;
+
         var capacity = BuildingRules.VillageCapacity(session.Data, village);
         var production = BuildingRules.VillageProduction(session.Data, village) * session.State.Settings.SpeedMultiplier;
 

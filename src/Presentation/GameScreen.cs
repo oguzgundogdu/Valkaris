@@ -11,8 +11,11 @@ namespace Valkaris.Presentation;
 /// <summary>Owns the session, drives it every frame and refreshes the views from its state.</summary>
 public partial class GameScreen : Control
 {
+    private const double ViewFadeSeconds = 0.12;
+
     private ResourceBar _resourceBar = null!;
     private VillageView _villageView = null!;
+    private WorldMapView _worldMap = null!;
     private BuildingPanel _buildingPanel = null!;
     private QueuePanel _queuePanel = null!;
     private TabContainer _tabs = null!;
@@ -27,14 +30,19 @@ public partial class GameScreen : Control
     private bool _confirmingLeave;
     private double? _devRivalAttackAt;
     private BuildingType _selected = BuildingType.MainBuilding;
+    private int _currentVillageId;
+    private Tween? _viewTween;
 
     public IGameSession Session { get; private set; } = null!;
+
+    public MainView CurrentView { get; private set; } = MainView.Village;
 
     public event Action? ExitRequested;
 
     public void Init(IGameSession session, double? devRivalAttackSeconds = null)
     {
         Session = session;
+        _currentVillageId = session.State.Players[session.LocalPlayerId].CapitalVillageId;
         _devRivalAttackAt = devRivalAttackSeconds;
     }
 
@@ -42,6 +50,7 @@ public partial class GameScreen : Control
     {
         _resourceBar = GetNode<ResourceBar>("%ResourceBar");
         _villageView = GetNode<VillageView>("%VillageView");
+        _worldMap = GetNode<WorldMapView>("%WorldMapView");
         _buildingPanel = GetNode<BuildingPanel>("%BuildingPanel");
         _queuePanel = GetNode<QueuePanel>("%QueuePanel");
         _tabs = GetNode<TabContainer>("%Side");
@@ -62,6 +71,7 @@ public partial class GameScreen : Control
         };
         _buildingPanel.TrainingRequested += () => ShowTab(SideTab.Troops);
         _resourceBar.PauseRequested += TogglePause;
+        _resourceBar.ViewRequested += ShowView;
 
         _pauseOverlay.Configure("Paused", "The match is on hold. Press P to resume.", "Resume", "Leave match");
         _pauseOverlay.ActionPressed += TogglePause;
@@ -83,9 +93,12 @@ public partial class GameScreen : Control
         Session.Tick(delta);
         RunDevRivalAttack();
 
-        var village = Session.State.Villages[Session.State.Players[Session.LocalPlayerId].CapitalVillageId];
-        _resourceBar.Refresh(Session, village);
-        _villageView.Refresh(village, Session.State.ElapsedTime, _selected);
+        var village = Session.State.Villages[_currentVillageId];
+        _resourceBar.Refresh(Session, village, CurrentView);
+        if (CurrentView == MainView.Village)
+            _villageView.Refresh(village, Session.State.ElapsedTime, _selected);
+        else
+            _worldMap.Refresh(Session);
         RefreshActiveTab(village);
 
         _pauseOverlay.Visible = Session.IsPaused && !_confirmingLeave;
@@ -95,8 +108,13 @@ public partial class GameScreen : Control
 
     public override void _UnhandledKeyInput(InputEvent @event)
     {
-        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.P })
+        if (@event is not InputEventKey { Pressed: true, Echo: false } key)
+            return;
+
+        if (key.Keycode == Key.P)
             TogglePause();
+        else if (key.Keycode == Key.M && !Session.IsPaused && !Session.State.IsMatchOver)
+            ShowView(CurrentView == MainView.Village ? MainView.World : MainView.Village);
     }
 
     /// <summary>Dev only: the idle rival sends its whole garrison, so being attacked can be tried before AI exists.</summary>
@@ -109,6 +127,36 @@ public partial class GameScreen : Control
         var rival = Session.State.Villages.Values.First(v => v.OwnerId != Session.LocalPlayerId && !v.IsBarbarian);
         var home = Session.State.Players[Session.LocalPlayerId].CapitalVillageId;
         local.SendAs(rival.OwnerId, new SendTroopsCommand(rival.Id, home, MovementType.Attack, rival.Troops.ToDictionary(t => t.Key, t => t.Value)));
+    }
+
+    public enum MainView
+    {
+        Village,
+        World,
+    }
+
+    /// <summary>Both views stay alive, so the camera and selection survive switching. A short fade softens the cut.</summary>
+    public void ShowView(MainView view)
+    {
+        if (view == CurrentView)
+            return;
+
+        CurrentView = view;
+        Control incoming = view == MainView.World ? _worldMap : _villageView;
+        Control outgoing = view == MainView.World ? _villageView : _worldMap;
+
+        if (view == MainView.World)
+            _worldMap.Refresh(Session);
+
+        _viewTween?.Kill();
+        incoming.Visible = true;
+        incoming.Modulate = new Color(1, 1, 1, 0);
+        incoming.GetParent().MoveChild(incoming, -1);
+        outgoing.Visible = false;
+        outgoing.Modulate = Colors.White;
+
+        _viewTween = CreateTween();
+        _viewTween.TweenProperty(incoming, "modulate:a", 1f, ViewFadeSeconds);
     }
 
     public enum SideTab

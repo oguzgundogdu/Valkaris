@@ -37,6 +37,30 @@ public static class UiContent
         [UnitType.Catapult] = new("Catapult", "res://assets/icons/catapult.svg"),
     };
 
+    private static readonly Color[] PlayerColours =
+    {
+        new(0.851f, 0.643f, 0.255f),
+        new(0.80f, 0.27f, 0.25f),
+        new(0.27f, 0.56f, 0.80f),
+        new(0.56f, 0.40f, 0.75f),
+    };
+
+    private static readonly Color BarbarianColour = new(0.25f, 0.23f, 0.21f);
+
+    public static Color OwnerColour(IGameSession session, int ownerId) =>
+        ownerId == Village.BarbarianOwnerId ? BarbarianColour : PlayerColours[(ownerId - 1) % PlayerColours.Length];
+
+    public static string VillageIconPath(IGameSession session, Village village)
+    {
+        if (!village.IsBarbarian)
+            return "res://assets/icons/map_village.svg";
+
+        // Only the strongest tier gets the fortified look.
+        return village.BarbarianTier == session.Data.Map.Barbarians.Tiers.Count - 1
+            ? "res://assets/icons/map_stronghold.svg"
+            : "res://assets/icons/map_camp.svg";
+    }
+
     public static string OwnerName(IGameSession session, int ownerId) =>
         ownerId == Village.BarbarianOwnerId ? "Barbarians" : session.State.Players[ownerId].Name;
 
