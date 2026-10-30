@@ -1,4 +1,3 @@
-using System;
 using Godot;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
@@ -9,6 +8,7 @@ namespace Valkaris.Presentation;
 public partial class GameScreen : Control
 {
     private ResourceBar _resourceBar = null!;
+    private VillageView _villageView = null!;
     private BuildingPanel _buildingPanel = null!;
     private QueuePanel _queuePanel = null!;
     private BuildingType _selected = BuildingType.MainBuilding;
@@ -20,21 +20,12 @@ public partial class GameScreen : Control
     public override void _Ready()
     {
         _resourceBar = GetNode<ResourceBar>("%ResourceBar");
+        _villageView = GetNode<VillageView>("%VillageView");
         _buildingPanel = GetNode<BuildingPanel>("%BuildingPanel");
         _queuePanel = GetNode<QueuePanel>("%QueuePanel");
 
-        // Temporary list until the village ground replaces it.
-        var list = new VBoxContainer();
-        foreach (var building in Enum.GetValues<BuildingType>())
-        {
-            var button = new Button { Name = building.ToString(), Text = UiContent.Buildings[building].Name, ThemeTypeVariation = "SecondaryButton" };
-            button.Pressed += () => Select(building);
-            list.AddChild(button);
-        }
-        GetNode("%VillageArea").AddChild(list);
+        _villageView.BuildingSelected += building => _selected = building;
     }
-
-    public void Select(BuildingType building) => _selected = building;
 
     public override void _Process(double delta)
     {
@@ -42,6 +33,7 @@ public partial class GameScreen : Control
 
         var village = Session.State.Villages[Session.State.Players[Session.LocalPlayerId].CapitalVillageId];
         _resourceBar.Refresh(Session, village);
+        _villageView.Refresh(village, Session.State.ElapsedTime, _selected);
         _buildingPanel.Refresh(Session, village, _selected);
         _queuePanel.Refresh(Session, village);
     }

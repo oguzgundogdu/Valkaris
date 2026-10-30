@@ -56,7 +56,7 @@ public partial class UiTest : Control
         var panel = Find<BuildingPanel>();
         var upgrade = panel.GetNode<Button>("%Upgrade");
 
-        game.Select(BuildingType.Woodcutter);
+        SelectTile(BuildingType.Woodcutter);
         await Frames();
         Expect(panel.GetNode<Label>("%Name").Text == "Woodcutter", "Selecting shows the building");
         Expect(panel.GetNode<Label>("%Level").Text == "Level 1", "Starts at level 1");
@@ -97,10 +97,10 @@ public partial class UiTest : Control
         await Frames();
         Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Empty slot", "Queue starts empty");
 
-        game.Select(BuildingType.Quarry);
+        SelectTile(BuildingType.Quarry);
         await Frames();
         upgrade.EmitSignal(BaseButton.SignalName.Pressed);
-        game.Select(BuildingType.Farm);
+        SelectTile(BuildingType.Farm);
         await Frames();
         upgrade.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -125,7 +125,34 @@ public partial class UiTest : Control
 
         session.Tick(60);
         await Frames();
+
+        await TestTiles();
     }
+
+    private async Task TestTiles()
+    {
+        var panel = Find<BuildingPanel>();
+        foreach (var building in Enum.GetValues<BuildingType>())
+        {
+            SelectTile(building);
+            await Frames();
+            Expect(panel.GetNode<Label>("%Name").Text == UiContent.Buildings[building].Name, $"{building} tile selects it");
+        }
+
+        var wall = Find<VillageView>().GetNode<BuildingTile>(nameof(BuildingType.Wall));
+        Expect(wall.GetNode<Label>("%Level").Text == "Not built", "Unbuilt building says so");
+        Expect(wall.GetNode<TextureRect>("%Icon").Modulate.A < 1, "Unbuilt building is dimmed");
+
+        SelectTile(BuildingType.Wall);
+        await Frames();
+        panel.GetNode<Button>("%Upgrade").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(wall.GetNode<ProgressBar>("%Progress").Visible, "Tile under construction shows progress");
+        await Shot("village");
+    }
+
+    private void SelectTile(BuildingType building) =>
+        Find<VillageView>().GetNode<BuildingTile>(building.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
 
     private T Find<T>() where T : Node =>
         FindAll<T>(_main).FirstOrDefault() ?? throw new InvalidOperationException($"{typeof(T).Name} not found.");
