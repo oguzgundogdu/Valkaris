@@ -1,3 +1,4 @@
+using System.Globalization;
 using Godot;
 using Valkaris.Core.Data;
 using Valkaris.Core.Hosting;
@@ -20,6 +21,10 @@ public partial class Main : Control
 
     public override void _Ready()
     {
+        // The UI is English, so numbers must not follow the player's system locale.
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
         DisplayServer.WindowSetMinSize(MinWindowSize);
 
         try

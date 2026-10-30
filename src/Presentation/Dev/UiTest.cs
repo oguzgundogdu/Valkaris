@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
+using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation.Dev;
 
@@ -48,8 +50,38 @@ public partial class UiTest : Control
         start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
 
-        Expect(Find<GameScreen>() is not null, "Start reaches the game screen");
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var village = session.State.Villages[1];
+        var panel = Find<BuildingPanel>();
+        var upgrade = panel.GetNode<Button>("%Upgrade");
+
+        game.Select(BuildingType.Woodcutter);
+        await Frames();
+        Expect(panel.GetNode<Label>("%Name").Text == "Woodcutter", "Selecting shows the building");
+        Expect(panel.GetNode<Label>("%Level").Text == "Level 1", "Starts at level 1");
+        Expect(upgrade.Text == "Upgrade to level 2", $"Button names the next level, got '{upgrade.Text}'");
         await Shot("game");
+
+        var woodBefore = village.Resources.Wood;
+        upgrade.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(village.BuildQueue.Count == 1, "Upgrade queues the build");
+        Expect(village.Resources.Wood < woodBefore, "Upgrade pays the cost");
+        await Shot("queued");
+
+        session.Tick(BuildingRules.BuildTimeSeconds(session.Data, BuildingType.Woodcutter, 2));
+        await Frames();
+        Expect(panel.GetNode<Label>("%Level").Text == "Level 2", "Level changes when the build completes");
+
+        var woodLabel = Find<ResourceBar>().GetNode<Label>("Box/Chips/Wood/Amount");
+        var shownWood = woodLabel.Text;
+        session.Tick(10);
+        await Frames();
+        Expect(woodLabel.Text != shownWood, "Resource amount ticks up");
+
+        var rate = Find<ResourceBar>().GetNode<Label>("Box/Chips/Stone/Rate").Text;
+        Expect(rate == "+1.0/s", $"Numbers ignore the system locale, got '{rate}'");
     }
 
     private T Find<T>() where T : Node =>
