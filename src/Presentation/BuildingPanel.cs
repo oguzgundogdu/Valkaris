@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Godot;
 using Valkaris.Core.Commands;
 using Valkaris.Core.Hosting;
@@ -11,7 +10,6 @@ namespace Valkaris.Presentation;
 /// <summary>Details of the selected building and its upgrade button.</summary>
 public partial class BuildingPanel : PanelContainer
 {
-    private readonly Dictionary<ResourceType, Label> _costs = new();
     private TextureRect _icon = null!;
     private Label _name = null!;
     private Label _level = null!;
@@ -21,10 +19,14 @@ public partial class BuildingPanel : PanelContainer
     private Label _time = null!;
     private Button _upgrade = null!;
     private Label _reason = null!;
+    private CostView _costs = null!;
+    private Button _openTraining = null!;
 
     private IGameSession? _session;
     private int _villageId;
     private BuildingType _building;
+
+    public event Action? TrainingRequested;
 
     public override void _Ready()
     {
@@ -37,24 +39,10 @@ public partial class BuildingPanel : PanelContainer
         _time = GetNode<Label>("%Time");
         _upgrade = GetNode<Button>("%Upgrade");
         _reason = GetNode<Label>("%Reason");
-
-        var costs = GetNode<HBoxContainer>("%Costs");
-        foreach (var type in Enum.GetValues<ResourceType>())
-        {
-            var box = new HBoxContainer();
-            box.AddThemeConstantOverride("separation", 4);
-            box.AddChild(new TextureRect
-            {
-                Texture = GD.Load<Texture2D>(UiContent.ResourceIconPath(type)),
-                CustomMinimumSize = new Vector2(20, 20),
-                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            });
-            var amount = new Label { ThemeTypeVariation = "StrongLabel", Name = $"Cost{type}" };
-            box.AddChild(amount);
-            costs.AddChild(box);
-            _costs[type] = amount;
-        }
+        _costs = new CostView { Name = "Cost" };
+        GetNode("%Costs").AddChild(_costs);
+        _openTraining = GetNode<Button>("%OpenTraining");
+        _openTraining.Pressed += () => TrainingRequested?.Invoke();
 
         _upgrade.Pressed += () => _session?.Send(new BuildCommand(_villageId, _building));
     }
@@ -83,12 +71,7 @@ public partial class BuildingPanel : PanelContainer
         _effect.Visible = effect.Length > 0;
 
         _costSection.Visible = hasNext;
-        foreach (var (type, label) in _costs)
-        {
-            label.Text = Format.Amount(option.Cost.Get(type));
-            var shortOf = village.Resources.Get(type) < option.Cost.Get(type);
-            label.AddThemeColorOverride("font_color", shortOf ? UiContent.Danger : UiContent.Text);
-        }
+        _costs.Refresh(option.Cost, village.Resources);
         _time.Text = Format.Time(option.DurationSeconds);
 
         _upgrade.Disabled = !option.CanBuild;
@@ -96,6 +79,8 @@ public partial class BuildingPanel : PanelContainer
             : !hasNext ? "Unavailable"
             : option.TargetLevel == 1 ? "Build"
             : $"Upgrade to level {option.TargetLevel}";
+
+        _openTraining.Visible = building == BuildingType.Barracks;
 
         var reason = ReasonText(option);
         _reason.Text = reason;

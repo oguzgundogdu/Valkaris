@@ -9,6 +9,8 @@ namespace Valkaris.Presentation;
 /// <summary>Display names, descriptions and icons. Presentation content, not balance.</summary>
 public sealed record BuildingInfo(string Name, string Description, string IconPath);
 
+public sealed record UnitInfo(string Name, string IconPath);
+
 public static class UiContent
 {
     public static readonly Color Danger = new(0.898f, 0.439f, 0.345f);
@@ -22,14 +24,28 @@ public static class UiContent
         [BuildingType.Quarry] = new("Quarry", "Produces stone.", "res://assets/icons/quarry.svg"),
         [BuildingType.Farm] = new("Farm", "Produces food, the main cost of training troops.", "res://assets/icons/farm.svg"),
         [BuildingType.Warehouse] = new("Warehouse", "Sets how much of each resource the village can hold.", "res://assets/icons/warehouse.svg"),
-        [BuildingType.Barracks] = new("Barracks", "Will train troops. Training arrives in a later milestone.", "res://assets/icons/barracks.svg"),
-        [BuildingType.Wall] = new("Wall", "Will strengthen the village's defence. Combat arrives in a later milestone.", "res://assets/icons/wall.svg"),
+        [BuildingType.Barracks] = new("Barracks", "Trains troops. Higher levels train faster and unlock stronger units.", "res://assets/icons/barracks.svg"),
+        [BuildingType.Wall] = new("Wall", "Raises the defence of everyone stationed in the village.", "res://assets/icons/wall.svg"),
+    };
+
+    public static readonly IReadOnlyDictionary<UnitType, UnitInfo> Units = new Dictionary<UnitType, UnitInfo>
+    {
+        [UnitType.Spearman] = new("Spearman", "res://assets/icons/spearman.svg"),
+        [UnitType.Swordsman] = new("Swordsman", "res://assets/icons/swordsman.svg"),
+        [UnitType.Cavalry] = new("Cavalry", "res://assets/icons/cavalry.svg"),
+        [UnitType.Catapult] = new("Catapult", "res://assets/icons/catapult.svg"),
     };
 
     public static string RejectionText(CommandRejection rejection) => rejection switch
     {
+        CommandRejection.InvalidCount => "Choose how many.",
+        CommandRejection.BarracksLevelTooLow => "Upgrade the Barracks to train this unit.",
+        CommandRejection.InvalidMission => "That mission can't go to this target.",
+        CommandRejection.NoTroopsSelected => "Choose some troops to send.",
+        CommandRejection.NotEnoughTroops => "You don't have that many troops here.",
+        CommandRejection.CatapultsCannotRaid => "Catapults can't go on a raid.",
         CommandRejection.InsufficientResources => "Not enough resources yet.",
-        CommandRejection.QueueFull => "The build queue is full.",
+        CommandRejection.QueueFull => "The queue is full.",
         CommandRejection.MainBuildingLevelTooLow => "Upgrade the Main Building to go higher.",
         CommandRejection.MaxLevelReached => "Maximum level reached.",
         CommandRejection.MatchOver => "The match is over.",

@@ -86,6 +86,13 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 
+[node name="OpenTraining" type="Button" parent="Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"SecondaryButton"
+text = "Train troops"
+
 [node name="Reason" type="Label" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2

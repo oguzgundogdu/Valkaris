@@ -49,6 +49,9 @@ public partial class UiTest : Control
         var start = Find<StartScreen>();
         await Shot("start");
 
+        // The longest match, so the steps below can use plenty of game time.
+        var durations = start.GetNode<OptionButton>("%Duration");
+        durations.Select(durations.ItemCount - 1);
         start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
 
@@ -57,7 +60,7 @@ public partial class UiTest : Control
         var village = session.State.Villages[1];
 
         var dev = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
-        Expect(session.State.Settings.MatchDurationSeconds == (dev.DurationSeconds ?? session.Data.Game.MatchDurationsMinutes[0] * 60), "Match duration follows the start screen or dev argument");
+        Expect(session.State.Settings.MatchDurationSeconds == (dev.DurationSeconds ?? session.Data.Game.MatchDurationsMinutes[^1] * 60), "Match duration follows the start screen or dev argument");
         Expect(session.State.Settings.SpeedMultiplier == (dev.Speed ?? session.Data.Game.SpeedMultipliers[0]), "Game speed follows the start screen or dev argument");
         var panel = Find<BuildingPanel>();
         var upgrade = panel.GetNode<Button>("%Upgrade");
@@ -115,7 +118,7 @@ public partial class UiTest : Control
         Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Quarry → level 2", "First row names the build");
         Expect(queue.GetNode<Label>("Box/Rows/Row1/Top/Time").Text.StartsWith("starts in"), "Second row is waiting");
         Expect(upgrade.Disabled, "A full queue disables the button");
-        Expect(panel.GetNode<Label>("%Reason").Text == "The build queue is full.", "The button says why it is disabled");
+        Expect(panel.GetNode<Label>("%Reason").Text == "The queue is full.", "The button says why it is disabled");
 
         session.Tick(21);
         await Frames();
@@ -156,6 +159,7 @@ public partial class UiTest : Control
         Expect(wall.GetNode<ProgressBar>("%Progress").Visible, "Tile under construction shows progress");
         await Shot("village");
 
+        await TestTroops();
         await TestFeedback();
         await TestPause();
         TestDevOptions();
@@ -199,16 +203,79 @@ public partial class UiTest : Control
         Expect(!ReferenceEquals(fresh, session) && !fresh.IsPaused && fresh.State.ElapsedTime < 1, "A new match starts fresh after leaving");
     }
 
+    private async Task TestTroops()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var village = session.State.Villages[1];
+        var panel = Find<BuildingPanel>();
+        var troops = game.GetNode<TroopsPanel>("%Troops");
+        Node Row(UnitType unit) => troops.GetNode<VBoxContainer>("%Rows").GetNode(unit.ToString());
+
+        // Finish the Wall queued by the tiles test, then build the Barracks through the tile and panel.
+        session.Tick(120);
+        SelectTile(BuildingType.Barracks);
+        await Frames();
+        var open = panel.GetNode<Button>("%OpenTraining");
+        Expect(open.Visible, "The Barracks offers a way to its training");
+        panel.GetNode<Button>("%Upgrade").EmitSignal(BaseButton.SignalName.Pressed);
+        session.Tick(BuildingRules.BuildTimeSeconds(session.Data, BuildingType.Barracks, 1) + 1);
+        await Frames();
+        Expect(village.BuildingLevel(BuildingType.Barracks) == 1, "Barracks is built");
+
+        open.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(troops.IsVisibleInTree(), "The button opens the Troops tab");
+
+        var spearman = Row(UnitType.Spearman);
+        var before = village.TroopCount(UnitType.Spearman);
+        Expect(spearman.GetNode<Label>("Header/Count").Text == $"× {before}", "Garrison count is shown");
+        Expect(Row(UnitType.Catapult).GetNode<Label>("Note").Text == "Requires Barracks level 5", "A locked unit states its requirement");
+        Expect(!Row(UnitType.Catapult).GetNode<Control>("Controls").Visible, "A locked unit can't be trained");
+        await Shot("troops");
+
+        var train = spearman.GetNode<Button>("Controls/Actions/Train");
+        spearman.GetNode<SpinBox>("Controls/Actions/Amount").Value = 2;
+        await Frames();
+        train.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(village.TrainingQueue.Count == 1 && village.TrainingQueue[0].Count == 2, "Train queues the batch");
+        Expect(troops.GetNode<QueuePanel>("%TrainingQueue").GetNode<Label>("%Count").Text == "1 / 2", "The training queue is shown");
+        await Shot("training");
+
+        session.Tick(village.TrainingQueue[0].FinishTime - session.State.ElapsedTime);
+        await Frames();
+        Expect(village.TroopCount(UnitType.Spearman) == before + 2, "The garrison grows when training finishes");
+        Expect(spearman.GetNode<Label>("Header/Count").Text == $"× {before + 2}", "The new count is shown");
+
+        spearman.GetNode<SpinBox>("Controls/Actions/Amount").Value = 0;
+        await Frames();
+        Expect(train.Disabled, "Zero units can't be trained");
+        spearman.GetNode<Button>("Controls/Actions/Max").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(!train.Disabled && (int)spearman.GetNode<SpinBox>("Controls/Actions/Amount").Value == TrainPreviewMax(session, UnitType.Spearman), "Max picks the largest affordable batch");
+
+        SelectTile(BuildingType.Woodcutter);
+        await Frames();
+        Expect(panel.IsVisibleInTree(), "Clicking a tile returns to the Village tab");
+    }
+
+    private static int TrainPreviewMax(Valkaris.Core.Hosting.IGameSession session, UnitType unit) =>
+        TrainPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, 1, unit, 1).MaxCount;
+
     private async Task TestFeedback()
     {
         var game = Find<GameScreen>();
         var session = game.Session;
         var toast = game.GetNode<Toast>("%Toast");
 
-        session.Tick(120);
+        SelectTile(BuildingType.Farm);
+        await Frames();
+        game.GetNode<BuildingPanel>("%BuildingPanel").GetNode<Button>("%Upgrade").EmitSignal(BaseButton.SignalName.Pressed);
+        session.Tick(300);
         await Frames();
         Expect(toast.Visible, "Completing a build shows a toast");
-        Expect(toast.GetNode<Label>("Label").Text == "Wall reached level 1", "Toast names the building and level");
+        Expect(toast.GetNode<Label>("Label").Text == "Farm reached level 3", "Toast names the building and level");
 
         session.Send(new BuildCommand(2, BuildingType.Wall));
         await Frames();

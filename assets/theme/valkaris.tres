@@ -110,6 +110,40 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
+[sub_resource type="StyleBoxFlat" id="tab_selected"]
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+bg_color = Color(0.169, 0.141, 0.118, 1)
+border_width_bottom = 2
+border_color = Color(0.851, 0.643, 0.255, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+
+[sub_resource type="StyleBoxFlat" id="tab_unselected"]
+content_margin_left = 14.0
+content_margin_top = 6.0
+content_margin_right = 14.0
+content_margin_bottom = 6.0
+bg_color = Color(0.141, 0.118, 0.098, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+
+[sub_resource type="StyleBoxFlat" id="input"]
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+bg_color = Color(0.106, 0.086, 0.071, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxEmpty" id="tab_panel"]
+content_margin_top = 8.0
+
 [resource]
 default_font = ExtResource("1")
 default_font_size = 16
@@ -161,5 +195,17 @@ OptionButton/styles/normal = SubResource("button_secondary")
 OptionButton/styles/hover = SubResource("button_secondary_hover")
 OptionButton/styles/pressed = SubResource("button_secondary")
 OptionButton/styles/focus = SubResource("focus")
+TabContainer/colors/font_selected_color = Color(0.941, 0.902, 0.839, 1)
+TabContainer/colors/font_hovered_color = Color(0.941, 0.902, 0.839, 1)
+TabContainer/colors/font_unselected_color = Color(0.659, 0.604, 0.533, 1)
+TabContainer/fonts/font = ExtResource("2")
+TabContainer/styles/panel = SubResource("tab_panel")
+TabContainer/styles/tab_selected = SubResource("tab_selected")
+TabContainer/styles/tab_hovered = SubResource("tab_unselected")
+TabContainer/styles/tab_unselected = SubResource("tab_unselected")
+TabContainer/styles/tab_focus = SubResource("focus")
+LineEdit/colors/font_color = Color(0.941, 0.902, 0.839, 1)
+LineEdit/styles/normal = SubResource("input")
+LineEdit/styles/focus = SubResource("focus")
 ProgressBar/styles/background = SubResource("bar_background")
 ProgressBar/styles/fill = SubResource("bar_fill")

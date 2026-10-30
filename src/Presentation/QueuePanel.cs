@@ -1,50 +1,51 @@
 using System.Collections.Generic;
 using Godot;
-using Valkaris.Core.Hosting;
-using Valkaris.Core.Model;
 
 namespace Valkaris.Presentation;
 
-/// <summary>The village's build queue: one running item with progress, then waiting items and free slots.</summary>
+public sealed record QueueRow(string IconPath, string Title, double StartTime, double FinishTime);
+
+/// <summary>A queue: one running item with progress, then waiting items and free slots.</summary>
 public partial class QueuePanel : PanelContainer
 {
     private sealed record Row(TextureRect Icon, Label Title, Label Time, ProgressBar Bar);
 
     private readonly List<Row> _rows = new();
+    private Label _title = null!;
     private Label _count = null!;
     private VBoxContainer _rowsBox = null!;
 
     public override void _Ready()
     {
+        _title = GetNode<Label>("%Title");
         _count = GetNode<Label>("%Count");
         _rowsBox = GetNode<VBoxContainer>("%Rows");
     }
 
-    public void Refresh(IGameSession session, Village village)
+    public void Refresh(string title, int slots, double now, IReadOnlyList<QueueRow> items)
     {
-        var slots = session.Data.Game.MaxBuildQueueLength;
         while (_rows.Count < slots)
             _rows.Add(AddRow(_rows.Count));
 
-        _count.Text = $"{village.BuildQueue.Count} / {slots}";
+        _title.Text = title;
+        _count.Text = $"{items.Count} / {slots}";
 
         for (var i = 0; i < _rows.Count; i++)
         {
-            if (i < village.BuildQueue.Count)
-                ShowItem(_rows[i], village.BuildQueue[i], session.State.ElapsedTime);
+            if (i < items.Count)
+                ShowItem(_rows[i], items[i], now);
             else
                 ShowEmpty(_rows[i]);
         }
     }
 
-    private static void ShowItem(Row row, BuildQueueItem item, double now)
+    private static void ShowItem(Row row, QueueRow item, double now)
     {
-        var info = UiContent.Buildings[item.Building];
         var running = now >= item.StartTime;
 
-        row.Icon.Texture = GD.Load<Texture2D>(info.IconPath);
+        row.Icon.Texture = GD.Load<Texture2D>(item.IconPath);
         row.Icon.Modulate = Colors.White;
-        row.Title.Text = $"{info.Name} → level {item.TargetLevel}";
+        row.Title.Text = item.Title;
         row.Title.ThemeTypeVariation = "StrongLabel";
         row.Time.Text = running ? Format.Time(item.FinishTime - now) : $"starts in {Format.Time(item.StartTime - now)}";
         row.Bar.Value = running ? (now - item.StartTime) / (item.FinishTime - item.StartTime) : 0;

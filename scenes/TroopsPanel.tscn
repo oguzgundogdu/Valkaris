@@ -1,0 +1,31 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Presentation/TroopsPanel.cs" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/QueuePanel.tscn" id="2"]
+
+[node name="TroopsPanel" type="VBoxContainer"]
+theme_override_constants/separation = 12
+script = ExtResource("1")
+
+[node name="Card" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"CardPanel"
+
+[node name="Scroll" type="ScrollContainer" parent="Card"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Margin" type="MarginContainer" parent="Card/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_right = 14
+
+[node name="Rows" type="VBoxContainer" parent="Card/Scroll/Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TrainingQueue" parent="." instance=ExtResource("2")]
+unique_name_in_owner = true
+layout_mode = 2

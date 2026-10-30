@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/VillageView.tscn" id="5"]
 [ext_resource type="Script" path="res://src/Presentation/Toast.cs" id="6"]
 [ext_resource type="PackedScene" path="res://scenes/Overlay.tscn" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/TroopsPanel.tscn" id="8"]
 
 [node name="Game" type="Control"]
 layout_mode = 3
@@ -47,18 +48,27 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Side" type="VBoxContainer" parent="Layout/Margin/Columns"]
+[node name="Side" type="TabContainer" parent="Layout/Margin/Columns"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(380, 0)
+custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
-theme_override_constants/separation = 16
+current_tab = 0
 
-[node name="BuildingPanel" parent="Layout/Margin/Columns/Side" instance=ExtResource("3")]
+[node name="Village" type="VBoxContainer" parent="Layout/Margin/Columns/Side"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BuildingPanel" parent="Layout/Margin/Columns/Side/Village" instance=ExtResource("3")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="QueuePanel" parent="Layout/Margin/Columns/Side" instance=ExtResource("4")]
+[node name="QueuePanel" parent="Layout/Margin/Columns/Side/Village" instance=ExtResource("4")]
 unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Troops" parent="Layout/Margin/Columns/Side" instance=ExtResource("8")]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
 
 [node name="Toast" type="PanelContainer" parent="."]
