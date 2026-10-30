@@ -7,13 +7,35 @@ namespace Valkaris.Ai;
 public sealed class TrainingPlanner
 {
     private readonly AiView _view;
+    private readonly AiMemory _memory;
 
-    public TrainingPlanner(AiView view) => _view = view;
+    public TrainingPlanner(AiView view, AiMemory memory)
+    {
+        _view = view;
+        _memory = memory;
+    }
 
     /// <summary>Trains one batch. It leaves what the next build needs, unless the village is under attack.</summary>
     public void Plan(Village village, bool threatened, Resources saving)
     {
         var available = threatened ? village.Resources : Remaining(village.Resources, saving);
+
+        if (!threatened && SpecialWanted(village) is { } special)
+        {
+            var option = _view.PreviewTrain(village.Id, special, 1);
+            if (option.CanTrain)
+            {
+                _view.Send(new TrainCommand(village.Id, special, 1));
+                return;
+            }
+
+            // Saving up: fighters would otherwise eat everything a Lord or Settler costs.
+            if (option.Rejection == CommandRejection.InsufficientResources
+                && _view.Profile.SavesForGoals
+                && Count(village, null) >= _view.Config.FightersBeforeSaving)
+                return;
+        }
+
         foreach (var unit in Wanted(village, threatened))
         {
             var count = Math.Min(Affordable(unit, available), _view.Config.TrainingBatchMax);
@@ -30,6 +52,29 @@ public sealed class TrainingPlanner
             }
         }
     }
+
+    /// <summary>A unit trained one at a time for a purpose, rather than as part of the army's ratios.</summary>
+    private UnitType? SpecialWanted(Village village)
+    {
+        var barracks = village.BuildingLevel(BuildingType.Barracks);
+        var pastDelay = _view.Now * _view.GameSpeed >= _view.Profile.AggressionDelaySeconds;
+
+        if (pastDelay
+            && barracks >= _view.Units.Units[UnitType.Lord].RequiredBarracksLevel
+            && CountEverywhere(UnitType.Lord) < _view.Config.LordsWanted)
+            return UnitType.Lord;
+
+        if (_memory.SawProtectedCapital
+            && barracks >= _view.Units.Units[UnitType.Catapult].RequiredBarracksLevel
+            && CountEverywhere(UnitType.Catapult) < _view.Config.CatapultsWanted)
+            return UnitType.Catapult;
+
+        return null;
+    }
+
+    private int CountEverywhere(UnitType unit) =>
+        _view.OwnVillages.Sum(v => v.TroopCount(unit) + v.TrainingQueue.Where(q => q.Unit == unit).Sum(q => q.Count))
+        + _view.OwnMovements.Sum(m => m.Troops.GetValueOrDefault(unit));
 
     /// <summary>Most needed first. An under-attack village wants defenders above all.</summary>
     private IEnumerable<UnitType> Wanted(Village village, bool threatened)

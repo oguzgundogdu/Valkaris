@@ -13,15 +13,17 @@ public sealed class AiPlayer : IMatchAgent
     private readonly TrainingPlanner _training;
     private readonly DefencePlanner _defence;
     private readonly RaidPlanner _raids;
+    private readonly WarPlanner _war;
 
     public AiPlayer(AiView view)
     {
         _view = view;
         _memory = new AiMemory(view);
         _builds = new BuildPlanner(view);
-        _training = new TrainingPlanner(view);
+        _training = new TrainingPlanner(view, _memory);
         _defence = new DefencePlanner(view);
         _raids = new RaidPlanner(view, _memory);
+        _war = new WarPlanner(view, _memory);
         _interval = view.Profile.DecisionSeconds / view.GameSpeed;
 
         // Staggered by player, so opponents don't all think at the same moment.
@@ -47,7 +49,10 @@ public sealed class AiPlayer : IMatchAgent
             var saving = _builds.Plan(village, threatened);
             _training.Plan(village, threatened, saving);
             if (!threatened)
+            {
+                _war.Plan(village);
                 _raids.Plan(village);
+            }
         }
     }
 

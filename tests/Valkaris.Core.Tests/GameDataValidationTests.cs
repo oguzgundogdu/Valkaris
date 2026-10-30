@@ -254,6 +254,13 @@ public class GameDataValidationTests
     [Fact]
     public void ReinforceShareOutOfRange() => AssertAiInvalid(r => r["reinforceShare"] = 0, "reinforceShare");
 
+    [Theory]
+    [InlineData("lordsWanted")]
+    [InlineData("lordMinAttack")]
+    [InlineData("catapultsWanted")]
+    [InlineData("fightersBeforeSaving")]
+    public void NegativeAiCount(string field) => AssertAiInvalid(r => r[field] = -1, field);
+
     [Fact]
     public void NegativeRaidMinLoot() => AssertAiInvalid(r => r["raidMinLoot"] = -1, "raidMinLoot");
 

@@ -11,12 +11,15 @@ public class AiDefenceTests
     private static AiMatch Match(AiDifficulty difficulty) =>
         new(new[] { difficulty, AiDifficulty.Normal }, idle: new[] { Attacker });
 
-    /// <summary>For measuring training alone: raids would kill some of what is being counted.</summary>
+    /// <summary>For measuring training alone: fighting would kill some of what is being counted.</summary>
     private static AiMatch MatchWithoutRaids(AiDifficulty difficulty) =>
         new(new[] { difficulty, AiDifficulty.Normal }, idle: new[] { Attacker }, data: TestData.Mutated("ai.json", root =>
         {
             foreach (var level in Enum.GetNames<AiDifficulty>())
+            {
                 root["difficulties"]![level]!["maxRaidsPerVillage"] = 0;
+                root["difficulties"]![level]!["aggressionDelaySeconds"] = 1000000;
+            }
         }));
 
     private static void SendAttack(AiMatch match, int count = 5)

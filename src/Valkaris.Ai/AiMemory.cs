@@ -28,6 +28,9 @@ public sealed class AiMemory
 
     public Sighting? SightingOf(int villageId) => _sightings.GetValueOrDefault(villageId);
 
+    /// <summary>True once any report on a village still held by that owner said its capital was protected.</summary>
+    public bool SawProtectedCapital => _sightings.Values.Any(s => s.CapitalProtected);
+
     public void Update()
     {
         foreach (var report in _view.ReportsSince(_lastReportId).ToList())
@@ -41,14 +44,21 @@ public sealed class AiMemory
     private void Remember(BattleReport report)
     {
         var remaining = report.DefenderPresent.ToDictionary(t => t.Key, t => t.Value - report.DefenderLost.GetValueOrDefault(t.Key));
+
+        // A battle without a Lord says nothing about loyalty, so what was known still stands.
+        var earlier = _sightings.GetValueOrDefault(report.DefenderVillageId);
+        var sameOwner = earlier?.OwnerId == report.DefenderId;
+        var loyalty = report.Loyalty?.To ?? (sameOwner ? earlier!.Loyalty : null);
+        var isProtected = report.Loyalty is null && (report.CapitalProtected || (sameOwner && earlier!.CapitalProtected));
+
         _sightings[report.DefenderVillageId] = new Sighting(
             report.DefenderId,
             report.Time,
             remaining,
             DefenceOf(report.DefenderPresent, report.WallLevel),
             report.WallLevel,
-            report.Loyalty?.To,
-            report.CapitalProtected,
+            loyalty,
+            isProtected,
             report.AttackerWon,
             report.Loot.Wood + report.Loot.Stone + report.Loot.Food);
     }

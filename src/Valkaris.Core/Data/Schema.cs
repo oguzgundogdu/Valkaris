@@ -245,6 +245,18 @@ public sealed record AiConfig
     /// <summary>A raid isn't worth sending for less expected loot than this.</summary>
     public required double RaidMinLoot { get; init; }
 
+    /// <summary>How many Lords the AI keeps in training or alive once it has capture targets.</summary>
+    public required int LordsWanted { get; init; }
+
+    /// <summary>A Lord never leaves with less attack than this, however weak the target seems. Casualties round against small groups.</summary>
+    public required double LordMinAttack { get; init; }
+
+    /// <summary>How many Catapults it wants once a report shows a protected capital.</summary>
+    public required int CatapultsWanted { get; init; }
+
+    /// <summary>With this many fighters, a profile that saves stops training them to afford a Lord or Settler.</summary>
+    public required int FightersBeforeSaving { get; init; }
+
     public required IReadOnlyList<AiBuildStep> BuildOrder { get; init; }
     public required AiBeliefs Beliefs { get; init; }
     public required IReadOnlyDictionary<AiDifficulty, AiProfile> Difficulties { get; init; }

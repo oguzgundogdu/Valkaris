@@ -378,6 +378,14 @@ internal static class GameDataValidator
             Error("cavalryPerSwordsman", "must not be negative.");
         if (config.ReinforceShare is <= 0 or > 1)
             Error("reinforceShare", "must be above 0 and at most 1.");
+        if (config.LordMinAttack < 0)
+            Error("lordMinAttack", "must not be negative.");
+        if (config.LordsWanted < 0)
+            Error("lordsWanted", "must not be negative.");
+        if (config.CatapultsWanted < 0)
+            Error("catapultsWanted", "must not be negative.");
+        if (config.FightersBeforeSaving < 0)
+            Error("fightersBeforeSaving", "must not be negative.");
         if (config.RaidMinLoot < 0)
             Error("raidMinLoot", "must not be negative.");
         if (config.BuildOrder.Count == 0)
