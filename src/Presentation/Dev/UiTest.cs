@@ -179,6 +179,7 @@ public partial class UiTest : Control
         TestDevOptions();
         await TestViewSwitching();
         await TestCamera();
+        await TestSelection();
         await TestLeaveMatch();
         await TestMatchEnd();
     }
@@ -288,6 +289,95 @@ public partial class UiTest : Control
         Expect(mapSize.X * world.Zoom <= world.Size.X + 0.5f, "Fully zoomed out shows the whole map");
 
         world.FitToView();
+        game.ShowView(GameScreen.MainView.Village);
+        await Frames();
+    }
+
+    private async Task TestSelection()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var popup = world.GetNode<VillagePopup>("Popup");
+        var own = session.State.Villages[1];
+        var camp = session.State.Villages.Values.First(v => v.IsBarbarian);
+
+        async Task Click(Vector2 at)
+        {
+            world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at });
+            world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at });
+            await Frames();
+        }
+
+        Vector2 At(Village village) => world.WorldToView(WorldMapView.VillageWorldPosition(village));
+
+        await Click(At(camp));
+        Expect(world.SelectedVillageId == camp.Id && popup.Visible, "Clicking a marker selects it");
+        Expect(popup.GetNode<Label>("%Name").Text == camp.Name, "The popup names the village");
+        var tier = session.Data.Map.Barbarians.Tiers[camp.BarbarianTier!.Value].Name;
+        Expect(popup.GetNode<Label>("%Owner").Text == $"Barbarians  ·  {tier}", $"The popup shows the owner and tier, got '{popup.GetNode<Label>("%Owner").Text}'");
+        Expect(popup.GetNode<Label>("%Distance").Text.EndsWith("tiles away"), "The popup shows the distance");
+        Expect(popup.GetNode<Button>("%Send").Visible && !popup.GetNode<Button>("%Enter").Visible, "An enemy village offers Send");
+        Expect(new Rect2(Vector2.Zero, world.Size).Encloses(popup.GetRect()), "The popup stays inside the view");
+        await Shot("map-popup");
+
+        // No garrison numbers anywhere in the popup.
+        var texts = new[] { "%Name", "%Owner", "%Distance" }.Select(n => popup.GetNode<Label>(n).Text);
+        Expect(!texts.Any(t => t.Contains("Spearman") || t.Contains("troops") || t.Contains("×")), "The popup doesn't reveal the garrison");
+
+        await Click(At(own));
+        Expect(world.SelectedVillageId == own.Id, "Clicking another marker moves the selection");
+        Expect(popup.GetNode<Button>("%Enter").Visible && !popup.GetNode<Button>("%Send").Visible, "Your own village offers Enter");
+        Expect(!popup.GetNode<Label>("%Distance").Visible, "No distance to the village you're in");
+
+        var empty = Enumerable.Range(0, session.State.Map.Tiles.Count)
+            .Select(i => new TileCoord(i % session.State.Map.Width, i / session.State.Map.Width))
+            .First(c => session.State.Villages.Values.All(v => UnitRules.Distance(v.Position, c) >= 2));
+        await Click(world.WorldToView((new Vector2(empty.X, empty.Y) + new Vector2(0.5f, 0.5f)) * WorldMapView.TileSize));
+        Expect(world.SelectedVillageId is null && !popup.Visible, "Clicking empty map clears the selection");
+
+        // A drag that starts on a marker is a pan, not a click.
+        var start = At(camp);
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = start });
+        world._GuiInput(new InputEventMouseMotion { Position = start + new Vector2(40, 0), Relative = new Vector2(40, 0) });
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = start + new Vector2(40, 0) });
+        await Frames();
+        Expect(world.SelectedVillageId is null, "Dragging doesn't select");
+
+        // Hit testing still works zoomed in.
+        var centre = world.Size / 2;
+        for (var i = 0; i < 6; i++)
+            world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.WheelUp, Pressed = true, Position = At(camp) });
+        await Frames();
+        await Click(At(camp));
+        Expect(world.SelectedVillageId == camp.Id, "Markers can be clicked when zoomed in");
+        await Click(At(camp) + new Vector2(VillageMarker.HitRadius + 40, 0));
+        Expect(world.SelectedVillageId != camp.Id, "A click beside a marker misses it");
+        world.FitToView();
+        await Frames();
+
+        // Into the village: from the popup, and by double-click.
+        await Click(At(own));
+        popup.GetNode<Button>("%Enter").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(game.CurrentView == GameScreen.MainView.Village, "Enter village opens the village view");
+
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, DoubleClick = true, Position = At(own) });
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = At(own) });
+        await Frames();
+        Expect(game.CurrentView == GameScreen.MainView.Village, "Double-clicking your village opens it");
+
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, DoubleClick = true, Position = At(camp) });
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = At(camp) });
+        await Frames();
+        Expect(game.CurrentView == GameScreen.MainView.World, "Double-clicking an enemy village doesn't enter it");
+        world.ClearSelection();
         game.ShowView(GameScreen.MainView.Village);
         await Frames();
     }

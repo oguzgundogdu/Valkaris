@@ -72,6 +72,7 @@ public partial class GameScreen : Control
         _buildingPanel.TrainingRequested += () => ShowTab(SideTab.Troops);
         _resourceBar.PauseRequested += TogglePause;
         _resourceBar.ViewRequested += ShowView;
+        _worldMap.EnterRequested += EnterVillage;
 
         _pauseOverlay.Configure("Paused", "The match is on hold. Press P to resume.", "Resume", "Leave match");
         _pauseOverlay.ActionPressed += TogglePause;
@@ -98,7 +99,7 @@ public partial class GameScreen : Control
         if (CurrentView == MainView.Village)
             _villageView.Refresh(village, Session.State.ElapsedTime, _selected);
         else
-            _worldMap.Refresh(Session);
+            _worldMap.Refresh(Session, village);
         RefreshActiveTab(village);
 
         _pauseOverlay.Visible = Session.IsPaused && !_confirmingLeave;
@@ -129,6 +130,14 @@ public partial class GameScreen : Control
         local.SendAs(rival.OwnerId, new SendTroopsCommand(rival.Id, home, MovementType.Attack, rival.Troops.ToDictionary(t => t.Key, t => t.Value)));
     }
 
+    private void EnterVillage(int villageId)
+    {
+        _currentVillageId = villageId;
+        _worldMap.ClearSelection();
+        ShowTab(SideTab.Village);
+        ShowView(MainView.Village);
+    }
+
     public enum MainView
     {
         Village,
@@ -146,7 +155,7 @@ public partial class GameScreen : Control
         Control outgoing = view == MainView.World ? _villageView : _worldMap;
 
         if (view == MainView.World)
-            _worldMap.Refresh(Session);
+            _worldMap.Refresh(Session, Session.State.Villages[_currentVillageId]);
 
         _viewTween?.Kill();
         incoming.Visible = true;

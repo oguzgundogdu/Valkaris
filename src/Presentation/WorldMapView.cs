@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 using Valkaris.Core.Hosting;
@@ -13,6 +14,7 @@ public partial class WorldMapView : Control
     private const float MaxZoom = 1.6f;
     private const float ZoomStep = 1.15f;
     private const float DragThreshold = 4;
+    private const float PopupGap = 44;
 
     private static readonly Color Surround = new(0.09f, 0.14f, 0.18f);
 
@@ -27,7 +29,15 @@ public partial class WorldMapView : Control
     private bool _pressed;
     private bool _dragging;
     private Vector2 _pressPosition;
+    private VillagePopup _popup = null!;
+    private TileHighlight _highlight = null!;
+    private IGameSession? _session;
+    private int? _selectedId;
 
+    public event Action<int>? SendRequested;
+    public event Action<int>? EnterRequested;
+
+    public int? SelectedVillageId => _selectedId;
     public float Zoom => _zoom;
     public Vector2 CameraPosition => _world.Position;
 
@@ -50,8 +60,17 @@ public partial class WorldMapView : Control
         _terrain = new MapTerrain { Name = "Terrain", MouseFilter = MouseFilterEnum.Ignore };
         _world.AddChild(_terrain);
 
+        _highlight = new TileHighlight { Name = "Highlight", MouseFilter = MouseFilterEnum.Ignore };
+        _world.AddChild(_highlight);
+
         _markerLayer = new Control { Name = "Markers", MouseFilter = MouseFilterEnum.Ignore };
         _world.AddChild(_markerLayer);
+
+        _popup = GD.Load<PackedScene>("res://scenes/VillagePopup.tscn").Instantiate<VillagePopup>();
+        _popup.Name = "Popup";
+        AddChild(_popup);
+        _popup.SendRequested += id => SendRequested?.Invoke(id);
+        _popup.EnterRequested += id => EnterRequested?.Invoke(id);
 
         Resized += OnResized;
     }
@@ -63,13 +82,59 @@ public partial class WorldMapView : Control
         DrawStyleBox(surround, new Rect2(Vector2.Zero, Size));
     }
 
-    public void Refresh(IGameSession session)
+    public void Refresh(IGameSession session, Village currentVillage)
     {
+        _session = session;
         if (!_built)
             Build(session);
 
         foreach (var (id, marker) in _markers)
-            marker.Refresh(session, session.State.Villages[id], selected: false);
+            marker.Refresh(session, session.State.Villages[id], id == _selectedId);
+
+        _popup.Visible = _selectedId is not null;
+        if (_selectedId is { } selected)
+        {
+            var village = session.State.Villages[selected];
+            _popup.Refresh(session, village, currentVillage);
+            PlacePopup(village);
+        }
+    }
+
+    public void ClearSelection() => _selectedId = null;
+
+    /// <summary>Beside the marker, kept inside the view.</summary>
+    private void PlacePopup(Village village)
+    {
+        var anchor = WorldToView(VillageWorldPosition(village));
+        var size = _popup.GetCombinedMinimumSize();
+        var position = anchor + new Vector2(PopupGap, -size.Y / 2);
+        if (position.X + size.X > Size.X)
+            position.X = anchor.X - PopupGap - size.X;
+
+        _popup.Position = new Vector2(
+            Mathf.Clamp(position.X, 0, Mathf.Max(0, Size.X - size.X)),
+            Mathf.Clamp(position.Y, 0, Mathf.Max(0, Size.Y - size.Y)));
+        _popup.Size = size;
+    }
+
+    /// <summary>The marker at a view position, closest first. Markers keep their size on screen, so this works in view space.</summary>
+    private int? VillageAt(Vector2 viewPoint)
+    {
+        if (_session is null)
+            return null;
+
+        int? best = null;
+        var bestDistance = VillageMarker.HitRadius * MarkerScale;
+        foreach (var village in _session.State.Villages.Values)
+        {
+            var distance = WorldToView(VillageWorldPosition(village)).DistanceTo(viewPoint);
+            if (distance <= bestDistance)
+            {
+                best = village.Id;
+                bestDistance = distance;
+            }
+        }
+        return best;
     }
 
     private void Build(IGameSession session)
@@ -132,6 +197,9 @@ public partial class WorldMapView : Control
             case InputEventMouseMotion motion when _pressed:
                 HandleDrag(motion);
                 break;
+            case InputEventMouseMotion hover:
+                HandleHover(hover.Position);
+                break;
             case InputEventPanGesture pan:
                 PanBy(-pan.Delta * 12);
                 AcceptEvent();
@@ -150,10 +218,32 @@ public partial class WorldMapView : Control
             _pressed = true;
             _dragging = false;
             _pressPosition = button.Position;
+
+            // A double-click on your own village walks into it.
+            if (button.DoubleClick && VillageAt(button.Position) is { } id && _session!.State.Villages[id].OwnerId == _session.LocalPlayerId)
+            {
+                _pressed = false;
+                EnterRequested?.Invoke(id);
+            }
             return;
         }
 
+        if (_pressed && !_dragging)
+            _selectedId = VillageAt(button.Position);
         _pressed = false;
+    }
+
+    private void HandleHover(Vector2 viewPoint)
+    {
+        if (!_built)
+            return;
+
+        var overVillage = VillageAt(viewPoint) is not null;
+        MouseDefaultCursorShape = overVillage ? CursorShape.PointingHand : CursorShape.Arrow;
+
+        var world = ViewToWorld(viewPoint);
+        var inside = !overVillage && world.X >= 0 && world.Y >= 0 && world.X < _worldSize.X && world.Y < _worldSize.Y;
+        _highlight.Show(inside ? (world / TileSize).Floor() * TileSize : null);
     }
 
     private void HandleDrag(InputEventMouseMotion motion)
@@ -206,5 +296,26 @@ public partial class WorldMapView : Control
         _world.Scale = new Vector2(_zoom, _zoom);
         foreach (var marker in _markers.Values)
             marker.Scale = Vector2.One * MarkerScale / _zoom;
+    }
+
+    /// <summary>The one place the tile grid shows: a soft square under the cursor.</summary>
+    private partial class TileHighlight : Control
+    {
+        private Vector2? _corner;
+
+        public void Show(Vector2? corner)
+        {
+            if (corner == _corner)
+                return;
+
+            _corner = corner;
+            QueueRedraw();
+        }
+
+        public override void _Draw()
+        {
+            if (_corner is { } corner)
+                DrawRect(new Rect2(corner, new Vector2(TileSize, TileSize)), new Color(1, 1, 1, 0.1f));
+        }
     }
 }
