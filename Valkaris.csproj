@@ -15,6 +15,10 @@
     <Compile Remove="src/Presentation/Dev/**" Condition="'$(Configuration)' == 'ExportRelease'" />
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' != 'ExportRelease'">
+    <DefineConstants>$(DefineConstants);VALKARIS_DEV</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="src/Valkaris.Core/Valkaris.Core.csproj" />
   </ItemGroup>

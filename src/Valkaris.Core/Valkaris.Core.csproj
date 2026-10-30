@@ -8,7 +8,13 @@
     <RootNamespace>Valkaris.Core</RootNamespace>
   </PropertyGroup>
 
+  <!-- Dev scenarios set up states the idle rival cannot reach, and never ship. -->
+  <PropertyGroup Condition="'$(Configuration)' != 'ExportRelease'">
+    <DefineConstants>$(DefineConstants);VALKARIS_DEV</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
+    <Compile Remove="Dev/**" Condition="'$(Configuration)' == 'ExportRelease'" />
     <InternalsVisibleTo Include="Valkaris.Core.Tests" />
   </ItemGroup>
 

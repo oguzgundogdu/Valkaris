@@ -136,7 +136,9 @@ public partial class GameScreen : Control
             return;
 
         _devRivalAttackAt = null;
-        var rival = Session.State.Villages.Values.First(v => v.OwnerId != Session.LocalPlayerId && !v.IsBarbarian);
+        var rival = Session.State.Villages.Values
+            .Where(v => v.OwnerId != Session.LocalPlayerId && !v.IsBarbarian)
+            .MaxBy(v => v.Troops.Values.Sum())!;
         var home = Session.State.Players[Session.LocalPlayerId].CapitalVillageId!.Value;
         local.SendAs(rival.OwnerId, new SendTroopsCommand(rival.Id, home, MovementType.Attack, rival.Troops.ToDictionary(t => t.Key, t => t.Value)));
     }

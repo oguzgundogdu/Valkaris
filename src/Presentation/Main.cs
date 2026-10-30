@@ -75,6 +75,10 @@ public partial class Main : Control
         var devOptions = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
         var seeded = devOptions.Apply(settings) with { Seed = (ulong)Random.Shared.NextInt64() };
         var state = GameFactory.CreateMatch(seeded, slots, _data);
+#if VALKARIS_DEV
+        if (devOptions.Scenario is { } scenario && !Valkaris.Core.Dev.DevScenario.Apply(state, _data, scenario))
+            GD.PrintErr($"Unknown dev scenario: {scenario}");
+#endif
 
         var screen = GameScene.Instantiate<GameScreen>();
         screen.Init(new LocalGameSession(state, _data, LocalPlayerId), devOptions.RivalAttackSeconds);

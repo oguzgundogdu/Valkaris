@@ -13,6 +13,17 @@ public class ArchitectureTests
     }
 
     [Fact]
+    public void DevScenariosAreLeftOutOfReleaseBuilds()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root.FullName, "Valkaris.sln")))
+            root = root.Parent!;
+        var project = File.ReadAllText(Path.Combine(root.FullName, "src", "Valkaris.Core", "Valkaris.Core.csproj"));
+
+        Assert.Contains("""<Compile Remove="Dev/**" Condition="'$(Configuration)' == 'ExportRelease'" />""", project);
+    }
+
+    [Fact]
     public void ModelClassesHaveNoPublicSetters()
     {
         var modelTypes = typeof(GameState).Assembly.GetTypes()
