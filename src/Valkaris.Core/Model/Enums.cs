@@ -37,6 +37,7 @@ public enum MovementType
     Return,
     Transfer,
     CarrierReturn,
+    Scout,
 }
 
 public enum ResourceType

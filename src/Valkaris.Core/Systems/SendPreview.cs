@@ -40,7 +40,7 @@ public static class SendPreview
     {
         switch (command.Type)
         {
-            case MovementType.Attack or MovementType.Raid when to.OwnerId == from.OwnerId:
+            case MovementType.Attack or MovementType.Raid or MovementType.Scout when to.OwnerId == from.OwnerId:
             case MovementType.Reinforce when to.OwnerId != from.OwnerId || to.Id == from.Id:
             case MovementType.Settle:
             case MovementType.Transfer:
@@ -55,6 +55,10 @@ public static class SendPreview
             return CommandRejection.NoTroopsSelected;
         if (command.Troops.Any(t => t.Value > from.TroopCount(t.Key)))
             return CommandRejection.NotEnoughTroops;
+
+        if (command.Type == MovementType.Scout
+            && command.Troops.Any(t => t.Value > 0 && t.Key is UnitType.Catapult or UnitType.Settler or UnitType.Lord))
+            return CommandRejection.OnlyFightersCanScout;
 
         if (command.Type is MovementType.Attack or MovementType.Raid && command.Troops.GetValueOrDefault(UnitType.Settler) > 0)
             return CommandRejection.SettlersCannotFight;

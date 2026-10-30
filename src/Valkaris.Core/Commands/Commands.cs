@@ -65,6 +65,7 @@ public enum CommandRejection
     NoResourcesSelected,
     NoMarketplace,
     NotEnoughCarriers,
+    OnlyFightersCanScout,
 }
 
 public sealed record CommandResult(CommandRejection? Rejection)

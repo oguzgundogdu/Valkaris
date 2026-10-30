@@ -8,6 +8,7 @@ public sealed class GameState
     private readonly Dictionary<int, Village> _villages = new();
     private readonly List<Movement> _movements = new();
     private readonly List<BattleReport> _reports = new();
+    private readonly List<ScoutReport> _scoutReports = new();
 
     internal GameState(GameSettings settings, GameMap map)
     {
@@ -17,6 +18,7 @@ public sealed class GameState
         Villages = new ReadOnlyDictionary<int, Village>(_villages);
         Movements = _movements.AsReadOnly();
         Reports = _reports.AsReadOnly();
+        ScoutReports = _scoutReports.AsReadOnly();
         RngState = settings.Seed;
     }
 
@@ -33,6 +35,9 @@ public sealed class GameState
     public IReadOnlyList<Movement> Movements { get; }
 
     public IReadOnlyList<BattleReport> Reports { get; }
+
+    /// <summary>Check ScoutReport.VisibleTo before showing one. Ids are shared with battle reports.</summary>
+    public IReadOnlyList<ScoutReport> ScoutReports { get; }
 
     public int NextMovementId { get; internal set; } = 1;
     public int NextReportId { get; internal set; } = 1;
@@ -54,6 +59,8 @@ public sealed class GameState
     internal void RemoveMovement(Movement movement) => _movements.Remove(movement);
 
     internal void AddReport(BattleReport report) => _reports.Add(report);
+
+    internal void AddScoutReport(ScoutReport report) => _scoutReports.Add(report);
 
     /// <summary>SplitMix64. System.Random cannot be saved and restored.</summary>
     internal ulong NextRandom()

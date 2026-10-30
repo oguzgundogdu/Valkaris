@@ -157,9 +157,9 @@ public sealed class Simulation
                 return CompleteCarrierReturn(movement);
             default:
                 // The attackers' side may have taken the village while they were on the way.
-                return _state.Villages[movement.ToVillageId!.Value].OwnerId == movement.OwnerId
-                    ? CompleteReinforce(movement)
-                    : ResolveBattle(movement);
+                if (_state.Villages[movement.ToVillageId!.Value].OwnerId == movement.OwnerId)
+                    return CompleteReinforce(movement);
+                return movement.Type == MovementType.Scout ? ResolveScout(movement) : ResolveBattle(movement);
         }
     }
 
@@ -287,6 +287,32 @@ public sealed class Simulation
                 return numbered[_state.NextRandom(numbered.Count)];
             round++;
         }
+    }
+
+    /// <summary>A plain comparison of head counts, with no battle: scouts either all come home with what they saw, or all die.</summary>
+    private ScoutResolved ResolveScout(Movement movement)
+    {
+        var target = _state.Villages[movement.ToVillageId!.Value];
+        var garrison = target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
+        var succeeded = garrison.Values.Sum() <= movement.Troops.Values.Sum() * _data.Combat.TroopsPerScout;
+
+        var report = new ScoutReport(
+            _state.NextReportId++,
+            movement.ArrivalTime,
+            movement.OwnerId,
+            target.OwnerId,
+            movement.FromVillageId,
+            target.Id,
+            movement.Troops,
+            succeeded,
+            succeeded ? garrison : null,
+            succeeded ? target.BuildingLevel(BuildingType.Wall) : null,
+            succeeded ? target.Resources : null);
+        _state.AddScoutReport(report);
+
+        if (succeeded)
+            StartReturn(movement.OwnerId, target.Id, null, movement.FromVillageId, movement.Troops, Resources.Zero, movement.ArrivalTime);
+        return new ScoutResolved(movement.ArrivalTime, report.Id);
     }
 
     private BattleResolved ResolveBattle(Movement movement)

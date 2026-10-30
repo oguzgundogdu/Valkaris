@@ -86,6 +86,26 @@ public sealed record BattleReport(
     LoyaltyChange? Loyalty = null,
     bool CapitalProtected = false);
 
+/// <summary>
+/// What scouts found, or that they were caught. Garrison, wall and stock are set only on success.
+/// Unlike a battle report, a success stays private to the sender: the defender hears only of failures.
+/// </summary>
+public sealed record ScoutReport(
+    int Id,
+    double Time,
+    int SenderId,
+    int DefenderId,
+    int SenderVillageId,
+    int TargetVillageId,
+    IReadOnlyDictionary<UnitType, int> Sent,
+    bool Succeeded,
+    IReadOnlyDictionary<UnitType, int>? Garrison,
+    int? WallLevel,
+    Resources? Stock)
+{
+    public bool VisibleTo(int playerId) => playerId == SenderId || (!Succeeded && playerId == DefenderId);
+}
+
 public sealed record PlayerScore(int PlayerId, int Villages, int Population, int Captures, double Score);
 
 /// <summary>How the match ended. A draw has more than one winner.</summary>

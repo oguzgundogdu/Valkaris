@@ -16,6 +16,9 @@ public sealed record ReinforcementsArrived(double Time, int VillageId) : GameEve
 
 public sealed record BattleResolved(double Time, int ReportId) : GameEvent(Time);
 
+/// <summary>Look at ScoutReport.VisibleTo before telling anyone: a success is known only to the sender.</summary>
+public sealed record ScoutResolved(double Time, int ReportId) : GameEvent(Time);
+
 public sealed record VillageCaptured(double Time, int VillageId, int PreviousOwnerId, int NewOwnerId) : GameEvent(Time);
 
 public sealed record CapitalChoiceRequired(double Time, int PlayerId, double Deadline) : GameEvent(Time);

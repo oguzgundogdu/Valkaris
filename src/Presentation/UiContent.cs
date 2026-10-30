@@ -120,6 +120,7 @@ public static class UiContent
         CommandRejection.CatapultsCannotRaid => "Catapults can't go on a raid.",
         CommandRejection.SettlersCannotFight => "Settlers can't go on an attack or raid.",
         CommandRejection.LordsCannotRaid => "Lords can't go on a raid.",
+        CommandRejection.OnlyFightersCanScout => "Only Spearmen, Swordsmen and Cavalry can scout.",
         CommandRejection.NoSettlerHere => "Train a Settler in this village first.",
         CommandRejection.TileOutsideMap => "That's outside the map.",
         CommandRejection.TileIsWater => "Villages can't be founded on water.",

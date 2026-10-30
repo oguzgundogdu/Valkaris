@@ -30,6 +30,7 @@ public static class SnapshotMapper
             state.Map.Tiles.Select(t => new MapTileSnapshot(t.VillageId, t.Terrain)).ToList()),
         state.Movements.ToList(),
         state.Reports.ToList(),
+        state.ScoutReports.ToList(),
         state.NextMovementId,
         state.NextReportId,
         state.RngState,
@@ -86,6 +87,8 @@ public static class SnapshotMapper
             state.AddMovement(movement);
         foreach (var report in snapshot.Reports)
             state.AddReport(report);
+        foreach (var report in snapshot.ScoutReports)
+            state.AddScoutReport(report);
 
         foreach (var p in snapshot.Players)
         {
