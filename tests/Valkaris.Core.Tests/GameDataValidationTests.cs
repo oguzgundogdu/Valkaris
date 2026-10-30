@@ -294,6 +294,9 @@ public class GameDataValidationTests
     public void NegativeBelief(string field) => AssertAiInvalid(r => r["beliefs"]![field] = -1, $"beliefs.{field}");
 
     [Fact]
+    public void ScoutRetryNegative() => AssertAiInvalid(r => r["scoutRetrySeconds"] = -1, "scoutRetrySeconds");
+
+    [Fact]
     public void PowerPerTroopNotPositive() => AssertAiInvalid(r => r["beliefs"]!["powerPerTroop"] = 0, "beliefs.powerPerTroop");
 
     [Fact]
@@ -311,6 +314,7 @@ public class GameDataValidationTests
     [InlineData("raidCooldownSeconds", -1)]
     [InlineData("wantedVillages", 0)]
     [InlineData("expansionDelaySeconds", -1)]
+    [InlineData("scoutMaxAgeSeconds", -1)]
     public void InvalidProfileValue(string field, double value) =>
         AssertAiInvalid(r => r["difficulties"]!["Easy"]![field] = field is "maxRaidsPerVillage" or "wantedVillages" ? (int)value : value, $"difficulties.Easy.{field}");
 

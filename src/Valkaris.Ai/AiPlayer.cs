@@ -15,6 +15,7 @@ public sealed class AiPlayer : IMatchAgent
     private readonly DefencePlanner _defence;
     private readonly RaidPlanner _raids;
     private readonly WarPlanner _war;
+    private readonly ScoutPlanner _scouts;
     private readonly ExpansionPlanner _expansion;
     private readonly TransferPlanner _transfers;
 
@@ -27,6 +28,7 @@ public sealed class AiPlayer : IMatchAgent
         _defence = new DefencePlanner(view);
         _raids = new RaidPlanner(view, _memory);
         _war = new WarPlanner(view, _memory);
+        _scouts = new ScoutPlanner(view, _memory, _war);
         _expansion = new ExpansionPlanner(view);
         _transfers = new TransferPlanner(view, _builds);
         _interval = view.Profile.DecisionSeconds / view.GameSpeed;
@@ -70,6 +72,7 @@ public sealed class AiPlayer : IMatchAgent
             _expansion.Found(village);
             if (!threatened)
             {
+                _scouts.Plan(village);
                 _war.Plan(village);
                 _raids.Plan(village);
             }

@@ -419,6 +419,8 @@ internal static class GameDataValidator
             Error("beliefs.playerPowerAtStart", "must not be negative.");
         if (beliefs.PlayerPowerPerMinute < 0)
             Error("beliefs.playerPowerPerMinute", "must not be negative.");
+        if (config.ScoutRetrySeconds < 0)
+            Error("scoutRetrySeconds", "must not be negative.");
         if (beliefs.PowerPerTroop <= 0)
             Error("beliefs.powerPerTroop", "must be positive.");
         if (beliefs.GrowthAfterSightingPerMinute < 0)
@@ -447,6 +449,8 @@ internal static class GameDataValidator
                 Error($"{path}.lordMargin", "must be at least 1.");
             if (profile.AggressionDelaySeconds < 0)
                 Error($"{path}.aggressionDelaySeconds", "must not be negative.");
+            if (profile.ScoutMaxAgeSeconds < 0)
+                Error($"{path}.scoutMaxAgeSeconds", "must not be negative.");
             if (profile.GarrisonShare is < 0 or > 1)
                 Error($"{path}.garrisonShare", "must be between 0 and 1.");
             if (profile.MaxRaidsPerVillage < 0)

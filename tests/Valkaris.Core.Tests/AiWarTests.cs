@@ -30,6 +30,14 @@ public class AiWarTests
     private static Movement? FirstAttack(AiMatch match) =>
         match.State.Movements.FirstOrDefault(m => m.OwnerId == Ai && m.Type == MovementType.Attack);
 
+    /// <summary>Scouts go first, so an attack follows once their news is in.</summary>
+    private static void RunUntilAttack(AiMatch match)
+    {
+        var end = match.State.ElapsedTime + 3000;
+        while (FirstAttack(match) is null && match.State.Reports.All(r => r.DefenderId != Enemy) && match.State.ElapsedTime < end)
+            match.Run(5);
+    }
+
     [Fact]
     public void NoAttacksBeforeTheProfilesDelay()
     {
@@ -49,7 +57,7 @@ public class AiWarTests
         PastDelay(match);
         match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 300);
 
-        match.Run(60);
+        RunUntilAttack(match);
 
         Assert.True(match.State.Movements.Any(m => m.Type == MovementType.Attack && m.ToVillageId == Enemy) || match.State.Reports.Any(r => r.DefenderId == Enemy));
     }
@@ -61,15 +69,19 @@ public class AiWarTests
         PastDelay(match);
         match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 300);
 
-        match.Run(16, step: 1);
+        RunUntilAttack(match);
 
         var attack = FirstAttack(match);
         Assert.NotNull(attack);
         var power = attack!.Troops.Sum(t => t.Value * match.Data.Units.Units[t.Key].Attack);
-        var beliefs = match.Data.Ai.Beliefs;
+
+        // It scouted first, so the estimate starts from what its scouts counted.
+        var scouted = match.State.ScoutReports.Last(r => r.SenderId == Ai && r.Succeeded);
+        var units = match.Data.Units.Units;
+        var seen = scouted.Garrison!.Sum(t => t.Value * (units[t.Key].DefenceVsInfantry + units[t.Key].DefenceVsCavalry) / 2)
+            * (1 + match.Data.Combat.WallBonusPerLevel * scouted.WallLevel!.Value);
         var profile = match.Data.Ai.Difficulties[AiDifficulty.Hard];
-        var estimate = beliefs.PlayerPowerAtStart + beliefs.PlayerPowerPerMinute * match.State.ElapsedTime / 60;
-        Assert.True(power >= (estimate - 100) * profile.AttackMargin, $"power {power}, estimate {estimate}");
+        Assert.True(power >= seen * profile.AttackMargin, $"power {power}, seen {seen}");
     }
 
     [Fact]

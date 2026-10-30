@@ -35,7 +35,7 @@ public class SimToolTests
         var first = MatchRunner.RunOne(Quick, TestData.Shipped, 1, 0);
         var second = MatchRunner.RunOne(Quick, TestData.Shipped, 2, 0);
 
-        Assert.NotEqual(first.Commands, second.Commands);
+        Assert.NotEqual(first.Seats.Select(s => s.Score), second.Seats.Select(s => s.Score));
     }
 
     [Fact]

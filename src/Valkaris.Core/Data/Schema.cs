@@ -271,6 +271,9 @@ public sealed record AiConfig
 
     public required IReadOnlyList<AiBuildStep> BuildOrder { get; init; }
     public required AiBeliefs Beliefs { get; init; }
+    /// <summary>Game seconds it waits after scouts are caught before trying again, with twice as many.</summary>
+    public required double ScoutRetrySeconds { get; init; }
+
     public required IReadOnlyDictionary<AiDifficulty, AiProfile> Difficulties { get; init; }
 }
 
@@ -320,4 +323,7 @@ public sealed record AiProfile
     public required double ExpansionDelaySeconds { get; init; }
     public required bool Reinforces { get; init; }
     public required bool SavesForGoals { get; init; }
+
+    /// <summary>Game seconds that news of a target stays good enough to attack on. Older than this, it scouts first.</summary>
+    public required double ScoutMaxAgeSeconds { get; init; }
 }

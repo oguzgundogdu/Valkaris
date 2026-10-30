@@ -27,18 +27,32 @@ public sealed class WarPlanner
         if (spare.Count == 0)
             return;
 
+        var scouting = _view.OwnMovements.Where(m => m.Type == MovementType.Scout).Select(m => m.ToVillageId).ToHashSet();
+        foreach (var target in Targets(village))
+        {
+            // The news is on its way, so the army waits for it rather than moving on to a worse target.
+            if (scouting.Contains(target.Id))
+                return;
+            if (Attack(village, target, spare))
+                return;
+        }
+    }
+
+    /// <summary>The target this village's army would go for first, if it can take it on.</summary>
+    public KnownVillage? NextTarget(Village village)
+    {
+        var hasLord = village.TroopCount(UnitType.Lord) > 0;
+        return Targets(village).FirstOrDefault(v => !v.IsBarbarian || hasLord);
+    }
+
+    private IEnumerable<KnownVillage> Targets(Village village)
+    {
         var heading = _view.OwnMovements.Where(m => m.Type == MovementType.Attack).Select(m => m.ToVillageId).ToHashSet();
-        var targets = _view.KnownVillages
+        return _view.KnownVillages
             .Where(v => v.OwnerId != _view.PlayerId && !heading.Contains(v.Id))
             .OrderByDescending(CaptureUnderWay)
             .ThenBy(v => _memory.EstimateDefence(v) * UnitRules.Distance(village.Position, v.Position))
             .ThenBy(v => v.Id);
-
-        foreach (var target in targets)
-        {
-            if (Attack(village, target, spare))
-                return;
-        }
     }
 
     /// <summary>Finish what was started: a target whose loyalty is already falling comes first.</summary>
@@ -70,7 +84,8 @@ public sealed class WarPlanner
         if (target.IsBarbarian)
             return false;
 
-        var army = _forces.Pick(spare, estimate * _view.Profile.AttackMargin);
+        // Scouts can report an empty village, and a token force is not worth the walk.
+        var army = _forces.Pick(spare, Math.Max(estimate * _view.Profile.AttackMargin, _view.Config.Beliefs.PlayerPowerAtStart));
         return army is not null && Send(village, target, army, catapults);
     }
 

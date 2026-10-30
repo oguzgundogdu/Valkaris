@@ -16,6 +16,7 @@
   "lordMinAttack": 400,
   "catapultsWanted": 10,
   "fightersBeforeSaving": 20,
+  "scoutRetrySeconds": 240,
   "buildOrder": [
     {
       "building": "Woodcutter",
@@ -191,7 +192,8 @@
       "wantedVillages": 2,
       "expansionDelaySeconds": 900,
       "reinforces": false,
-      "savesForGoals": false
+      "savesForGoals": false,
+      "scoutMaxAgeSeconds": 900
     },
     "Normal": {
       "decisionSeconds": 15,
@@ -206,7 +208,8 @@
       "wantedVillages": 3,
       "expansionDelaySeconds": 720,
       "reinforces": true,
-      "savesForGoals": true
+      "savesForGoals": true,
+      "scoutMaxAgeSeconds": 300
     },
     "Hard": {
       "decisionSeconds": 8,
@@ -221,7 +224,8 @@
       "wantedVillages": 3,
       "expansionDelaySeconds": 600,
       "reinforces": true,
-      "savesForGoals": true
+      "savesForGoals": true,
+      "scoutMaxAgeSeconds": 180
     }
   }
 }
