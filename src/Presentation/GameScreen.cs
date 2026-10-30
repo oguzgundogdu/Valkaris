@@ -18,6 +18,8 @@ public partial class GameScreen : Control
     private TabContainer _tabs = null!;
     private TroopsPanel _troopsPanel = null!;
     private SendPanel _sendPanel = null!;
+    private ReportsPanel _reportsPanel = null!;
+    private ReportDialog _reportDialog = null!;
     private Toast _toast = null!;
     private Overlay _pauseOverlay = null!;
     private Overlay _leaveOverlay = null!;
@@ -40,6 +42,9 @@ public partial class GameScreen : Control
         _tabs = GetNode<TabContainer>("%Side");
         _troopsPanel = GetNode<TroopsPanel>("%Troops");
         _sendPanel = GetNode<SendPanel>("%Send");
+        _reportsPanel = GetNode<ReportsPanel>("%Reports");
+        _reportDialog = GetNode<ReportDialog>("%ReportDialog");
+        _reportsPanel.ReportOpened += report => _reportDialog.ShowReport(Session, report);
         _toast = GetNode<Toast>("%Toast");
         _pauseOverlay = GetNode<Overlay>("%PauseOverlay");
         _leaveOverlay = GetNode<Overlay>("%LeaveOverlay");
@@ -93,6 +98,7 @@ public partial class GameScreen : Control
         Village,
         Troops,
         Send,
+        Reports,
     }
 
     public void ShowTab(SideTab tab) => _tabs.CurrentTab = (int)tab;
@@ -117,7 +123,14 @@ public partial class GameScreen : Control
             case SideTab.Send:
                 _sendPanel.Refresh(Session, village);
                 break;
+            case SideTab.Reports:
+                _reportsPanel.Refresh(Session);
+                _reportsPanel.MarkAllRead(Session);
+                break;
         }
+
+        var unread = _reportsPanel.UnreadCount(Session);
+        _tabs.SetTabTitle((int)SideTab.Reports, unread > 0 ? $"Reports ({unread})" : "Reports");
     }
 
     private void TogglePause()
@@ -133,6 +146,11 @@ public partial class GameScreen : Control
             case BuildingCompleted completed when IsLocalVillage(completed.VillageId):
                 _villageView.Pulse(completed.Building);
                 _toast.ShowMessage($"{UiContent.Buildings[completed.Building].Name} reached level {completed.NewLevel}");
+                break;
+            case BattleResolved resolved:
+                var report = Session.State.Reports.First(r => r.Id == resolved.ReportId);
+                if (report.AttackerId == Session.LocalPlayerId || report.DefenderId == Session.LocalPlayerId)
+                    _toast.ShowMessage($"{UiContent.ReportHeadline(Session, report)}. See Reports.");
                 break;
             case TroopsReturned returned when IsLocalVillage(returned.VillageId):
                 var loot = returned.Loot.Wood + returned.Loot.Stone + returned.Loot.Food;

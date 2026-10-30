@@ -9,6 +9,8 @@
 [ext_resource type="PackedScene" path="res://scenes/Overlay.tscn" id="7"]
 [ext_resource type="PackedScene" path="res://scenes/TroopsPanel.tscn" id="8"]
 [ext_resource type="PackedScene" path="res://scenes/SendPanel.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/ReportsPanel.tscn" id="10"]
+[ext_resource type="PackedScene" path="res://scenes/ReportDialog.tscn" id="11"]
 
 [node name="Game" type="Control"]
 layout_mode = 3
@@ -77,6 +79,11 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
+[node name="Reports" parent="Layout/Margin/Columns/Side" instance=ExtResource("10")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
 [node name="Toast" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 visible = false
@@ -98,6 +105,10 @@ script = ExtResource("6")
 layout_mode = 2
 theme_type_variation = &"StrongLabel"
 horizontal_alignment = 1
+
+[node name="ReportDialog" parent="." instance=ExtResource("11")]
+unique_name_in_owner = true
+layout_mode = 1
 
 [node name="PauseOverlay" parent="." instance=ExtResource("7")]
 unique_name_in_owner = true

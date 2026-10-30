@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Godot;
 using Valkaris.Core.Commands;
+using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
 
 namespace Valkaris.Presentation;
@@ -35,6 +36,17 @@ public static class UiContent
         [UnitType.Cavalry] = new("Cavalry", "res://assets/icons/cavalry.svg"),
         [UnitType.Catapult] = new("Catapult", "res://assets/icons/catapult.svg"),
     };
+
+    public static bool LocalWon(IGameSession session, BattleReport report) =>
+        report.AttackerId == session.LocalPlayerId ? report.AttackerWon : !report.AttackerWon;
+
+    public static string ReportHeadline(IGameSession session, BattleReport report)
+    {
+        var result = LocalWon(session, report) ? "Won" : "Lost";
+        return report.AttackerId == session.LocalPlayerId
+            ? $"{result}: {report.Type} on {session.State.Players[report.DefenderId].Name}"
+            : $"{result}: {report.Type} by {session.State.Players[report.AttackerId].Name}";
+    }
 
     public static string RejectionText(CommandRejection rejection) => rejection switch
     {

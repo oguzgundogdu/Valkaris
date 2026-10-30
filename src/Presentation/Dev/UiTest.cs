@@ -161,6 +161,7 @@ public partial class UiTest : Control
 
         await TestTroops();
         await TestSend();
+        await TestReports();
         await TestFeedback();
         await TestPause();
         TestDevOptions();
@@ -311,6 +312,93 @@ public partial class UiTest : Control
         }
         Expect(session.State.Movements.Count == 0, "Everyone is home");
         Expect(send.GetNode<Label>("%None").Visible, "The list empties again");
+    }
+
+    private async Task TestReports()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var tabs = game.GetNode<TabContainer>("%Side");
+        var reports = game.GetNode<ReportsPanel>("%Reports");
+        var dialog = game.GetNode<ReportDialog>("%ReportDialog");
+        var reportsTab = (int)GameScreen.SideTab.Reports;
+
+        await Frames();
+        Expect(tabs.GetTabTitle(reportsTab) == "Reports (1)", $"An unread report is counted, got '{tabs.GetTabTitle(reportsTab)}'");
+
+        game.ShowTab(GameScreen.SideTab.Reports);
+        await Frames();
+        Expect(tabs.GetTabTitle(reportsTab) == "Reports", "Opening the tab clears the unread count");
+        var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
+        Expect(row.Text.StartsWith("Lost: Raid on Rival"), $"The lost raid is listed, got '{row.Text}'");
+        await Shot("reports");
+
+        row.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == "Defeat", "The report opens as a defeat");
+        Expect(dialog.GetNode<VBoxContainer>("%Attacker").GetChildCount() == 2, "The report lists the attacking side");
+        Expect(!dialog.GetNode<Label>("%Loot").Visible, "A lost raid shows no loot");
+        Expect(dialog.GetNode<Label>("%Powers").Text.Contains("vs  defence 200"), $"The report shows the weighted defence, got '{dialog.GetNode<Label>("%Powers").Text}'");
+        await Shot("report-defeat");
+
+        dialog.GetNode<Button>("%Close").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(!dialog.Visible, "Close hides the report");
+    }
+
+    /// <summary>Trains an army through the UI, then wins an attack with a catapult aimed at a chosen building.</summary>
+    private async Task TestVictory(GameScreen game, Action<BuildingType, int> upgradeTo)
+    {
+        var session = game.Session;
+        var village = session.State.Villages[1];
+        var rival = session.State.Villages[2];
+
+        upgradeTo(BuildingType.Barracks, 5);
+        session.Tick(60);
+        session.Send(new TrainCommand(village.Id, UnitType.Swordsman, 20));
+        session.Send(new TrainCommand(village.Id, UnitType.Catapult, 1));
+        session.Tick(60);
+
+        var send = game.GetNode<SendPanel>("%Send");
+        var units = send.GetNode<VBoxContainer>("%Units");
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+
+        units.GetNode(nameof(UnitType.Swordsman)).GetNode<Button>("Max").EmitSignal(BaseButton.SignalName.Pressed);
+        units.GetNode(nameof(UnitType.Catapult)).GetNode<Button>("Max").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(send.GetNode<Control>("%CatapultRow").Visible, "Catapults on an attack can be aimed");
+
+        send.GetNode<OptionButton>("%CatapultTarget").Select(1 + (int)BuildingType.Woodcutter);
+        await Frames();
+        var mission = send.GetNode<OptionButton>("%Mission");
+        mission.Select(1);
+        await Frames();
+        Expect(send.GetNode<Button>("%Send").Disabled && send.GetNode<Label>("%Reason").Text == UiContent.RejectionText(CommandRejection.CatapultsCannotRaid), "A raid with catapults is explained");
+        mission.Select(0);
+        await Frames();
+        send.GetNode<Button>("%Send").EmitSignal(BaseButton.SignalName.Pressed);
+        var woodcutter = rival.BuildingLevel(BuildingType.Woodcutter);
+        session.Tick(60);
+        await Frames();
+
+        Expect(session.State.Reports.Count == 1 && session.State.Reports[0].AttackerWon, "The attack is won");
+        Expect(rival.BuildingLevel(BuildingType.Woodcutter) == woodcutter - 1, "The catapult hits the chosen building");
+
+        var reports = game.GetNode<ReportsPanel>("%Reports");
+        game.ShowTab(GameScreen.SideTab.Reports);
+        await Frames();
+        var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
+        Expect(row.Text.StartsWith("Won: Attack on Rival"), $"The won attack is listed, got '{row.Text}'");
+        row.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        var dialog = game.GetNode<ReportDialog>("%ReportDialog");
+        Expect(dialog.GetNode<Label>("%Result").Text == "Victory", "The report opens as a victory");
+        Expect(dialog.GetNode<Label>("%Loot").Visible, "A won battle shows loot");
+        Expect(dialog.GetNode<Label>("%Damage").Text == "Catapults hit the Woodcutter: level 1 → 0", $"The report shows the damage, got '{dialog.GetNode<Label>("%Damage").Text}'");
+        await Shot("report-victory");
+        dialog.GetNode<Button>("%Close").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
     }
 
     private static int TrainPreviewMax(Valkaris.Core.Hosting.IGameSession session, UnitType unit) =>
@@ -482,6 +570,8 @@ public partial class UiTest : Control
         Expect(village.BuildingLevel(BuildingType.MainBuilding) == 10, "Main Building reaches max level");
         Expect(upgrade.Text == "Max level" && upgrade.Disabled && !reason.Visible, "Max level needs no reason text");
         await Shot("max-level");
+
+        await TestVictory(game, UpgradeTo);
 
         if (_shotsDir is not null && DisplayServer.GetName() != "headless")
         {
