@@ -45,6 +45,13 @@ public sealed class LocalGameSession : IGameSession
             CommandRejected?.Invoke(rejection);
     }
 
+    /// <summary>
+    /// Issues a command for another player in this process, such as an AI. It goes through the same rules.
+    /// Deliberately not on IGameSession, so the UI can never act as someone else.
+    /// </summary>
+    public CommandResult SendAs(int playerId, ICommand command) =>
+        IsPaused ? CommandResult.Rejected(CommandRejection.GamePaused) : _handler.Handle(playerId, command);
+
     public void Tick(double deltaSeconds)
     {
         if (IsPaused)

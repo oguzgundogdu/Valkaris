@@ -27,6 +27,7 @@ public partial class Main : Control
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
         DisplayServer.WindowSetMinSize(MinWindowSize);
+        GetTree().AutoAcceptQuit = false;
 
         try
         {
@@ -40,6 +41,19 @@ public partial class Main : Control
         }
 
         ShowStartScreen();
+    }
+
+    public override async void _Notification(int what)
+    {
+        if (what != NotificationWMCloseRequest)
+            return;
+
+        // Quitting with live scenes can abort inside Godot's shutdown (mutex lock failed), so free them first.
+        _screen?.QueueFree();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GetTree().Quit();
     }
 
     private void ShowStartScreen()
@@ -63,7 +77,7 @@ public partial class Main : Control
         var state = GameFactory.CreateMatch(seeded, slots, _data);
 
         var screen = GameScene.Instantiate<GameScreen>();
-        screen.Init(new LocalGameSession(state, _data, LocalPlayerId));
+        screen.Init(new LocalGameSession(state, _data, LocalPlayerId), devOptions.RivalAttackSeconds);
         screen.ExitRequested += ShowStartScreen;
         SwitchTo(screen);
     }

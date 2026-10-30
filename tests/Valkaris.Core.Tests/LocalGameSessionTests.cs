@@ -85,6 +85,24 @@ public class LocalGameSessionTests
     }
 
     [Fact]
+    public void SendAsActsForThatPlayerUnderTheSameRules()
+    {
+        Assert.True(_session.SendAs(2, new BuildCommand(2, BuildingType.Woodcutter)).Success);
+        Assert.Single(_session.State.Villages[2].BuildQueue);
+
+        Assert.Equal(CommandRejection.NotOwner, _session.SendAs(2, BuildWoodcutter).Rejection);
+        Assert.Empty(_rejections);
+    }
+
+    [Fact]
+    public void SendAsIsRejectedWhilePaused()
+    {
+        _session.SetPaused(true);
+
+        Assert.Equal(CommandRejection.GamePaused, _session.SendAs(2, new BuildCommand(2, BuildingType.Woodcutter)).Rejection);
+    }
+
+    [Fact]
     public void LocalSessionCanPause() => Assert.True(_session.CanPause);
 
     [Fact]

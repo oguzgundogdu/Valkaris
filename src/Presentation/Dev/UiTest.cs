@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using Valkaris.Core.Commands;
+using Valkaris.Core.Data;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
 using Valkaris.Core.Systems;
@@ -16,6 +17,8 @@ namespace Valkaris.Presentation.Dev;
 /// </summary>
 public partial class UiTest : Control
 {
+    private const double TestDuration = 3600;
+
     private readonly List<string> _failures = new();
     private string? _shotsDir;
     private Main _main = null!;
@@ -37,6 +40,13 @@ public partial class UiTest : Control
         foreach (var failure in _failures)
             GD.PrintErr($"[uitest] FAIL {failure}");
         GD.Print(_failures.Count == 0 ? "[uitest] PASS" : $"[uitest] {_failures.Count} failure(s)");
+
+        // Quitting with live scenes can abort inside Godot's shutdown, failing a passed run.
+        foreach (var child in GetChildren())
+            child.QueueFree();
+        await Frames();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
         GetTree().Quit(_failures.Count == 0 ? 0 : 1);
     }
 
@@ -401,6 +411,43 @@ public partial class UiTest : Control
         await Frames();
     }
 
+    /// <summary>The defender's view, through the same dev path as --dev-rival-attack.</summary>
+    private async Task TestBeingAttacked(GameData data)
+    {
+        var settings = new GameSettings(TestDuration, 1, MapSize.Small);
+        var slots = new[] { new PlayerSlot("You", Nation.Valdren, false), new PlayerSlot("Rival", Nation.Karuk, true) };
+        var session = new LocalGameSession(GameFactory.CreateMatch(settings, slots, data), data, 1);
+        var game = GD.Load<PackedScene>("res://scenes/Game.tscn").Instantiate<GameScreen>();
+        game.Init(session, devRivalAttackSeconds: 0.001);
+        AddChild(game);
+        await Frames();
+        session.Tick(0.01);
+        await Frames();
+
+        Expect(session.State.Movements.Count == 1, "The rival sends its garrison");
+        var incoming = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Label>("%Incoming");
+        Expect(incoming.Visible && incoming.Text.StartsWith("Attack arriving in"), $"The top bar warns of the attack, got '{incoming.Text}'");
+
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+        var row = game.GetNode<SendPanel>("%Send").GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
+        Expect(row.GetNode<Label>("Title").Text == "Attack from Rival", "The hostile movement is listed");
+        await Shot("incoming");
+
+        session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
+        await Frames();
+        Expect(!incoming.Visible, "The warning clears after the battle");
+
+        game.ShowTab(GameScreen.SideTab.Reports);
+        await Frames();
+        var report = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
+        Expect(report.Text.StartsWith("Won: Attack by Rival"), $"The defender's report says they won, got '{report.Text}'");
+        report.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(game.GetNode<ReportDialog>("%ReportDialog").GetNode<Label>("%Result").Text == "Victory", "A successful defence is a victory");
+        await Shot("report-defended");
+    }
+
     private static int TrainPreviewMax(Valkaris.Core.Hosting.IGameSession session, UnitType unit) =>
         TrainPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, 1, unit, 1).MaxCount;
 
@@ -468,6 +515,10 @@ public partial class UiTest : Control
 
         var release = DevOptions.Parse(arguments, isDebugBuild: false).Apply(settings);
         Expect(release == settings, "Dev arguments are ignored in release builds");
+
+        var rivalAttack = new[] { "--dev-rival-attack=90" };
+        Expect(DevOptions.Parse(rivalAttack, isDebugBuild: true).RivalAttackSeconds == 90, "The rival attack argument applies in debug builds");
+        Expect(DevOptions.Parse(rivalAttack, isDebugBuild: false).RivalAttackSeconds is null, "The rival attack argument is ignored in release builds");
 
         var invalid = DevOptions.Parse(new[] { "--dev-speed=abc", "--dev-duration=-5" }, isDebugBuild: true).Apply(settings);
         Expect(invalid == settings, "Invalid dev arguments are ignored");
@@ -581,7 +632,13 @@ public partial class UiTest : Control
             DisplayServer.WindowSetSize(new Vector2I(1024, 768));
             await Frames(10);
             await Shot("tall");
+            DisplayServer.WindowSetSize(new Vector2I(1280, 720));
+            await Frames(10);
         }
+
+        game.QueueFree();
+        await Frames();
+        await TestBeingAttacked(data);
     }
 
     private void SelectTile(BuildingType building) =>

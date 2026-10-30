@@ -25,13 +25,18 @@ public partial class GameScreen : Control
     private Overlay _leaveOverlay = null!;
     private Overlay _matchOverOverlay = null!;
     private bool _confirmingLeave;
+    private double? _devRivalAttackAt;
     private BuildingType _selected = BuildingType.MainBuilding;
 
     public IGameSession Session { get; private set; } = null!;
 
     public event Action? ExitRequested;
 
-    public void Init(IGameSession session) => Session = session;
+    public void Init(IGameSession session, double? devRivalAttackSeconds = null)
+    {
+        Session = session;
+        _devRivalAttackAt = devRivalAttackSeconds;
+    }
 
     public override void _Ready()
     {
@@ -76,6 +81,7 @@ public partial class GameScreen : Control
     public override void _Process(double delta)
     {
         Session.Tick(delta);
+        RunDevRivalAttack();
 
         var village = Session.State.Villages[Session.State.Players[Session.LocalPlayerId].CapitalVillageId];
         _resourceBar.Refresh(Session, village);
@@ -91,6 +97,18 @@ public partial class GameScreen : Control
     {
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.P })
             TogglePause();
+    }
+
+    /// <summary>Dev only: the idle rival sends its whole garrison, so being attacked can be tried before AI exists.</summary>
+    private void RunDevRivalAttack()
+    {
+        if (_devRivalAttackAt is not { } time || Session.State.ElapsedTime < time || Session is not LocalGameSession local)
+            return;
+
+        _devRivalAttackAt = null;
+        var rival = Session.State.Villages.Values.First(v => v.OwnerId != Session.LocalPlayerId);
+        var home = Session.State.Players[Session.LocalPlayerId].CapitalVillageId;
+        local.SendAs(rival.OwnerId, new SendTroopsCommand(rival.Id, home, MovementType.Attack, rival.Troops.ToDictionary(t => t.Key, t => t.Value)));
     }
 
     public enum SideTab
