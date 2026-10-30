@@ -1066,6 +1066,63 @@ public partial class UiTest : Control
         await TestCapitalTimeout(data);
         await TestWatchingAfterElimination(data);
         await TestMatchResults(data);
+        await TestLiveAi();
+    }
+
+    /// <summary>Real AI opponents through the real start screen, all the way to the results.</summary>
+    private async Task TestLiveAi()
+    {
+        foreach (var child in GetChildren().OfType<GameScreen>())
+            child.QueueFree();
+        await Frames();
+
+        // Earlier steps have finished with their own Main.
+        _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
+        AddChild(_main);
+        await Frames();
+
+        var start = Find<StartScreen>();
+        start.GetNode<OptionButton>("%Opponents").Select(2);
+        start.GetNode<OptionButton>("%Difficulty").Select(Array.IndexOf(Enum.GetValues<AiDifficulty>(), AiDifficulty.Hard));
+        start.GetNode<OptionButton>("%Speed").Select(start.GetNode<OptionButton>("%Speed").ItemCount - 1);
+        Press(start.GetNode<Button>("%Start"));
+        await Frames();
+
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+
+        var slowest = 0.0;
+        var watch = new System.Diagnostics.Stopwatch();
+        var mapShot = false;
+        while (!session.State.IsMatchOver)
+        {
+            // Long enough to hold a decision from every AI, so this is a worst case for one frame at every stage of a match.
+            watch.Restart();
+            session.Tick(session.Data.Ai.Difficulties[AiDifficulty.Hard].DecisionSeconds / session.State.Settings.SpeedMultiplier);
+            slowest = Math.Max(slowest, watch.Elapsed.TotalMilliseconds);
+            session.Tick(60);
+            await Frames(1);
+
+            if (!mapShot && session.State.ElapsedTime > session.State.Settings.MatchDurationSeconds * 0.8)
+            {
+                mapShot = true;
+                await Shot("live-ai-map");
+            }
+        }
+
+        await Frames();
+        GD.Print($"[uitest] slowest tick holding every AI's decision: {slowest:0.00} ms");
+        Expect(slowest < 16, $"AI thinking fits within a frame, slowest {slowest:0.00} ms");
+        Expect(session.State.Reports.Any(r => r.AttackerId != 1), "The opponents really played");
+        Expect(session.State.Players.Values.Where(p => p.IsAi).All(p => p.Difficulty == AiDifficulty.Hard), "The opponents are Hard");
+        var end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
+        Expect(end.Visible, "A live AI match reaches the results");
+        await Shot("live-ai-end");
+        Press(end.GetNode<Button>("%Back"));
+        await Frames();
+        Expect(Find<StartScreen>() is not null, "Back to start works after a live match");
     }
 
     /// <summary>Every number of opponents at every difficulty, through the real start screen.</summary>
