@@ -109,3 +109,50 @@ public sealed record CombatConfig
 
     public required int CatapultsPerLevelOfDamage { get; init; }
 }
+
+/// <summary>data/map.json</summary>
+public sealed record MapConfig
+{
+    public required IReadOnlyDictionary<MapSize, int> BarbarianCounts { get; init; }
+    public required int MinVillageSpacing { get; init; }
+
+    /// <summary>How far, in tiles, a player's start may shift from its quadrant position.</summary>
+    public required int StartJitter { get; init; }
+
+    /// <summary>Tiles this close to a player's start are forced to land.</summary>
+    public required int StartClearRadius { get; init; }
+
+    public required TerrainConfig Terrain { get; init; }
+    public required BarbarianConfig Barbarians { get; init; }
+    public required IReadOnlyList<string> PlayerVillageNames { get; init; }
+    public required IReadOnlyList<string> BarbarianVillageNames { get; init; }
+}
+
+/// <summary>Thresholds on noise values from 0 to 1.</summary>
+public sealed record TerrainConfig
+{
+    public required int NoiseCellSize { get; init; }
+    public required double WaterBelow { get; init; }
+    public required double HillsAbove { get; init; }
+    public required double ForestAbove { get; init; }
+}
+
+public sealed record BarbarianConfig
+{
+    /// <summary>Per resource, at game speed 1.</summary>
+    public required double ResourceRegenPerSecond { get; init; }
+
+    /// <summary>Seconds per troop, at game speed 1.</summary>
+    public required double TroopRegenSeconds { get; init; }
+
+    public required IReadOnlyList<BarbarianTierConfig> Tiers { get; init; }
+}
+
+public sealed record BarbarianTierConfig
+{
+    public required string Name { get; init; }
+    public required int Weight { get; init; }
+    public required IReadOnlyDictionary<UnitType, int> Garrison { get; init; }
+    public required Resources Resources { get; init; }
+    public required IReadOnlyDictionary<BuildingType, int> Buildings { get; init; }
+}

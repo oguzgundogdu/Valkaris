@@ -170,6 +170,66 @@ public class GameDataValidationTests
     public void InvalidCombatValue(string field, double value) =>
         AssertCombatInvalid(r => r[field] = value, field);
 
+    private static void AssertMapInvalid(Action<JsonNode> mutate, string expectedField) =>
+        AssertInvalid(GameData.MapFile, mutate, expectedField);
+
+    [Fact]
+    public void MissingBarbarianCount() =>
+        AssertMapInvalid(r => r["barbarianCounts"]!.AsObject().Remove("Medium"), "barbarianCounts.Medium");
+
+    [Fact]
+    public void NegativeBarbarianCount() =>
+        AssertMapInvalid(r => r["barbarianCounts"]!["Small"] = -1, "barbarianCounts.Small");
+
+    [Theory]
+    [InlineData("minVillageSpacing", 0)]
+    [InlineData("startJitter", -1)]
+    [InlineData("startClearRadius", -1)]
+    public void InvalidMapValue(string field, int value) =>
+        AssertMapInvalid(r => r[field] = value, field);
+
+    [Theory]
+    [InlineData("noiseCellSize", 0)]
+    [InlineData("waterBelow", 1.5)]
+    [InlineData("hillsAbove", 0.1)]
+    [InlineData("forestAbove", -0.1)]
+    public void InvalidTerrainValue(string field, double value) =>
+        AssertMapInvalid(r => r["terrain"]![field] = value, $"terrain.{field}");
+
+    [Theory]
+    [InlineData("resourceRegenPerSecond")]
+    [InlineData("troopRegenSeconds")]
+    public void NonPositiveRegenRate(string field) =>
+        AssertMapInvalid(r => r["barbarians"]![field] = 0, $"barbarians.{field}");
+
+    [Fact]
+    public void NoBarbarianTiers() =>
+        AssertMapInvalid(r => r["barbarians"]!["tiers"] = new JsonArray(), "barbarians.tiers");
+
+    [Fact]
+    public void BarbarianTierWeightBelowOne() =>
+        AssertMapInvalid(r => r["barbarians"]!["tiers"]![0]!["weight"] = 0, "tiers[0].weight");
+
+    [Fact]
+    public void NegativeBarbarianGarrison() =>
+        AssertMapInvalid(r => r["barbarians"]!["tiers"]![0]!["garrison"]!["Spearman"] = -1, "tiers[0].garrison");
+
+    [Fact]
+    public void NegativeBarbarianResources() =>
+        AssertMapInvalid(r => r["barbarians"]!["tiers"]![0]!["resources"]!["wood"] = -1, "tiers[0].resources");
+
+    [Fact]
+    public void BarbarianBuildingAboveMaxLevel() =>
+        AssertMapInvalid(r => r["barbarians"]!["tiers"]![0]!["buildings"]!["Wall"] = 99, "tiers[0].buildings.Wall");
+
+    [Fact]
+    public void TooFewPlayerVillageNames() =>
+        AssertMapInvalid(r => r["playerVillageNames"] = new JsonArray("One"), "playerVillageNames");
+
+    [Fact]
+    public void TooFewBarbarianVillageNames() =>
+        AssertMapInvalid(r => r["barbarianVillageNames"] = new JsonArray("One"), "barbarianVillageNames");
+
     [Fact]
     public void AllProblemsAreReportedTogether()
     {

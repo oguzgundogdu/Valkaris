@@ -20,7 +20,7 @@ internal static class SnapshotAssert
 public class SnapshotTests
 {
     // Computed from other state, so deliberately absent from snapshots.
-    private static readonly HashSet<string> DerivedProperties = new() { $"{nameof(GameState)}.{nameof(GameState.IsMatchOver)}" };
+    private static readonly HashSet<string> DerivedProperties = new() { $"{nameof(GameState)}.{nameof(GameState.IsMatchOver)}", $"{nameof(Village)}.{nameof(Village.IsBarbarian)}" };
 
     private static bool IsRecord(Type type) =>
         type.GetProperty("EqualityContract", BindingFlags.NonPublic | BindingFlags.Instance) is not null;
@@ -47,6 +47,10 @@ public class SnapshotTests
         village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 2, 100.25, 200.5));
         village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 3, 200.5, 300.75));
         village.AddTroops(UnitType.Cavalry, 7);
+        village.Name = "Brennhold";
+        village.BarbarianTier = 1;
+        village.NextTroopRegenTime = 77.5;
+        state.Map.Tiles[5].Terrain = Terrain.Water;
         village.EnqueueTraining(new TrainingQueueItem(UnitType.Swordsman, 5, 100, 250));
 
         var troops = new Dictionary<UnitType, int> { [UnitType.Cavalry] = 3, [UnitType.Catapult] = 1 };
@@ -88,6 +92,10 @@ public class SnapshotTests
         Assert.Equal(original.Villages[1].BuildQueue, village.BuildQueue);
         Assert.Equal(original.Villages[1].TroopCount(UnitType.Cavalry), village.TroopCount(UnitType.Cavalry));
         Assert.Equal(original.Villages[1].TrainingQueue, village.TrainingQueue);
+        Assert.Equal("Brennhold", village.Name);
+        Assert.Equal(1, village.BarbarianTier);
+        Assert.Equal(77.5, village.NextTroopRegenTime);
+        Assert.Equal(Terrain.Water, restored.Map.Tiles[5].Terrain);
         Assert.Equal(2, restored.Movements.Count);
         Assert.Equal(BuildingType.Wall, restored.Movements[0].CatapultTarget);
         Assert.Equal(3, restored.Movements[1].Troops[UnitType.Cavalry]);

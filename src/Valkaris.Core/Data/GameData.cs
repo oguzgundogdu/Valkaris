@@ -22,6 +22,7 @@ public sealed class GameData
     public const string BuildingsFile = "buildings.json";
     public const string UnitsFile = "units.json";
     public const string CombatFile = "combat.json";
+    public const string MapFile = "map.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -32,18 +33,20 @@ public sealed class GameData
         Converters = { new JsonStringEnumConverter(allowIntegerValues: false) },
     };
 
-    internal GameData(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat)
+    internal GameData(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map)
     {
         Game = game;
         Buildings = buildings;
         Units = units;
         Combat = combat;
+        Map = map;
     }
 
     public GameConfig Game { get; }
     public BuildingsConfig Buildings { get; }
     public UnitsConfig Units { get; }
     public CombatConfig Combat { get; }
+    public MapConfig Map { get; }
 
     public static GameData Load(IDataSource source)
     {
@@ -51,12 +54,13 @@ public sealed class GameData
         var buildings = Parse<BuildingsConfig>(source, BuildingsFile);
         var units = Parse<UnitsConfig>(source, UnitsFile);
         var combat = Parse<CombatConfig>(source, CombatFile);
+        var map = Parse<MapConfig>(source, MapFile);
 
-        var errors = GameDataValidator.Validate(game, buildings, units, combat);
+        var errors = GameDataValidator.Validate(game, buildings, units, combat, map);
         if (errors.Count > 0)
             throw new GameDataException("Invalid game data:\n" + string.Join("\n", errors));
 
-        return new GameData(game, buildings, units, combat);
+        return new GameData(game, buildings, units, combat, map);
     }
 
     private static T Parse<T>(IDataSource source, string fileName) where T : class

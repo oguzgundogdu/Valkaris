@@ -5,13 +5,14 @@ namespace Valkaris.Core.Data;
 /// <summary>Checks values that parse correctly but would break the game. Reports every problem at once.</summary>
 internal static class GameDataValidator
 {
-    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat)
+    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map)
     {
         var errors = new List<string>();
         ValidateBuildings(buildings, errors);
         ValidateGame(game, buildings, errors);
         ValidateUnits(units, buildings, errors);
         ValidateCombat(combat, errors);
+        ValidateMap(map, game, buildings, errors);
         return errors;
     }
 
@@ -202,5 +203,70 @@ internal static class GameDataValidator
             Error("protectedResourceShare", "must be between 0 and 1.");
         if (config.CatapultsPerLevelOfDamage < 1)
             Error("catapultsPerLevelOfDamage", "must be at least 1.");
+    }
+
+    private static void ValidateMap(MapConfig config, GameConfig game, BuildingsConfig buildings, List<string> errors)
+    {
+        void Error(string field, string problem) => errors.Add($"{GameData.MapFile}: {field} {problem}");
+
+        foreach (var size in Enum.GetValues<MapSize>())
+        {
+            if (!config.BarbarianCounts.TryGetValue(size, out var count))
+                Error($"barbarianCounts.{size}", "is missing.");
+            else if (count < 0)
+                Error($"barbarianCounts.{size}", "must not be negative.");
+        }
+
+        if (config.MinVillageSpacing < 1)
+            Error("minVillageSpacing", "must be at least 1.");
+        if (config.StartJitter < 0)
+            Error("startJitter", "must not be negative.");
+        if (config.StartClearRadius < 0)
+            Error("startClearRadius", "must not be negative.");
+
+        var terrain = config.Terrain;
+        if (terrain.NoiseCellSize < 1)
+            Error("terrain.noiseCellSize", "must be at least 1.");
+        if (terrain.WaterBelow is < 0 or > 1)
+            Error("terrain.waterBelow", "must be between 0 and 1.");
+        if (terrain.HillsAbove is < 0 or > 1 || terrain.HillsAbove <= terrain.WaterBelow)
+            Error("terrain.hillsAbove", "must be between 0 and 1 and above waterBelow.");
+        if (terrain.ForestAbove is < 0 or > 1)
+            Error("terrain.forestAbove", "must be between 0 and 1.");
+
+        var barbarians = config.Barbarians;
+        if (barbarians.ResourceRegenPerSecond <= 0)
+            Error("barbarians.resourceRegenPerSecond", "must be positive.");
+        if (barbarians.TroopRegenSeconds <= 0)
+            Error("barbarians.troopRegenSeconds", "must be positive.");
+        if (barbarians.Tiers.Count == 0)
+            Error("barbarians.tiers", "must not be empty.");
+
+        for (var i = 0; i < barbarians.Tiers.Count; i++)
+        {
+            var tier = barbarians.Tiers[i];
+            var path = $"barbarians.tiers[{i}]";
+
+            if (tier.Name.Length == 0)
+                Error($"{path}.name", "must not be empty.");
+            if (tier.Weight < 1)
+                Error($"{path}.weight", "must be at least 1.");
+            if (tier.Garrison.Values.Any(count => count < 0))
+                Error($"{path}.garrison", "must not contain negative counts.");
+            if (tier.Resources.Wood < 0 || tier.Resources.Stone < 0 || tier.Resources.Food < 0)
+                Error($"{path}.resources", "must not contain negative amounts.");
+
+            foreach (var (type, level) in tier.Buildings)
+            {
+                if (level < 0 || (buildings.Buildings.TryGetValue(type, out var definition) && level > definition.MaxLevel))
+                    Error($"{path}.buildings.{type}", "is outside the building's levels.");
+            }
+        }
+
+        if (config.PlayerVillageNames.Count < game.MaxPlayers)
+            Error("playerVillageNames", $"must have at least {game.MaxPlayers} names.");
+        var mostBarbarians = config.BarbarianCounts.Count == 0 ? 0 : config.BarbarianCounts.Values.Max();
+        if (config.BarbarianVillageNames.Count < mostBarbarians)
+            Error("barbarianVillageNames", $"must have at least {mostBarbarians} names.");
     }
 }

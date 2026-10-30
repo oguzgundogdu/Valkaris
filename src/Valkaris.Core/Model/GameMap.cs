@@ -3,6 +3,7 @@ namespace Valkaris.Core.Model;
 public sealed class MapTile
 {
     public int? VillageId { get; internal set; }
+    public Terrain Terrain { get; internal set; }
 }
 
 public sealed class GameMap

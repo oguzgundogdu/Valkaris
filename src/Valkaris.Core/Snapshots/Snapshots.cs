@@ -33,8 +33,11 @@ public sealed record VillageSnapshot(
     IReadOnlyDictionary<BuildingType, int> Buildings,
     IReadOnlyList<BuildQueueItem> BuildQueue,
     IReadOnlyDictionary<UnitType, int> Troops,
-    IReadOnlyList<TrainingQueueItem> TrainingQueue);
+    IReadOnlyList<TrainingQueueItem> TrainingQueue,
+    string Name,
+    int? BarbarianTier,
+    double? NextTroopRegenTime);
 
 public sealed record GameMapSnapshot(int Width, int Height, IReadOnlyList<MapTileSnapshot> Tiles);
 
-public sealed record MapTileSnapshot(int? VillageId);
+public sealed record MapTileSnapshot(int? VillageId, Terrain Terrain);

@@ -47,6 +47,14 @@ public enum Nation
     Solari,
 }
 
+public enum Terrain
+{
+    Grass,
+    Forest,
+    Hills,
+    Water,
+}
+
 public enum MapSize
 {
     Small,

@@ -27,7 +27,7 @@ public static class SnapshotMapper
         new GameMapSnapshot(
             state.Map.Width,
             state.Map.Height,
-            state.Map.Tiles.Select(t => new MapTileSnapshot(t.VillageId)).ToList()),
+            state.Map.Tiles.Select(t => new MapTileSnapshot(t.VillageId, t.Terrain)).ToList()),
         state.Movements.ToList(),
         state.Reports.ToList(),
         state.NextMovementId,
@@ -50,7 +50,10 @@ public static class SnapshotMapper
         village.Buildings.OrderBy(b => b.Key).ToDictionary(b => b.Key, b => b.Value),
         village.BuildQueue.ToList(),
         village.Troops.OrderBy(t => t.Key).ToDictionary(t => t.Key, t => t.Value),
-        village.TrainingQueue.ToList());
+        village.TrainingQueue.ToList(),
+        village.Name,
+        village.BarbarianTier,
+        village.NextTroopRegenTime);
 
     public static GameState Restore(GameStateSnapshot snapshot)
     {
@@ -60,7 +63,10 @@ public static class SnapshotMapper
                 $"Snapshot has {snapshot.Map.Tiles.Count} tiles for a {map.Width}x{map.Height} map.",
                 nameof(snapshot));
         for (var i = 0; i < map.Tiles.Count; i++)
+        {
             map.Tiles[i].VillageId = snapshot.Map.Tiles[i].VillageId;
+            map.Tiles[i].Terrain = snapshot.Map.Tiles[i].Terrain;
+        }
 
         var state = new GameState(snapshot.Settings, map)
         {
@@ -86,7 +92,13 @@ public static class SnapshotMapper
 
         foreach (var v in snapshot.Villages)
         {
-            var village = new Village(v.Id, v.OwnerId, v.Position) { Resources = v.Resources };
+            var village = new Village(v.Id, v.OwnerId, v.Position)
+            {
+                Resources = v.Resources,
+                Name = v.Name,
+                BarbarianTier = v.BarbarianTier,
+                NextTroopRegenTime = v.NextTroopRegenTime,
+            };
             foreach (var (type, level) in v.Buildings)
                 village.SetBuildingLevel(type, level);
             foreach (var item in v.BuildQueue)

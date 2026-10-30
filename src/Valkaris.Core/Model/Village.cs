@@ -4,6 +4,8 @@ namespace Valkaris.Core.Model;
 
 public sealed class Village
 {
+    public const int BarbarianOwnerId = -1;
+
     private readonly Dictionary<BuildingType, int> _buildings = new();
     private readonly List<BuildQueueItem> _buildQueue = new();
     private readonly Dictionary<UnitType, int> _troops = new();
@@ -21,6 +23,7 @@ public sealed class Village
     }
 
     public int Id { get; }
+    public string Name { get; internal set; } = "";
     public int OwnerId { get; internal set; }
     public TileCoord Position { get; }
     public Resources Resources { get; internal set; }
@@ -28,6 +31,14 @@ public sealed class Village
     public IReadOnlyList<BuildQueueItem> BuildQueue { get; }
     public IReadOnlyDictionary<UnitType, int> Troops { get; }
     public IReadOnlyList<TrainingQueueItem> TrainingQueue { get; }
+
+    /// <summary>Index into the barbarian tiers in data. Null for player villages.</summary>
+    public int? BarbarianTier { get; internal set; }
+
+    /// <summary>When a barbarian garrison below its cap regains its next troop.</summary>
+    public double? NextTroopRegenTime { get; internal set; }
+
+    public bool IsBarbarian => OwnerId == BarbarianOwnerId;
 
     public int BuildingLevel(BuildingType type) => _buildings.GetValueOrDefault(type);
 
