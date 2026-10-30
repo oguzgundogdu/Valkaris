@@ -23,6 +23,7 @@ public enum CommandRejection
     MaxLevelReached,
     MainBuildingLevelTooLow,
     InsufficientResources,
+    GamePaused,
 }
 
 public sealed record CommandResult(CommandRejection? Rejection)
