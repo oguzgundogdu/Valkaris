@@ -103,7 +103,7 @@ public sealed class Simulation
         _state.ElapsedTime = time;
     }
 
-    private GameEvent CompleteMovement(Movement movement)
+    private GameEvent? CompleteMovement(Movement movement)
     {
         _state.RemoveMovement(movement);
 
@@ -112,13 +112,29 @@ public sealed class Simulation
             case MovementType.Return:
                 return CompleteReturn(movement);
             case MovementType.Reinforce:
-                AddTroops(_state.Villages[movement.ToVillageId!.Value], movement.Troops);
-                return new ReinforcementsArrived(movement.ArrivalTime, movement.ToVillageId!.Value);
+                return CompleteReinforce(movement);
             case MovementType.Settle:
                 return CompleteSettle(movement);
             default:
-                return ResolveBattle(movement);
+                // The attackers' side may have taken the village while they were on the way.
+                return _state.Villages[movement.ToVillageId!.Value].OwnerId == movement.OwnerId
+                    ? CompleteReinforce(movement)
+                    : ResolveBattle(movement);
         }
+    }
+
+    /// <summary>Reinforcements turn back if the village changed hands while they were on the way.</summary>
+    private GameEvent? CompleteReinforce(Movement movement)
+    {
+        var target = _state.Villages[movement.ToVillageId!.Value];
+        if (target.OwnerId != movement.OwnerId)
+        {
+            StartReturn(movement.OwnerId, target.Id, null, movement.FromVillageId, movement.Troops, Resources.Zero, movement.ArrivalTime);
+            return null;
+        }
+
+        AddTroops(target, movement.Troops);
+        return new ReinforcementsArrived(movement.ArrivalTime, target.Id);
     }
 
     private GameEvent CompleteSettle(Movement movement)
@@ -321,9 +337,15 @@ public sealed class Simulation
         return standing.Count == 0 ? null : standing[_state.NextRandom(standing.Count)];
     }
 
-    private TroopsReturned CompleteReturn(Movement movement)
+    private TroopsReturned? CompleteReturn(Movement movement)
     {
         var home = _state.Villages[movement.ToVillageId!.Value];
+        if (home.OwnerId != movement.OwnerId)
+        {
+            StartReturn(movement.OwnerId, home.Id, null, home.Id, movement.Troops, movement.Loot, movement.ArrivalTime);
+            return null;
+        }
+
         AddTroops(home, movement.Troops);
         home.Resources = (home.Resources + movement.Loot).CappedAt(BuildingRules.VillageCapacity(_data, home));
         return new TroopsReturned(movement.ArrivalTime, home.Id, movement.Loot);
@@ -346,13 +368,14 @@ public sealed class Simulation
         double now)
     {
         var from = fromTile ?? _state.Villages[fromVillageId].Position;
-        var duration = UnitRules.TravelSeconds(_data, _state, from, _state.Villages[homeVillageId].Position, troops);
+        var home = HomeFor(ownerId, homeVillageId);
+        var duration = UnitRules.TravelSeconds(_data, _state, from, home.Position, troops);
 
         _state.AddMovement(new Movement(
             _state.NextMovementId++,
             ownerId,
             fromVillageId,
-            homeVillageId,
+            home.Id,
             MovementType.Return,
             troops,
             loot,
@@ -361,6 +384,19 @@ public sealed class Simulation
             null,
             null,
             fromTile));
+    }
+
+    /// <summary>The village itself if the player still owns it, otherwise their nearest one. Lowest id on a tie.</summary>
+    private Village HomeFor(int ownerId, int villageId)
+    {
+        var wanted = _state.Villages[villageId];
+        return wanted.OwnerId == ownerId
+            ? wanted
+            : _state.Villages.Values
+                .Where(v => v.OwnerId == ownerId)
+                .OrderBy(v => UnitRules.Distance(v.Position, wanted.Position))
+                .ThenBy(v => v.Id)
+                .First();
     }
 
     private static TroopsTrained CompleteTraining(Village village)
