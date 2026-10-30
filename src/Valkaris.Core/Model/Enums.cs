@@ -72,3 +72,10 @@ public enum MatchEndReason
     LastPlayerStanding,
     TimeUp,
 }
+
+public enum AiDifficulty
+{
+    Easy,
+    Normal,
+    Hard,
+}

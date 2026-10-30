@@ -5,7 +5,7 @@ namespace Valkaris.Core.Data;
 /// <summary>Checks values that parse correctly but would break the game. Reports every problem at once.</summary>
 internal static class GameDataValidator
 {
-    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map, VillagesConfig villages, ScoringConfig scoring)
+    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map, VillagesConfig villages, ScoringConfig scoring, AiConfig ai)
     {
         var errors = new List<string>();
         ValidateBuildings(buildings, errors);
@@ -15,6 +15,7 @@ internal static class GameDataValidator
         ValidateMap(map, game, buildings, errors);
         ValidateVillages(villages, buildings, errors);
         ValidateScoring(scoring, errors);
+        ValidateAi(ai, game, buildings, map, errors);
         return errors;
     }
 
@@ -360,6 +361,74 @@ internal static class GameDataValidator
                 Error($"populationPerLevel.{type}", "is missing.");
             else if (weight < 0)
                 Error($"populationPerLevel.{type}", "must not be negative.");
+        }
+    }
+
+    private static void ValidateAi(AiConfig config, GameConfig game, BuildingsConfig buildings, MapConfig map, List<string> errors)
+    {
+        void Error(string field, string problem) => errors.Add($"{GameData.AiFile}: {field} {problem}");
+
+        if (config.Names.Count < game.MaxPlayers - 1 || config.Names.Any(name => name.Length == 0))
+            Error("names", $"must have at least {game.MaxPlayers - 1} names.");
+        if (config.WarehouseFullShare is <= 0 or > 1)
+            Error("warehouseFullShare", "must be above 0 and at most 1.");
+        if (config.BuildOrder.Count == 0)
+            Error("buildOrder", "must not be empty.");
+
+        for (var i = 0; i < config.BuildOrder.Count; i++)
+        {
+            var step = config.BuildOrder[i];
+            if (step.Level < 1 || (buildings.Buildings.TryGetValue(step.Building, out var definition) && step.Level > definition.MaxLevel))
+                Error($"buildOrder[{i}].level", "is outside the building's levels.");
+        }
+
+        var beliefs = config.Beliefs;
+        foreach (var tier in map.Barbarians.Tiers)
+        {
+            if (!beliefs.BarbarianPowerByTier.TryGetValue(tier.Name, out var power) || power <= 0)
+                Error($"beliefs.barbarianPowerByTier.{tier.Name}", "must be positive.");
+            if (!beliefs.BarbarianLootByTier.TryGetValue(tier.Name, out var loot) || loot < 0)
+                Error($"beliefs.barbarianLootByTier.{tier.Name}", "must not be negative.");
+        }
+
+        if (beliefs.PlayerPowerAtStart < 0)
+            Error("beliefs.playerPowerAtStart", "must not be negative.");
+        if (beliefs.PlayerPowerPerMinute < 0)
+            Error("beliefs.playerPowerPerMinute", "must not be negative.");
+        if (beliefs.GrowthAfterSightingPerMinute < 0)
+            Error("beliefs.growthAfterSightingPerMinute", "must not be negative.");
+        if (beliefs.BarbarianLootRecoveryPerMinute < 0)
+            Error("beliefs.barbarianLootRecoveryPerMinute", "must not be negative.");
+
+        foreach (var level in Enum.GetValues<AiDifficulty>())
+        {
+            if (!config.Difficulties.TryGetValue(level, out var profile))
+            {
+                Error($"difficulties.{level}", "is missing.");
+                continue;
+            }
+
+            var path = $"difficulties.{level}";
+            if (profile.DecisionSeconds <= 0)
+                Error($"{path}.decisionSeconds", "must be positive.");
+            if (profile.RaidMargin < 1)
+                Error($"{path}.raidMargin", "must be at least 1.");
+            if (profile.AttackMargin < 1)
+                Error($"{path}.attackMargin", "must be at least 1.");
+            if (profile.LordMargin < 1)
+                Error($"{path}.lordMargin", "must be at least 1.");
+            if (profile.AggressionDelaySeconds < 0)
+                Error($"{path}.aggressionDelaySeconds", "must not be negative.");
+            if (profile.GarrisonShare is < 0 or > 1)
+                Error($"{path}.garrisonShare", "must be between 0 and 1.");
+            if (profile.MaxRaidsPerVillage < 0)
+                Error($"{path}.maxRaidsPerVillage", "must not be negative.");
+            if (profile.RaidCooldownSeconds < 0)
+                Error($"{path}.raidCooldownSeconds", "must not be negative.");
+            if (profile.WantedVillages < 1)
+                Error($"{path}.wantedVillages", "must be at least 1.");
+            if (profile.ExpansionDelaySeconds < 0)
+                Error($"{path}.expansionDelaySeconds", "must not be negative.");
         }
     }
 }

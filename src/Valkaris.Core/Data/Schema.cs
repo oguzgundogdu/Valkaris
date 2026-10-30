@@ -224,3 +224,59 @@ public sealed record ScoringConfig
     public required double CaptureWeight { get; init; }
     public required IReadOnlyDictionary<BuildingType, int> PopulationPerLevel { get; init; }
 }
+
+/// <summary>data/ai.json</summary>
+public sealed record AiConfig
+{
+    /// <summary>Names for AI opponents, in seat order.</summary>
+    public required IReadOnlyList<string> Names { get; init; }
+
+    /// <summary>Stock above this share of capacity makes the Warehouse the next build.</summary>
+    public required double WarehouseFullShare { get; init; }
+
+    public required IReadOnlyList<AiBuildStep> BuildOrder { get; init; }
+    public required AiBeliefs Beliefs { get; init; }
+    public required IReadOnlyDictionary<AiDifficulty, AiProfile> Difficulties { get; init; }
+}
+
+public sealed record AiBuildStep
+{
+    public required BuildingType Building { get; init; }
+    public required int Level { get; init; }
+}
+
+/// <summary>What the AI assumes before its reports say otherwise. Separate from the real garrisons in map.json, so it can be wrong.</summary>
+public sealed record AiBeliefs
+{
+    public required IReadOnlyDictionary<string, double> BarbarianPowerByTier { get; init; }
+    public required IReadOnlyDictionary<string, double> BarbarianLootByTier { get; init; }
+    public required double PlayerPowerAtStart { get; init; }
+    public required double PlayerPowerPerMinute { get; init; }
+
+    /// <summary>How fast a sighted garrison is assumed to grow, as a share per minute.</summary>
+    public required double GrowthAfterSightingPerMinute { get; init; }
+
+    public required double BarbarianLootRecoveryPerMinute { get; init; }
+}
+
+/// <summary>One difficulty level. The rules are the same for all: only these habits differ.</summary>
+public sealed record AiProfile
+{
+    /// <summary>Seconds at game speed 1 between decisions.</summary>
+    public required double DecisionSeconds { get; init; }
+
+    public required double RaidMargin { get; init; }
+    public required double AttackMargin { get; init; }
+    public required double LordMargin { get; init; }
+    public required double AggressionDelaySeconds { get; init; }
+
+    /// <summary>Share of each village's troops kept home as its garrison.</summary>
+    public required double GarrisonShare { get; init; }
+
+    public required int MaxRaidsPerVillage { get; init; }
+    public required double RaidCooldownSeconds { get; init; }
+    public required int WantedVillages { get; init; }
+    public required double ExpansionDelaySeconds { get; init; }
+    public required bool Reinforces { get; init; }
+    public required bool SavesForGoals { get; init; }
+}

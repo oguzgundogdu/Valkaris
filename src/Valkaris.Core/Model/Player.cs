@@ -19,6 +19,9 @@ public sealed class Player
     public bool IsAi { get; }
     public bool IsEliminated { get; internal set; }
 
+    /// <summary>Null for human players.</summary>
+    public AiDifficulty? Difficulty { get; internal set; }
+
     /// <summary>Null while the player has lost their capital and has not chosen a new one.</summary>
     public int? CapitalVillageId { get; internal set; }
 

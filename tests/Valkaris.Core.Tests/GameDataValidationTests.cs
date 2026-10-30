@@ -236,6 +236,53 @@ public class GameDataValidationTests
     private static void AssertScoringInvalid(Action<JsonNode> mutate, string expectedField) =>
         AssertInvalid(GameData.ScoringFile, mutate, expectedField);
 
+    private static void AssertAiInvalid(Action<JsonNode> mutate, string expectedField) =>
+        AssertInvalid(GameData.AiFile, mutate, expectedField);
+
+    [Fact]
+    public void TooFewAiNames() => AssertAiInvalid(r => r["names"] = new JsonArray("One"), "names");
+
+    [Fact]
+    public void WarehouseFullShareOutOfRange() => AssertAiInvalid(r => r["warehouseFullShare"] = 1.5, "warehouseFullShare");
+
+    [Fact]
+    public void EmptyBuildOrder() => AssertAiInvalid(r => r["buildOrder"] = new JsonArray(), "buildOrder");
+
+    [Fact]
+    public void BuildOrderAboveMaxLevel() => AssertAiInvalid(r => r["buildOrder"]![0]!["level"] = 99, "buildOrder[0].level");
+
+    [Fact]
+    public void MissingBarbarianPowerBelief() =>
+        AssertAiInvalid(r => r["beliefs"]!["barbarianPowerByTier"]!.AsObject().Remove("Camp"), "barbarianPowerByTier.Camp");
+
+    [Fact]
+    public void MissingBarbarianLootBelief() =>
+        AssertAiInvalid(r => r["beliefs"]!["barbarianLootByTier"]!.AsObject().Remove("Camp"), "barbarianLootByTier.Camp");
+
+    [Theory]
+    [InlineData("playerPowerAtStart")]
+    [InlineData("playerPowerPerMinute")]
+    [InlineData("growthAfterSightingPerMinute")]
+    [InlineData("barbarianLootRecoveryPerMinute")]
+    public void NegativeBelief(string field) => AssertAiInvalid(r => r["beliefs"]![field] = -1, $"beliefs.{field}");
+
+    [Fact]
+    public void MissingDifficulty() => AssertAiInvalid(r => r["difficulties"]!.AsObject().Remove("Hard"), "difficulties.Hard");
+
+    [Theory]
+    [InlineData("decisionSeconds", 0)]
+    [InlineData("raidMargin", 0.5)]
+    [InlineData("attackMargin", 0.5)]
+    [InlineData("lordMargin", 0.5)]
+    [InlineData("aggressionDelaySeconds", -1)]
+    [InlineData("garrisonShare", 1.5)]
+    [InlineData("maxRaidsPerVillage", -1)]
+    [InlineData("raidCooldownSeconds", -1)]
+    [InlineData("wantedVillages", 0)]
+    [InlineData("expansionDelaySeconds", -1)]
+    public void InvalidProfileValue(string field, double value) =>
+        AssertAiInvalid(r => r["difficulties"]!["Easy"]![field] = field is "maxRaidsPerVillage" or "wantedVillages" ? (int)value : value, $"difficulties.Easy.{field}");
+
     [Fact]
     public void ShortCarrierTable() =>
         AssertBuildingsInvalid(r => r["carriersByMarketplaceLevel"] = new JsonArray(0, 2), "carriersByMarketplaceLevel");

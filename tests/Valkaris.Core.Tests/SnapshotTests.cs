@@ -42,6 +42,7 @@ public class SnapshotTests
         state.Players[1].CapitalVillageId = null;
         state.Players[1].CapitalChoiceDeadline = 300.5;
         state.Players[1].RecordCapture(7);
+        state.Players[2].Difficulty = AiDifficulty.Hard;
         state.Outcome = new MatchOutcome(MatchEndReason.TimeUp, 123.456, new[] { 1, 3 }, new[] { new PlayerScore(1, 2, 30, 1, 155.5) });
 
         var village = state.Villages[1];
@@ -109,6 +110,8 @@ public class SnapshotTests
         Assert.Null(restored.Players[1].CapitalVillageId);
         Assert.Equal(300.5, restored.Players[1].CapitalChoiceDeadline);
         Assert.Equal(new[] { 7 }, restored.Players[1].CapturedVillageIds);
+        Assert.Equal(AiDifficulty.Hard, restored.Players[2].Difficulty);
+        Assert.Null(restored.Players[1].Difficulty);
         Assert.Equal(new[] { 1, 3 }, restored.Outcome!.WinnerIds);
         Assert.Equal(155.5, restored.Outcome.Scores[0].Score);
         Assert.Equal(62.5, village.Loyalty);

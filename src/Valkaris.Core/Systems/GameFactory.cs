@@ -3,7 +3,7 @@ using Valkaris.Core.Model;
 
 namespace Valkaris.Core.Systems;
 
-public sealed record PlayerSlot(string Name, Nation Nation, bool IsAi);
+public sealed record PlayerSlot(string Name, Nation Nation, bool IsAi, AiDifficulty? Difficulty = null);
 
 public static class GameFactory
 {
@@ -28,7 +28,7 @@ public static class GameFactory
         {
             var id = i + 1;
             var slot = slots[i];
-            var player = new Player(id, slot.Name, slot.Nation, slot.IsAi) { CapitalVillageId = id };
+            var player = new Player(id, slot.Name, slot.Nation, slot.IsAi) { CapitalVillageId = id, Difficulty = slot.Difficulty };
             state.AddPlayer(player);
 
             var village = CreateStartingVillage(state, id, player.Id, MapGenerator.PlayerStart(state, data, i), data);

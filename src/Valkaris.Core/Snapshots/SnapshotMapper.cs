@@ -43,7 +43,8 @@ public static class SnapshotMapper
         player.IsEliminated,
         player.CapitalVillageId,
         player.CapitalChoiceDeadline,
-        player.CapturedVillageIds.ToList());
+        player.CapturedVillageIds.ToList(),
+        player.Difficulty);
 
     private static VillageSnapshot ToSnapshot(Village village) => new(
         village.Id,
@@ -93,6 +94,7 @@ public static class SnapshotMapper
                 IsEliminated = p.IsEliminated,
                 CapitalVillageId = p.CapitalVillageId,
                 CapitalChoiceDeadline = p.CapitalChoiceDeadline,
+                Difficulty = p.Difficulty,
             };
             foreach (var villageId in p.CapturedVillageIds)
                 player.RecordCapture(villageId);

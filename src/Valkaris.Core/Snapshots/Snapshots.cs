@@ -26,7 +26,8 @@ public sealed record PlayerSnapshot(
     bool IsEliminated,
     int? CapitalVillageId,
     double? CapitalChoiceDeadline,
-    IReadOnlyList<int> CapturedVillageIds);
+    IReadOnlyList<int> CapturedVillageIds,
+    AiDifficulty? Difficulty);
 
 public sealed record VillageSnapshot(
     int Id,
