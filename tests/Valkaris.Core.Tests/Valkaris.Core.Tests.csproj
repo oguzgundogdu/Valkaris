@@ -22,4 +22,8 @@
     <ProjectReference Include="../../src/Valkaris.Core/Valkaris.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="../../data/*.json" Link="data/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

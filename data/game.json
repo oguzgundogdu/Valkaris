@@ -1,0 +1,21 @@
+{
+  "startingResources": { "wood": 300, "stone": 300, "food": 200 },
+  "startingBuildings": {
+    "MainBuilding": 1,
+    "Woodcutter": 1,
+    "Quarry": 1,
+    "Farm": 1,
+    "Warehouse": 1,
+    "Barracks": 0,
+    "Wall": 0
+  },
+  "maxBuildQueueLength": 2,
+  "minPlayers": 2,
+  "maxPlayers": 4,
+  "matchDurationsMinutes": [20, 30, 45, 60],
+  "speedMultipliers": [1, 2, 3],
+  "mapSizes": {
+    "Small": { "width": 16, "height": 16 },
+    "Medium": { "width": 24, "height": 24 }
+  }
+}
