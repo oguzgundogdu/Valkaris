@@ -17,6 +17,7 @@ public partial class SendPanel : VBoxContainer
     private readonly Dictionary<UnitType, UnitRow> _units = new();
     private readonly List<(HBoxContainer Box, Label Title, Label Time)> _moving = new();
     private readonly List<MovementType> _missions = new();
+    private readonly Dictionary<ResourceType, UnitRow> _resources = new();
 
     private Label _targetLine = null!;
     private Button _pickTarget = null!;
@@ -30,17 +31,32 @@ public partial class SendPanel : VBoxContainer
     private Label _none = null!;
 
     private IGameSession? _session;
-    private SendTroopsCommand? _command;
+    private ICommand? _command;
     private int? _targetId;
+    private Village? _village;
+    private MovementType? _wantedMission;
+    private bool _sendingResources;
 
     public event Action? MapRequested;
 
-    public void SetTarget(int villageId) => _targetId = villageId;
+    public void SetTarget(int villageId, bool sendResources = false)
+    {
+        _targetId = villageId;
+        _sendingResources = sendResources;
+        _wantedMission = sendResources ? MovementType.Transfer : MovementType.Reinforce;
+    }
+
+    /// <summary>Opens the resource form from the Marketplace. A target that isn't the player's own is dropped.</summary>
+    public void ShowResourceForm()
+    {
+        _sendingResources = true;
+        _wantedMission = MovementType.Transfer;
+    }
 
     /// <summary>The amounts belonged to the village being left. The target stays.</summary>
     public void ClearAmounts()
     {
-        foreach (var row in _units.Values)
+        foreach (var row in _units.Values.Concat(_resources.Values))
             row.Amount.Value = 0;
     }
 
@@ -61,6 +77,10 @@ public partial class SendPanel : VBoxContainer
         var units = GetNode<VBoxContainer>("%Units");
         foreach (var unit in Enum.GetValues<UnitType>())
             _units[unit] = AddUnitRow(units, unit);
+
+        var resources = GetNode<VBoxContainer>("%ResourceRows");
+        foreach (var type in Enum.GetValues<ResourceType>())
+            _resources[type] = AddResourceRow(resources, type);
 
         _catapultTarget.AddItem("Random");
         foreach (var building in Enum.GetValues<BuildingType>())
@@ -95,16 +115,118 @@ public partial class SendPanel : VBoxContainer
         return new UnitRow(amount, available);
     }
 
+    private UnitRow AddResourceRow(VBoxContainer parent, ResourceType type)
+    {
+        var row = new HBoxContainer { Name = type.ToString() };
+        row.AddThemeConstantOverride("separation", 6);
+        row.AddChild(new TextureRect
+        {
+            Texture = GD.Load<Texture2D>(UiContent.ResourceIconPath(type)),
+            CustomMinimumSize = new Vector2(24, 24),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+        });
+        row.AddChild(new Label { Text = type.ToString(), SizeFlagsHorizontal = SizeFlags.ExpandFill });
+
+        var amount = new SpinBox { Name = "Amount", MinValue = 0, MaxValue = 0, Step = 1, UpdateOnTextChanged = true };
+        var available = new Label { Name = "Available", ThemeTypeVariation = "MutedLabel", CustomMinimumSize = new Vector2(44, 0) };
+        var max = new Button { Name = "Max", Text = "Max", ThemeTypeVariation = "SecondaryButton", FocusMode = FocusModeEnum.None };
+        max.Pressed += () => amount.Value = MaxResourceAmount(type);
+        row.AddChild(amount);
+        row.AddChild(available);
+        row.AddChild(max);
+
+        parent.AddChild(row);
+        return new UnitRow(amount, available);
+    }
+
+    /// <summary>What is in stock, and what the free carriers can still hold after the other rows.</summary>
+    private double MaxResourceAmount(ResourceType type)
+    {
+        if (_session is null || _village is null)
+            return 0;
+
+        var room = CarrierRules.Free(_session.State, _session.Data, _village) * _session.Data.Villages.Carriers.Capacity
+            - _resources.Where(r => r.Key != type).Sum(r => r.Value.Amount.Value);
+        return Math.Clamp(room, 0, Math.Floor(_village.Resources.Get(type)));
+    }
+
     public void Refresh(IGameSession session, Village village, bool mapIsOpen)
     {
         _session = session;
+        _village = village;
 
         GetNode<Label>("%FromLine").Text = $"From {village.Name}";
 
         var target = _targetId is { } id ? session.State.Villages[id] : null;
+        if (_sendingResources && target is not null && target.OwnerId != village.OwnerId)
+        {
+            _targetId = null;
+            target = null;
+        }
+
         RefreshTarget(session, village, target, mapIsOpen);
-        RefreshMissions(target is not null && target.OwnerId == village.OwnerId);
+        RefreshMissions(target, village);
         var type = _missions[_mission.Selected];
+        _sendingResources = type == MovementType.Transfer;
+
+        GetNode<Control>("%Units").Visible = !_sendingResources;
+        GetNode<Control>("%ResourceRows").Visible = _sendingResources;
+        GetNode<Control>("%Warning").Visible = false;
+        _send.Text = _sendingResources ? "Send resources" : "Send troops";
+
+        if (_sendingResources)
+            RefreshResourceForm(session, village, target);
+        else
+            RefreshTroopForm(session, village, target, type);
+
+        RefreshMoving(session);
+    }
+
+    private void RefreshResourceForm(IGameSession session, Village village, Village? target)
+    {
+        foreach (var (type, row) in _resources)
+        {
+            var stock = Math.Floor(village.Resources.Get(type));
+            row.Amount.MaxValue = stock;
+            row.Available.Text = $"/ {stock}";
+        }
+
+        _catapultRow.Visible = false;
+
+        int Amount(ResourceType type) => (int)_resources[type].Amount.Value;
+        var command = target is null ? null : new SendResourcesCommand(village.Id, target.Id, Amount(ResourceType.Wood), Amount(ResourceType.Stone), Amount(ResourceType.Food));
+        _command = command;
+        var option = command is null ? null : SendResourcesPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, command);
+
+        _send.Disabled = option is not { CanSend: true };
+        _arrival.Visible = option is { CanSend: true };
+        _arrival.Text = option is { CanSend: true }
+            ? $"Uses {option.CarriersUsed} of {option.CarriersFree} free carriers  ·  Arrives in {Format.Time(option.DurationSeconds)}"
+            : "";
+        _reason.Visible = _send.Disabled;
+        _reason.Text = option is null
+            ? "Pick one of your villages on the map."
+            : option.Rejection == CommandRejection.NotEnoughCarriers
+                ? $"This needs {option.CarriersUsed} carriers, and {option.CarriersFree} are free."
+                : option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : "";
+
+        if (option is { CanSend: true } && option.ExpectedLoss != Resources.Zero)
+        {
+            var warning = GetNode<Label>("%Warning");
+            warning.Visible = true;
+            warning.Text = $"About {LossText(option.ExpectedLoss)} will be lost: {target!.Name}'s warehouse will be full.";
+        }
+    }
+
+    private static string LossText(Resources loss) =>
+        string.Join(", ", Enum.GetValues<ResourceType>()
+            .Where(type => loss.Get(type) >= 1)
+            .Select(type => $"{Format.Amount(loss.Get(type))} {type.ToString().ToLowerInvariant()}")
+            .DefaultIfEmpty("a little"));
+
+    private void RefreshTroopForm(IGameSession session, Village village, Village? target, MovementType type)
+    {
 
         foreach (var (unit, row) in _units)
         {
@@ -120,8 +242,9 @@ public partial class SendPanel : VBoxContainer
             ? Enum.GetValues<BuildingType>()[_catapultTarget.Selected - 1]
             : null;
 
-        _command = target is null ? null : new SendTroopsCommand(village.Id, target.Id, type, troops, aim);
-        var option = _command is null ? null : SendPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, _command);
+        var command = target is null ? null : new SendTroopsCommand(village.Id, target.Id, type, troops, aim);
+        _command = command;
+        var option = command is null ? null : SendPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, command);
 
         _send.Disabled = option is not { CanSend: true };
         _arrival.Visible = option is { CanSend: true };
@@ -131,8 +254,6 @@ public partial class SendPanel : VBoxContainer
             ? "Pick a target on the world map."
             : target!.Id == village.Id ? "Troops are already in this village."
             : option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : "";
-
-        RefreshMoving(session);
     }
 
     private void RefreshTarget(IGameSession session, Village village, Village? target, bool mapIsOpen)
@@ -145,19 +266,26 @@ public partial class SendPanel : VBoxContainer
         _pickTarget.Text = target is null ? "Pick a village on the map" : "Change target on the map";
     }
 
-    private void RefreshMissions(bool targetIsOwnVillage)
+    private void RefreshMissions(Village? target, Village village)
     {
-        var wanted = targetIsOwnVillage
-            ? new List<MovementType> { MovementType.Reinforce }
-            : new List<MovementType> { MovementType.Attack, MovementType.Raid };
-        if (wanted.SequenceEqual(_missions))
-            return;
+        var offered = target is not null && target.OwnerId == village.OwnerId
+            ? new List<MovementType> { MovementType.Reinforce, MovementType.Transfer }
+            : target is null && _sendingResources
+                ? new List<MovementType> { MovementType.Transfer }
+                : new List<MovementType> { MovementType.Attack, MovementType.Raid };
 
-        _missions.Clear();
-        _missions.AddRange(wanted);
-        _mission.Clear();
-        foreach (var mission in _missions)
-            _mission.AddItem(mission.ToString());
+        if (!offered.SequenceEqual(_missions))
+        {
+            _missions.Clear();
+            _missions.AddRange(offered);
+            _mission.Clear();
+            foreach (var mission in _missions)
+                _mission.AddItem(mission == MovementType.Transfer ? "Send resources" : mission.ToString());
+        }
+
+        if (_wantedMission is { } wanted && _missions.Contains(wanted))
+            _mission.Select(_missions.IndexOf(wanted));
+        _wantedMission = null;
     }
 
     private void SendTroops()

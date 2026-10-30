@@ -52,6 +52,12 @@ layout_mode = 2
 focus_mode = 0
 text = "Reinforce"
 
+[node name="SendResources" type="Button" parent="Box"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Send resources"
+
 [node name="Found" type="Button" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2

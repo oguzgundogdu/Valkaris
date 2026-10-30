@@ -27,6 +27,7 @@ public partial class BuildingPanel : PanelContainer
     private BuildingType _building;
 
     public event Action? TrainingRequested;
+    public event Action? SendResourcesRequested;
 
     public override void _Ready()
     {
@@ -43,6 +44,7 @@ public partial class BuildingPanel : PanelContainer
         GetNode("%Costs").AddChild(_costs);
         _openTraining = GetNode<Button>("%OpenTraining");
         _openTraining.Pressed += () => TrainingRequested?.Invoke();
+        GetNode<Button>("%OpenTransfer").Pressed += () => SendResourcesRequested?.Invoke();
 
         _upgrade.Pressed += () => _session?.Send(new BuildCommand(_villageId, _building));
     }
@@ -66,7 +68,7 @@ public partial class BuildingPanel : PanelContainer
         // A rejection such as "match over" comes with no target level at all.
         var hasNext = !atMax && option.TargetLevel > 0;
 
-        var effect = EffectText(session, building, level, option.TargetLevel, hasNext);
+        var effect = EffectText(session, village, building, level, option.TargetLevel, hasNext);
         _effect.Text = effect;
         _effect.Visible = effect.Length > 0;
 
@@ -81,13 +83,14 @@ public partial class BuildingPanel : PanelContainer
             : $"Upgrade to level {option.TargetLevel}";
 
         _openTraining.Visible = building == BuildingType.Barracks;
+        GetNode<Button>("%OpenTransfer").Visible = building == BuildingType.Marketplace;
 
         var reason = ReasonText(option);
         _reason.Text = reason;
         _reason.Visible = reason.Length > 0;
     }
 
-    private static string EffectText(IGameSession session, BuildingType building, int level, int nextLevel, bool hasNext)
+    private static string EffectText(IGameSession session, Village village, BuildingType building, int level, int nextLevel, bool hasNext)
     {
         var data = session.Data;
         var definition = data.Buildings.Buildings[building];
@@ -106,6 +109,14 @@ public partial class BuildingPanel : PanelContainer
 
         if (building == BuildingType.MainBuilding)
             return Compare(l => $"others up to level {BuildingRules.MaxOtherBuildingLevel(data, l)}");
+
+        if (building == BuildingType.Marketplace)
+        {
+            var carriers = data.Buildings.CarriersByMarketplaceLevel;
+            var capacity = data.Villages.Carriers.Capacity;
+            return Compare(l => $"{carriers[l]} carriers")
+                + $"\n{CarrierRules.Free(session.State, data, village)} free now, each carrying {capacity}";
+        }
 
         return "";
     }

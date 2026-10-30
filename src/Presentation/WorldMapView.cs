@@ -42,6 +42,8 @@ public partial class WorldMapView : Control
     public event Action<int>? SendRequested;
     public event Action<int>? EnterRequested;
     public event Action<TileCoord>? FoundRequested;
+    public event Action<int>? ReinforceRequested;
+    public event Action<int>? SendResourcesRequested;
 
     public int? SelectedVillageId => _selectedId;
     public TileCoord? SelectedTile => _selectedTile;
@@ -88,6 +90,8 @@ public partial class WorldMapView : Control
 
         _popup.SendRequested += id => SendRequested?.Invoke(id);
         _popup.EnterRequested += id => EnterRequested?.Invoke(id);
+        _popup.ReinforceRequested += id => ReinforceRequested?.Invoke(id);
+        _popup.SendResourcesRequested += id => SendResourcesRequested?.Invoke(id);
         _popup.FoundRequested += tile =>
         {
             _selectedTile = null;

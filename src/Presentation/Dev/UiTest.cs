@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Godot;
 using Valkaris.Core.Commands;
 using Valkaris.Core.Data;
+using Valkaris.Core.Events;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
 using Valkaris.Core.Systems;
@@ -1054,6 +1055,8 @@ public partial class UiTest : Control
         await TestSwitchingVillages(data);
         await TestManyVillages(data);
         await TestReinforce(data);
+        await TestTransfers(data);
+        await TestStrayReturnDoesNotWarn(data);
         await TestReportsOfLoyalty(data);
         await TestFounding(data);
         await TestCapitalChoice(data);
@@ -1251,6 +1254,152 @@ public partial class UiTest : Control
         await Frames();
         Expect(!popup.GetNode<Button>("%Reinforce").Visible, "The current village can't reinforce itself");
     }
+
+    private async Task TestStrayReturnDoesNotWarn(GameData data)
+    {
+        var (game, _) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.StrayReturn);
+        await Frames();
+        Expect(!game.GetNode<ResourceBar>("%ResourceBar").GetNode<Button>("%Incoming").Visible, "An enemy's troops walking home don't warn");
+    }
+
+    private async Task TestTransfers(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
+        var own = UiContent.OwnVillages(session);
+        var from = own[1];
+        var to = own[2];
+        game.SwitchVillage(from.Id);
+
+        // From the Marketplace, with no target yet.
+        var panel = game.GetNode<BuildingPanel>("%BuildingPanel");
+        SelectGameTile(game, BuildingType.Marketplace);
+        await Frames();
+        var openForm = panel.GetNode<Button>("%OpenTransfer");
+        Expect(openForm.Visible, "The Marketplace offers Send resources");
+        Expect(panel.GetNode<Label>("%Effect").Text.Contains("6 free now"), $"The Marketplace shows free carriers, got '{panel.GetNode<Label>("%Effect").Text}'");
+        await Shot("marketplace");
+        Press(openForm);
+        await Frames();
+        var send = game.GetNode<SendPanel>("%Send");
+        var button = send.GetNode<Button>("%Send");
+        var reason = send.GetNode<Label>("%Reason");
+        var arrival = send.GetNode<Label>("%Arrival");
+        var warning = send.GetNode<Label>("%Warning");
+        Expect(game.GetNode<TabContainer>("%Side").CurrentTab == (int)GameScreen.SideTab.Send, "The Marketplace opens the Send tab");
+        Expect(send.GetNode<Control>("%ResourceRows").Visible && !send.GetNode<Control>("%Units").Visible, "The form shows resources instead of troops");
+        Expect(button.Disabled && reason.Text == "Pick one of your villages on the map.", $"With no target the form says why, got '{reason.Text}'");
+
+        // From the map popup.
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var popup = world.GetNode<VillagePopup>("Popup");
+        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(to)));
+        await Frames();
+        Expect(popup.GetNode<Button>("%SendResources").Visible, "Your other village offers Send resources");
+        await Shot("transfer-popup");
+        Press(popup.GetNode<Button>("%SendResources"));
+        world.ClearSelection();
+        await Frames();
+        Expect(send.GetNode<OptionButton>("%Mission").GetItemText(send.GetNode<OptionButton>("%Mission").Selected) == "Send resources", "The popup selects the resource form");
+        Expect(send.GetNode<Label>("%TargetLine").Text.StartsWith(to.Name), "The popup sets the target");
+
+        var wood = send.GetNode<SpinBox>("%ResourceRows/Wood/Amount");
+        var stone = send.GetNode<SpinBox>("%ResourceRows/Stone/Amount");
+        Expect(button.Disabled && reason.Text == UiContent.RejectionText(CommandRejection.NoResourcesSelected), "An empty load says why");
+
+        // Max respects stock and carriers.
+        Press(send.GetNode<Button>("%ResourceRows/Wood/Max"));
+        var capacity = data.Villages.Carriers.Capacity;
+        var free = CarrierRules.Free(session.State, data, from);
+        Expect(wood.Value == Math.Min(Math.Floor(from.Resources.Wood), free * capacity), $"Max respects stock and carriers, got {wood.Value}");
+        Press(send.GetNode<Button>("%ResourceRows/Stone/Max"));
+        Expect(wood.Value + stone.Value <= free * capacity, "Max leaves room only for what carriers can hold");
+        wood.Value = 0;
+        stone.Value = 0;
+
+        // Too much for the carriers. Stock is lifted through time, since the form caps amounts at stock.
+        session.Tick(400);
+        await Frames();
+        wood.Value = Math.Floor(from.Resources.Wood);
+        stone.Value = Math.Floor(from.Resources.Stone);
+        await Frames();
+        Expect(wood.Value + stone.Value > free * capacity, "This load is more than the carriers can hold");
+        Expect(button.Disabled && reason.Text == $"This needs {CarrierRules.Needed(data, (int)(wood.Value + stone.Value))} carriers, and {free} are free.", $"Too large a load names the carriers, got '{reason.Text}'");
+        await Shot("transfer-too-many");
+
+        // A real send, with the preview matching the shared rules.
+        wood.Value = capacity + 1;
+        stone.Value = 0;
+        await Frames();
+        var command = new SendResourcesCommand(from.Id, to.Id, capacity + 1, 0, 0);
+        var option = SendResourcesPreview.Evaluate(session.State, data, 1, command);
+        Expect(!button.Disabled, "A valid load can be sent");
+        Expect(arrival.Text == $"Uses {option.CarriersUsed} of {option.CarriersFree} free carriers  ·  Arrives in {Format.Time(option.DurationSeconds)}", $"The preview matches the rules, got '{arrival.Text}'");
+        Expect(option.CarriersUsed == 2, "One over a carrier's load needs two");
+        await Shot("transfer-form");
+
+        var stock = from.Resources.Wood;
+        Press(button);
+        await Frames();
+        var movement = session.State.Movements.Single(m => m.Type == MovementType.Transfer);
+        Expect(from.Resources.Wood < stock, "Sending takes the resources");
+        Expect(wood.Value == 0, "Sending clears the form");
+        var layer = world.GetNode<MovementLayer>("World/Movements");
+        Expect(layer.Entries.Any(e => e.Description.StartsWith("Carrying")), "The transfer is on the map");
+        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == $"Carrying {capacity + 1} → {to.Name}", "The transfer is in the list");
+        await Shot("transfer-moving");
+
+        // The overflow warning.
+        var room = BuildingRules.VillageCapacity(data, to) - to.Resources.Stone;
+        var fill = Math.Floor(Math.Min(from.Resources.Stone, (free - 2) * capacity));
+        Expect(fill > room, $"This load overflows the target: fill {fill}, room {room}");
+        stone.Value = fill;
+        await Frames();
+        Expect(warning.Visible && warning.Text.Contains("will be lost"), $"An overflow warns, got '{warning.Text}'");
+        Expect(!button.Disabled, "A warning does not block sending");
+        await Shot("transfer-warning");
+        stone.Value = 0;
+        await Frames();
+        Expect(!warning.Visible, "No warning without overflow");
+
+        // Delivery, then the carriers' walk home.
+        ResourcesDelivered? delivery = null;
+        session.EventRaised += e => delivery ??= e as ResourcesDelivered;
+        session.Tick(movement.ArrivalTime - session.State.ElapsedTime);
+        await Frames();
+        Expect(delivery is not null && delivery.Delivered + delivery.Lost == movement.Loot, "The whole load is accounted for on delivery");
+        Expect(session.State.Movements.Any(m => m.Type == MovementType.CarrierReturn), "The carriers walk home");
+        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == "Carriers returning", "The list shows them returning");
+        await RunUntilArrived(session);
+        Expect(CarrierRules.Free(session.State, data, from) == free, "The carriers are free again");
+
+        // Sending to itself, and to a rival.
+        send.SetTarget(from.Id, sendResources: true);
+        await Frames();
+        wood.Value = 10;
+        await Frames();
+        Expect(button.Disabled && reason.Text == UiContent.RejectionText(CommandRejection.SameVillage), "The same village says why");
+
+        // Another player's transfers stay hidden.
+        var strike = session.State.Villages.Values.Where(v => v.OwnerId == 2).MaxBy(v => v.Troops.Values.Sum())!;
+        var drawn = layer.Entries.Count;
+        Expect(session.SendAs(2, new SendResourcesCommand(strike.Id, 2, 10, 0, 0)).Success, "The rival can send a transfer");
+        await Frames();
+        Expect(layer.Entries.Count == drawn, "A rival's transfer isn't drawn");
+        Expect(!game.GetNode<ResourceBar>("%ResourceBar").GetNode<Button>("%Incoming").Visible, "A rival's transfer doesn't warn");
+
+        // Switching to a troop mission still works.
+        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(to)));
+        await Frames();
+        Press(popup.GetNode<Button>("%Reinforce"));
+        await Frames();
+        Expect(send.GetNode<Control>("%Units").Visible, "Reinforce shows the troops again");
+        Expect(button.Text == "Send troops", "The button follows the form");
+    }
+
+    private static void SelectGameTile(GameScreen game, BuildingType building) =>
+        game.GetNode<VillageView>("%VillageView").GetNode<BuildingTile>(building.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
 
     private async Task TestReportsOfLoyalty(GameData data)
     {

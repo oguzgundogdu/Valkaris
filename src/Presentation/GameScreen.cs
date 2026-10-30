@@ -102,6 +102,21 @@ public partial class GameScreen : Control
             _sendPanel.SetTarget(villageId);
             ShowTab(SideTab.Send);
         };
+        _worldMap.ReinforceRequested += villageId =>
+        {
+            _sendPanel.SetTarget(villageId);
+            ShowTab(SideTab.Send);
+        };
+        _worldMap.SendResourcesRequested += villageId =>
+        {
+            _sendPanel.SetTarget(villageId, sendResources: true);
+            ShowTab(SideTab.Send);
+        };
+        _buildingPanel.SendResourcesRequested += () =>
+        {
+            _sendPanel.ShowResourceForm();
+            ShowTab(SideTab.Send);
+        };
         _sendPanel.MapRequested += () => ShowView(MainView.World);
 
         _pauseOverlay.Configure("Paused", "The match is on hold. Press P to resume.", "Resume", "Leave match");
@@ -382,6 +397,12 @@ public partial class GameScreen : Control
             case ReinforcementsArrived arrived when IsLocalVillage(arrived.VillageId):
                 _toast.ShowMessage($"Troops arrived at {Session.State.Villages[arrived.VillageId].Name}");
                 break;
+            case ResourcesDelivered delivered when IsLocalVillage(delivered.VillageId):
+                _toast.ShowMessage(DeliveryText(delivered.VillageId, delivered.Delivered, delivered.Lost));
+                break;
+            case CarriersReturned returned when IsLocalVillage(returned.VillageId) && returned.Delivered + returned.Lost != Resources.Zero:
+                _toast.ShowMessage(DeliveryText(returned.VillageId, returned.Delivered, returned.Lost));
+                break;
             case VillageFounded founded when IsLocalVillage(founded.VillageId):
                 _toast.ShowMessage($"{Session.State.Villages[founded.VillageId].Name} was founded");
                 break;
@@ -398,6 +419,12 @@ public partial class GameScreen : Control
                 _toast.ShowMessage($"{UiContent.OwnerName(Session, eliminated.PlayerId)} was eliminated");
                 break;
         }
+    }
+
+    private string DeliveryText(int villageId, Resources delivered, Resources lost)
+    {
+        var text = $"{Format.Total(delivered)} delivered to {Session.State.Villages[villageId].Name}";
+        return lost == Resources.Zero ? text : $"{text}, {Format.Total(lost)} lost: warehouse full";
     }
 
     private bool IsLocalVillage(int villageId) => Session.State.Villages[villageId].OwnerId == Session.LocalPlayerId;

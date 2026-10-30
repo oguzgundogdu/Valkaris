@@ -14,6 +14,8 @@ public partial class MovementLayer : Control
     private const float MarkerRadius = 13;
 
     private static readonly Color Own = new(0.851f, 0.643f, 0.255f);
+    private const string CarrierIconPath = "res://assets/icons/carrier.svg";
+
     private static readonly Color Hostile = new(0.90f, 0.30f, 0.25f);
     private static readonly Color Returning = new(0.72f, 0.70f, 0.64f);
 
@@ -47,12 +49,14 @@ public partial class MovementLayer : Control
                 ? WorldMapView.VillageWorldPosition(session.State.Villages[target])
                 : WorldMapView.TileWorldPosition(movement.TargetTile!.Value);
             var colour = movement.OwnerId != session.LocalPlayerId ? Hostile
-                : movement.Type == MovementType.Return ? Returning
+                : movement.Type is MovementType.Return or MovementType.CarrierReturn ? Returning
                 : Own;
-            var slowest = movement.Troops.Keys.OrderBy(u => session.Data.Units.Units[u].Speed).First();
+            var icon = movement.Troops.Count == 0
+                ? CarrierIconPath
+                : UiContent.Units[movement.Troops.Keys.OrderBy(u => session.Data.Units.Units[u].Speed).First()].IconPath;
             var description = $"{UiContent.DescribeMovement(session, movement)}  ·  {Format.Time(movement.ArrivalTime - now)}";
 
-            _entries.Add(new Entry(movement.Id, from, to, PositionAt(from, to, movement, now), colour, UiContent.Units[slowest].IconPath, description));
+            _entries.Add(new Entry(movement.Id, from, to, PositionAt(from, to, movement, now), colour, icon, description));
         }
 
         if (hadEntries || _entries.Count > 0)

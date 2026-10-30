@@ -114,7 +114,8 @@ public record Movement                     // immutable
     public int? ToVillageId;               // null for settlers, who use TargetTile
     public TileCoord? TargetTile;
     public TileCoord? FromTile;            // a settler walking home starts from a tile
-    public MovementType Type;              // Attack, Raid, Reinforce, Settle, Return
+    public MovementType Type;              // Attack, Raid, Reinforce, Settle, Return, Transfer, CarrierReturn
+    public int Carriers;                   // transfers only; Troops is empty and Loot holds the load
     public Dictionary<UnitType, int> Troops;
     public Resources Loot;
     public double DepartureTime;
@@ -138,7 +139,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 **Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
 
-**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-rival-attack=` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `DevScenario` sets up states the idle rival cannot reach (`villages`, `founding`, `endgame`, `laststand`, `empire`), for play and for the UI test. The rival attack exists because the rival is idle until the AI milestone; it goes through `LocalGameSession.SendAs`, the path the AI will use. `SendAs` is not on `IGameSession`, so the UI can never act as another player.
+**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-rival-attack=` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `DevScenario` sets up states the idle rival cannot reach (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`), for play and for the UI test. The rival attack exists because the rival is idle until the AI milestone; it goes through `LocalGameSession.SendAs`, the path the AI will use. `SendAs` is not on `IGameSession`, so the UI can never act as another player.
 
 ---
 
@@ -160,6 +161,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 | Warehouse | Resource cap |
 | Barracks | Trains troops |
 | Wall | Defence bonus |
+| Marketplace | Carriers that move resources to the player's other villages (section 7.1) |
 
 Each building has levels with increasing cost and build time (defined in JSON).
 
@@ -167,7 +169,7 @@ Each building has levels with increasing cost and build time (defined in JSON).
 - **Build queue:** one builder per village. Items run one at a time in FIFO order, up to a queue length set in data.
 - **Cost:** paid in full when queued. There is no cancel command in v1.
 - **Main Building limit:** a data table gives the max level of other buildings for each Main Building level. Only the completed Main Building level counts, not a queued upgrade. The Main Building itself is not limited by the table.
-- **Starting village:** Main Building, Woodcutter, Quarry, Farm and Warehouse at level 1; Barracks and Wall at level 0; starting resources from data.
+- **Starting village:** Main Building, Woodcutter, Quarry, Farm and Warehouse at level 1; Barracks, Wall and Marketplace at level 0; starting resources from data.
 
 ---
 
@@ -189,6 +191,15 @@ Each unit has: class (infantry or cavalry), attack, defence vs infantry, defence
 **Training:** paid in full when queued, one batch at a time per village, FIFO, with a queue length from data and no cancel. A batch arrives all at once when it finishes. Barracks upgrades shorten training and unlock units; an upgrade finishing mid-batch does not change that batch. Settler and Lord are trained like other units (Barracks level 3 and 5).
 
 **Movements:** troops leave the garrison at once and do not defend while away. Travel time uses Euclidean tile distance; the return trip uses the slowest survivor. Catapults and Lords cannot go on a Raid. Settlers cannot go on an Attack or Raid. Settlers and Lords can Reinforce.
+
+### 7.1 Resource Transfers
+
+- `SendResourcesCommand` moves whole amounts of resources between two villages of the same player. `SendResourcesPreview` is the single evaluation of the rules, shared by `CommandHandler` and the UI.
+- **Carriers:** only the sending village needs a Marketplace. Its level sets the number of carriers (`carriersByMarketplaceLevel` in `buildings.json`). Capacity and speed are in `villages.json`, and game speed scales travel. A load uses as many carriers as it needs, rounded up, across all resource types.
+- Carriers are not units. Free carriers are worked out from the Marketplace level and the movements under way, never below 0, so a lowered Marketplace simply has none free. A new owner's count ignores the old owner's trips.
+- The resources leave at once. On arrival they are added up to the target's warehouse cap and the excess is lost. The UI warns before sending, using an estimate from the target's stock, its production until arrival and transfers arriving first. It does not block sending. Carriers then walk home empty and are free again only on arrival.
+- **Lost villages:** if the target is lost, carriers bring the load home, capped by that warehouse. If the home village is lost, a delivery still completes, a load goes to the owner's nearest village (lowest id on a tie) and is deposited there, and those carriers then stop existing, as do empty carriers.
+- Transfers cannot be attacked or looted, and only their owner sees them. An eliminated player's transfers are removed with their other movements.
 
 ---
 
@@ -249,6 +260,8 @@ Players must be able to manage their villages from both views.
 
 **Sending troops:** the Send tab's target comes from the map, through a village's popup. The form has a "From" line, a target line and a button to the map.
 
+**Sending resources:** the same Send tab. With one of your own villages as the target, Mission offers Reinforce and Send resources, and the form shows resource rows with carriers used and arrival time. It opens from the Send resources button in your other villages' map popup, or from the Marketplace in the Village tab. Transfers appear in the "On the way" list and on the map.
+
 **Switching villages:** a strip of village chips above the main view, in both views, shows the capital's star and warns of threats. It is hidden with one village. `Q` and `E` cycle. Switching keeps the view, tab and Send target and clears the troop amounts; on the map the camera centres on the village, which has its own ring. If the current village is lost, the view moves to the capital or another village.
 
 **Dialogs:** the new capital dialog lists your villages with a countdown and the penalty. It can be set aside: a countdown warning stays in the top bar and reopens it, and the timeout is unchanged. A player eliminated while others play on can keep watching, with only the map and Reports, or leave. The match end screen shows Victory, Defeat or Draw, the reason, and a ranked table of villages, population, captures and score.
@@ -274,6 +287,7 @@ Players must be able to manage their villages from both views.
 - Catapults that survive a won Attack reduce a building by `max(1, floor(survivors / catapults per level of damage))` levels, down to 0. The attacker selects the target building when sending; if none is selected, it is random among standing buildings (seeded). Targeting an unbuilt building does nothing.
 - A damaged building's queued upgrades have their target levels lowered by the same amount. A reduced Main Building does not lower buildings already above its limit. A reduced Warehouse caps resources from the next production step.
 - Survivors return home (Return movement).
+- **Hostile warning:** the top bar warns only of attacks and raids heading for your villages.
 - **Movements around a change of owner:** troops returning to a lost village reroute to the owner's nearest village (lowest id on a tie) with their loot. Reinforcements heading for a lost village turn back the same way. An attack or raid reaching a village its owner now holds merges into the garrison with no battle.
 - A battle report is generated for both sides. Both see the same full report, since v1 has no fog of war. Read state is kept in the UI, not in game state.
 - Reinforcements can only be sent to the player's own villages in v1. They merge into the village's garrison.
@@ -329,6 +343,7 @@ Players must be able to manage their villages from both views.
 3. **Troops and combat:** barracks, training, movements, combat resolver, battle reports.
 4. **World map:** tile map, villages, movements, sending troops from the map.
 5. **Villages:** settlers, loyalty, Lord, capital rule, elimination, win conditions.
+5.5. **Resource transfers:** Marketplace, carriers, sending resources between your own villages.
 6. **AI:** simple rule-based AI (build economy → train → attack weakest neighbour).
 7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
 8. **Nations:** passive bonuses.

@@ -14,12 +14,15 @@ public partial class VillagePopup : PanelContainer
 
     public event Action<int>? SendRequested;
     public event Action<int>? EnterRequested;
+    public event Action<int>? ReinforceRequested;
+    public event Action<int>? SendResourcesRequested;
     public event Action<TileCoord>? FoundRequested;
 
     public override void _Ready()
     {
         GetNode<Button>("%Send").Pressed += () => SendRequested?.Invoke(_villageId);
-        GetNode<Button>("%Reinforce").Pressed += () => SendRequested?.Invoke(_villageId);
+        GetNode<Button>("%Reinforce").Pressed += () => ReinforceRequested?.Invoke(_villageId);
+        GetNode<Button>("%SendResources").Pressed += () => SendResourcesRequested?.Invoke(_villageId);
         GetNode<Button>("%Enter").Pressed += () => EnterRequested?.Invoke(_villageId);
         GetNode<Button>("%Found").Pressed += () => FoundRequested?.Invoke(_tile);
     }
@@ -50,6 +53,7 @@ public partial class VillagePopup : PanelContainer
         GetNode<Button>("%Send").Visible = !isOwn && currentVillage is not null;
         GetNode<Button>("%Enter").Visible = isOwn;
         GetNode<Button>("%Reinforce").Visible = isOwn && !isCurrent && currentVillage is not null;
+        GetNode<Button>("%SendResources").Visible = isOwn && !isCurrent && currentVillage is not null;
         GetNode<Button>("%Found").Visible = false;
     }
 
@@ -73,6 +77,7 @@ public partial class VillagePopup : PanelContainer
         GetNode<Button>("%Send").Visible = false;
         GetNode<Button>("%Enter").Visible = false;
         GetNode<Button>("%Reinforce").Visible = false;
+        GetNode<Button>("%SendResources").Visible = false;
         var found = GetNode<Button>("%Found");
         found.Visible = true;
         found.Disabled = !option.CanFound;

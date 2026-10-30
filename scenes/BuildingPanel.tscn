@@ -93,6 +93,13 @@ layout_mode = 2
 theme_type_variation = &"SecondaryButton"
 text = "Train troops"
 
+[node name="OpenTransfer" type="Button" parent="Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"SecondaryButton"
+text = "Send resources"
+
 [node name="Reason" type="Label" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2

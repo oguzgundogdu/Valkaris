@@ -68,7 +68,7 @@ public static class UiContent
     /// <summary>The local player sees their own movements and anything heading for their villages.</summary>
     public static bool IsVisibleMovement(IGameSession session, Movement movement) =>
         movement.OwnerId == session.LocalPlayerId
-        || (movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
+        || (movement.Type is not (MovementType.Transfer or MovementType.CarrierReturn) && movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
 
     /// <summary>The local player's villages, in the order they are shown and cycled through.</summary>
     public static IReadOnlyList<Village> OwnVillages(IGameSession session) =>
@@ -85,6 +85,10 @@ public static class UiContent
             return $"{movement.Type} from {OwnerName(session, movement.OwnerId)}";
         if (movement.Type == MovementType.Settle)
             return "Settler → new village";
+        if (movement.Type == MovementType.Transfer)
+            return $"Carrying {Format.Total(movement.Loot)} → {session.State.Villages[movement.ToVillageId!.Value].Name}";
+        if (movement.Type == MovementType.CarrierReturn)
+            return movement.Loot == Resources.Zero ? "Carriers returning" : $"Returning with {Format.Total(movement.Loot)}";
         if (movement.Type != MovementType.Return)
             return $"{movement.Type} → {session.State.Villages[movement.ToVillageId!.Value].Name}";
 
@@ -125,6 +129,11 @@ public static class UiContent
         CommandRejection.NoCapitalChoicePending => "There's no capital to choose right now.",
         CommandRejection.NoCapital => "Choose a new capital first.",
         CommandRejection.NotOwner => "That isn't your village.",
+        CommandRejection.TargetNotYours => "Resources can only go to your own villages.",
+        CommandRejection.SameVillage => "The resources are already in this village.",
+        CommandRejection.NoResourcesSelected => "Choose some resources to send.",
+        CommandRejection.NoMarketplace => "Build a Marketplace in this village first.",
+        CommandRejection.NotEnoughCarriers => "Not enough free carriers for this load.",
         CommandRejection.InsufficientResources => "Not enough resources yet.",
         CommandRejection.QueueFull => "The queue is full.",
         CommandRejection.MainBuildingLevelTooLow => "Upgrade the Main Building to go higher.",
@@ -147,6 +156,8 @@ public static class Format
 {
     /// <summary>Whole units, rounded down so the display never promises more than is available.</summary>
     public static string Amount(double value) => Mathf.FloorToInt(value).ToString();
+
+    public static string Total(Resources resources) => Amount(resources.Wood + resources.Stone + resources.Food);
 
     public static string Rate(double perSecond) => $"+{perSecond:0.0}/s";
 
