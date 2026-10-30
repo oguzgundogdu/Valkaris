@@ -61,6 +61,22 @@ public static class UiContent
             : "res://assets/icons/map_camp.svg";
     }
 
+    /// <summary>The local player sees their own movements and anything heading for their villages.</summary>
+    public static bool IsVisibleMovement(IGameSession session, Movement movement) =>
+        movement.OwnerId == session.LocalPlayerId || session.State.Villages[movement.ToVillageId].OwnerId == session.LocalPlayerId;
+
+    public static string DescribeMovement(IGameSession session, Movement movement)
+    {
+        var village = session.State.Villages[movement.ToVillageId];
+        if (movement.OwnerId != session.LocalPlayerId)
+            return $"{movement.Type} from {OwnerName(session, movement.OwnerId)}";
+        if (movement.Type != MovementType.Return)
+            return $"{movement.Type} → {village.Name}";
+
+        var loot = movement.Loot.Wood + movement.Loot.Stone + movement.Loot.Food;
+        return loot > 0 ? $"Returning with {Format.Amount(loot)} loot" : "Returning";
+    }
+
     public static string OwnerName(IGameSession session, int ownerId) =>
         ownerId == Village.BarbarianOwnerId ? "Barbarians" : session.State.Players[ownerId].Name;
 

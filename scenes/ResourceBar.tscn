@@ -43,12 +43,15 @@ theme_type_variation = &"SecondaryButton"
 toggle_mode = true
 text = "World"
 
-[node name="Incoming" type="Label" parent="Box"]
+[node name="Incoming" type="Button" parent="Box"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-theme_type_variation = &"StrongLabel"
+tooltip_text = "Show on the map"
+focus_mode = 0
+theme_type_variation = &"SecondaryButton"
 theme_override_colors/font_color = Color(0.961, 0.682, 0.243, 1)
+theme_override_colors/font_hover_color = Color(0.961, 0.682, 0.243, 1)
 
 [node name="Pause" type="Button" parent="Box"]
 unique_name_in_owner = true

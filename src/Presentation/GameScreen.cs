@@ -72,6 +72,11 @@ public partial class GameScreen : Control
         _buildingPanel.TrainingRequested += () => ShowTab(SideTab.Troops);
         _resourceBar.PauseRequested += TogglePause;
         _resourceBar.ViewRequested += ShowView;
+        _resourceBar.IncomingPressed += villageId =>
+        {
+            ShowView(MainView.World);
+            _worldMap.CentreOn(Session.State.Villages[villageId]);
+        };
         _worldMap.EnterRequested += EnterVillage;
         _worldMap.SendRequested += villageId =>
         {

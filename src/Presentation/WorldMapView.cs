@@ -22,6 +22,8 @@ public partial class WorldMapView : Control
     private Control _world = null!;
     private MapTerrain _terrain = null!;
     private Control _markerLayer = null!;
+    private MovementLayer _movements = null!;
+    private Label _hoverLabel = null!;
     private bool _built;
     private float _zoom = 1;
     private Vector2 _worldSize;
@@ -33,6 +35,7 @@ public partial class WorldMapView : Control
     private TileHighlight _highlight = null!;
     private IGameSession? _session;
     private int? _selectedId;
+    private Vector2? _hoverPoint;
 
     public event Action<int>? SendRequested;
     public event Action<int>? EnterRequested;
@@ -63,12 +66,20 @@ public partial class WorldMapView : Control
         _highlight = new TileHighlight { Name = "Highlight", MouseFilter = MouseFilterEnum.Ignore };
         _world.AddChild(_highlight);
 
+        _movements = new MovementLayer { Name = "Movements", MouseFilter = MouseFilterEnum.Ignore };
+        _world.AddChild(_movements);
+
         _markerLayer = new Control { Name = "Markers", MouseFilter = MouseFilterEnum.Ignore };
         _world.AddChild(_markerLayer);
 
         _popup = GD.Load<PackedScene>("res://scenes/VillagePopup.tscn").Instantiate<VillagePopup>();
         _popup.Name = "Popup";
         AddChild(_popup);
+        _hoverLabel = new Label { Name = "HoverLabel", ThemeTypeVariation = "StrongLabel", MouseFilter = MouseFilterEnum.Ignore, Visible = false };
+        _hoverLabel.AddThemeConstantOverride("outline_size", 6);
+        _hoverLabel.AddThemeColorOverride("font_outline_color", new Color(0.08f, 0.07f, 0.05f, 0.9f));
+        AddChild(_hoverLabel);
+
         _popup.SendRequested += id => SendRequested?.Invoke(id);
         _popup.EnterRequested += id => EnterRequested?.Invoke(id);
 
@@ -91,6 +102,9 @@ public partial class WorldMapView : Control
         foreach (var (id, marker) in _markers)
             marker.Refresh(session, session.State.Villages[id], id == _selectedId);
 
+        _movements.Refresh(session, _zoom);
+        RefreshHoverLabel();
+
         _popup.Visible = _selectedId is not null;
         if (_selectedId is { } selected)
         {
@@ -101,6 +115,31 @@ public partial class WorldMapView : Control
     }
 
     public void ClearSelection() => _selectedId = null;
+
+    /// <summary>Puts a village in the middle of the view, as far as the map's edges allow.</summary>
+    public void CentreOn(Village village)
+    {
+        if (!_built)
+            return;
+
+        _userMovedCamera = true;
+        _world.Position = Size / 2 - VillageWorldPosition(village) * _zoom;
+        ClampCamera();
+    }
+
+    private void RefreshHoverLabel()
+    {
+        var entry = _hoverPoint is { } point ? _movements.EntryAt(ViewToWorld(point), _zoom) : null;
+        _hoverLabel.Visible = entry is not null;
+        if (entry is null)
+            return;
+
+        _hoverLabel.Text = entry.Description;
+        _hoverLabel.Size = _hoverLabel.GetCombinedMinimumSize();
+        _hoverLabel.Position = new Vector2(
+            Mathf.Clamp(_hoverPoint!.Value.X + 14, 0, Mathf.Max(0, Size.X - _hoverLabel.Size.X)),
+            Mathf.Clamp(_hoverPoint.Value.Y - 30, 0, Mathf.Max(0, Size.Y - _hoverLabel.Size.Y)));
+    }
 
     /// <summary>Beside the marker, kept inside the view.</summary>
     private void PlacePopup(Village village)
@@ -237,6 +276,8 @@ public partial class WorldMapView : Control
     {
         if (!_built)
             return;
+
+        _hoverPoint = viewPoint;
 
         var overVillage = VillageAt(viewPoint) is not null;
         MouseDefaultCursorShape = overVillage ? CursorShape.PointingHand : CursorShape.Arrow;

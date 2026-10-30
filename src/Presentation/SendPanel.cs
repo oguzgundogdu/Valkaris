@@ -164,7 +164,7 @@ public partial class SendPanel : VBoxContainer
     {
         var now = session.State.ElapsedTime;
         var visible = session.State.Movements
-            .Where(m => m.OwnerId == session.LocalPlayerId || IsHostileArrival(session, m))
+            .Where(m => UiContent.IsVisibleMovement(session, m))
             .OrderBy(m => m.ArrivalTime)
             .ToList();
 
@@ -179,26 +179,10 @@ public partial class SendPanel : VBoxContainer
             if (i >= visible.Count)
                 continue;
 
-            title.Text = Describe(session, visible[i]);
+            title.Text = UiContent.DescribeMovement(session, visible[i]);
             title.AddThemeColorOverride("font_color", visible[i].OwnerId == session.LocalPlayerId ? UiContent.Text : UiContent.Warning);
             time.Text = Format.Time(visible[i].ArrivalTime - now);
         }
-    }
-
-    private static bool IsHostileArrival(IGameSession session, Movement movement) =>
-        movement.OwnerId != session.LocalPlayerId && session.State.Villages[movement.ToVillageId].OwnerId == session.LocalPlayerId;
-
-    private static string Describe(IGameSession session, Movement movement)
-    {
-        if (movement.OwnerId != session.LocalPlayerId)
-            return $"{movement.Type} from {UiContent.OwnerName(session, movement.OwnerId)}";
-
-        var target = UiContent.OwnerName(session, session.State.Villages[movement.ToVillageId].OwnerId);
-        if (movement.Type != MovementType.Return)
-            return $"{movement.Type} → {target}";
-
-        var loot = movement.Loot.Wood + movement.Loot.Stone + movement.Loot.Food;
-        return loot > 0 ? $"Returning with {Format.Amount(loot)} loot" : "Returning";
     }
 
     private (HBoxContainer, Label, Label) AddMovingRow(int index)

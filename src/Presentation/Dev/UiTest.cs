@@ -434,6 +434,79 @@ public partial class UiTest : Control
         await Frames();
     }
 
+    /// <summary>Runs with the rival's attack on the way, and adds movements of the player's own.</summary>
+    private async Task TestMovementsOnMap(GameScreen game, Button incoming)
+    {
+        var session = game.Session;
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var layer = world.GetNode<MovementLayer>("World/Movements");
+        var hostile = session.State.Movements[0];
+        var own = session.State.Villages[1];
+        var rival = session.State.Villages[2];
+        var camp = session.State.Villages.Values.Where(v => v.IsBarbarian).OrderBy(v => UnitRules.Distance(v.Position, own.Position)).First();
+
+        session.Send(new SendTroopsCommand(1, camp.Id, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 5 }));
+
+        incoming.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(game.CurrentView == GameScreen.MainView.World, "The warning jumps to the map");
+        Expect(layer.Entries.Count == 2, $"Own and hostile movements are drawn, got {layer.Entries.Count}");
+
+        var from = WorldMapView.VillageWorldPosition(rival);
+        var to = WorldMapView.VillageWorldPosition(own);
+
+        void CheckPosition(string when)
+        {
+            var entry = layer.Entries.First(e => e.MovementId == hostile.Id);
+            var expected = MovementLayer.PositionAt(from, to, hostile, session.State.ElapsedTime);
+            Expect(entry.Position.DistanceTo(expected) < 12, $"The marker follows the route {when}: {entry.Position} vs {expected}");
+        }
+
+        CheckPosition("at the start");
+        var start = layer.Entries.First(e => e.MovementId == hostile.Id).Position;
+        Expect(start.DistanceTo(from) < 12, "The marker starts at the origin");
+
+        var time = hostile.ArrivalTime - hostile.DepartureTime;
+        session.Tick(time * 0.25);
+        await Frames();
+        CheckPosition("a quarter of the way");
+        session.Tick(time * 0.25);
+        await Frames();
+        CheckPosition("halfway");
+        var midpoint = layer.Entries.First(e => e.MovementId == hostile.Id);
+        Expect(midpoint.Position.DistanceTo(from.Lerp(to, 0.5f)) < 12, "Halfway in time is halfway along the route");
+        Expect(midpoint.Colour != layer.Entries.First(e => e.MovementId != hostile.Id).Colour, "Hostile and own movements differ in colour");
+
+        // Hovering a moving marker shows what it is and when it arrives.
+        var hover = world.GetNode<Label>("HoverLabel");
+        var hoverAt = world.WorldToView(midpoint.Position);
+        world._GuiInput(new InputEventMouseMotion { Position = hoverAt });
+        await Frames();
+        Expect(hover.Visible && hover.Text.StartsWith("Attack from Rival"), $"Hovering shows the mission, got '{hover.Text}'");
+        world._GuiInput(new InputEventMouseMotion { Position = new Vector2(1, 1) });
+        await Frames();
+        Expect(!hover.Visible, "Moving away hides it");
+        await Shot("map-movements");
+
+        var returning = session.State.Movements.FirstOrDefault(m => m.Type == MovementType.Return);
+        if (returning is not null)
+            Expect(layer.Entries.First(e => e.MovementId == returning.Id).Colour != midpoint.Colour, "Returning movements have their own colour");
+
+        // Everything lands: the layer empties.
+        session.Tick(time);
+        await Frames();
+        if (session.State.Movements.Count > 0)
+        {
+            await Shot("map-returning");
+            session.Tick(session.State.Movements.Max(m => m.ArrivalTime) - session.State.ElapsedTime);
+            await Frames();
+        }
+        Expect(layer.Entries.Count == 0, "Markers clear when everyone has landed");
+
+        game.ShowView(GameScreen.MainView.Village);
+        await Frames();
+    }
+
     private async Task TestLeaveMatch()
     {
         var game = Find<GameScreen>();
@@ -575,7 +648,7 @@ public partial class UiTest : Control
         Expect(session.State.Movements.Count == 1 && session.State.Movements[0].Type == MovementType.Raid, "The chosen mission is sent");
         Expect((int)spearmen.GetNode<SpinBox>("Amount").Value == 0, "The form resets after sending");
         var row = send.GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
-        Expect(row.GetNode<Label>("Title").Text == "Raid → Rival", "The movement is listed");
+        Expect(row.GetNode<Label>("Title").Text == $"Raid → {session.State.Villages[2].Name}", "The movement is listed");
         await Shot("moving");
 
         session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
@@ -693,7 +766,7 @@ public partial class UiTest : Control
         await Frames();
 
         Expect(session.State.Movements.Count == 1, "The rival sends its garrison");
-        var incoming = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Label>("%Incoming");
+        var incoming = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Button>("%Incoming");
         Expect(incoming.Visible && incoming.Text.StartsWith("Attack arriving in"), $"The top bar warns of the attack, got '{incoming.Text}'");
 
         game.ShowTab(GameScreen.SideTab.Send);
@@ -702,13 +775,14 @@ public partial class UiTest : Control
         Expect(row.GetNode<Label>("Title").Text == "Attack from Rival", "The hostile movement is listed");
         await Shot("incoming");
 
-        session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
+        await TestMovementsOnMap(game, incoming);
+
         await Frames();
         Expect(!incoming.Visible, "The warning clears after the battle");
 
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
-        var report = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
+        var report = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetChildren().OfType<Button>().First(b => b.Text.Contains("by Rival"));
         Expect(report.Text.StartsWith("Won: Attack by Rival"), $"The defender's report says they won, got '{report.Text}'");
         report.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -726,7 +800,7 @@ public partial class UiTest : Control
         await Frames();
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
-        var barbarian = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report2");
+        var barbarian = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetChildren().OfType<Button>().First(b => b.Text.Contains("Raid on Barbarians"));
         Expect(barbarian.Text.Contains("Raid on Barbarians"), $"The barbarian battle is listed, got '{barbarian.Text}'");
         barbarian.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();

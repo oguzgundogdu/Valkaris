@@ -16,19 +16,23 @@ public partial class ResourceBar : PanelContainer
     private readonly Dictionary<ResourceType, Chip> _chips = new();
     private Label _clock = null!;
     private Button _pause = null!;
-    private Label _incoming = null!;
+    private Button _incoming = null!;
 
     private Button _viewVillage = null!;
     private Button _viewWorld = null!;
 
+    private int _incomingTarget;
+
     public event Action? PauseRequested;
+    public event Action<int>? IncomingPressed;
     public event Action<GameScreen.MainView>? ViewRequested;
 
     public override void _Ready()
     {
         _clock = GetNode<Label>("%Clock");
         _pause = GetNode<Button>("%Pause");
-        _incoming = GetNode<Label>("%Incoming");
+        _incoming = GetNode<Button>("%Incoming");
+        _incoming.Pressed += () => IncomingPressed?.Invoke(_incomingTarget);
         _pause.Pressed += () => PauseRequested?.Invoke();
 
         _viewVillage = GetNode<Button>("%ViewVillage");
@@ -92,6 +96,8 @@ public partial class ResourceBar : PanelContainer
             .OrderBy(m => m.ArrivalTime)
             .FirstOrDefault();
         _incoming.Visible = hostile is not null;
+        if (hostile is not null)
+            _incomingTarget = hostile.ToVillageId;
         if (hostile is not null)
             _incoming.Text = $"{hostile.Type} arriving in {Format.Time(hostile.ArrivalTime - session.State.ElapsedTime)}";
     }
