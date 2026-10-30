@@ -11,6 +11,7 @@ public sealed class LocalGameSession : IGameSession
 {
     private readonly CommandHandler _handler;
     private readonly Simulation _simulation;
+    private readonly List<IMatchAgent> _agents = new();
 
     public LocalGameSession(GameState state, GameData data, int localPlayerId)
     {
@@ -52,12 +53,60 @@ public sealed class LocalGameSession : IGameSession
     public CommandResult SendAs(int playerId, ICommand command) =>
         IsPaused ? CommandResult.Rejected(CommandRejection.GamePaused) : _handler.Handle(playerId, command);
 
+    public void AddAgent(IMatchAgent agent) => _agents.Add(agent);
+
+    /// <summary>
+    /// Stops at every event and agent decision, so what agents do does not depend on the frame rate,
+    /// even when an event wakes one early.
+    /// </summary>
     public void Tick(double deltaSeconds)
     {
         if (IsPaused)
             return;
 
-        foreach (var gameEvent in _simulation.Advance(deltaSeconds))
-            EventRaised?.Invoke(gameEvent);
+        var end = State.ElapsedTime + deltaSeconds;
+        var events = new List<GameEvent>();
+
+        while (!State.IsMatchOver)
+        {
+            var eventRan = _simulation.StepTowards(Math.Min(end, NextDecisionTime()), events);
+            foreach (var gameEvent in events)
+            {
+                foreach (var agent in _agents)
+                    agent.OnEvent(gameEvent);
+                EventRaised?.Invoke(gameEvent);
+            }
+            events.Clear();
+
+            if (State.IsMatchOver)
+                return;
+
+            if (DueAgent() is { } due)
+            {
+                var before = due.NextDecisionTime;
+                due.Decide();
+                if (due.NextDecisionTime <= before)
+                    throw new InvalidOperationException("An agent must move its next decision forward.");
+            }
+            else if (!eventRan && State.ElapsedTime >= end)
+            {
+                return;
+            }
+        }
+    }
+
+    private double NextDecisionTime() =>
+        _agents.Count == 0 ? double.PositiveInfinity : _agents.Min(a => a.NextDecisionTime);
+
+    /// <summary>The first agent due now. Ties go to the one added first.</summary>
+    private IMatchAgent? DueAgent()
+    {
+        IMatchAgent? due = null;
+        foreach (var agent in _agents)
+        {
+            if (agent.NextDecisionTime <= State.ElapsedTime && (due is null || agent.NextDecisionTime < due.NextDecisionTime))
+                due = agent;
+        }
+        return due;
     }
 }

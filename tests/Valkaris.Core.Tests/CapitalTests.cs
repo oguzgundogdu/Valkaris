@@ -253,7 +253,7 @@ public class CapitalTests
     }
 
     [Fact]
-    public void AnAiPlayerPicksAtOnce()
+    public void AnIdleAiPlayerIsPickedForByTheTimeout()
     {
         var rivalSecond = Convert(_state, _state.Villages.Values.First(v => v.IsBarbarian), Rival);
         rivalSecond.SetBuildingLevel(BuildingType.MainBuilding, 4);
@@ -261,11 +261,12 @@ public class CapitalTests
 
         Attack(Human, HumanCapital, RivalCapital, (UnitType.Swordsman, 50), (UnitType.Lord, 1));
 
+        Assert.Null(_state.Players[Rival].CapitalVillageId);
+        Assert.Single(_events.OfType<CapitalChoiceRequired>());
+
+        _simulation.Advance(TestData.Shipped.Villages.Capital.ChoiceSeconds);
+
         Assert.Equal(rivalSecond.Id, _state.Players[Rival].CapitalVillageId);
-        Assert.Null(_state.Players[Rival].CapitalChoiceDeadline);
-        Assert.Equal(TestData.Shipped.Villages.Capital.PenaltyMainLevel, rivalSecond.BuildingLevel(BuildingType.MainBuilding));
-        Assert.DoesNotContain(_events, e => e is CapitalChoiceRequired);
-        Assert.Single(_events.OfType<CapitalChanged>());
     }
 
     [Fact]

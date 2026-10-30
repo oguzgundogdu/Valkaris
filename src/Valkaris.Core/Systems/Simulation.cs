@@ -27,23 +27,39 @@ public sealed class Simulation
         if (deltaSeconds < 0)
             throw new ArgumentOutOfRangeException(nameof(deltaSeconds), deltaSeconds, "Time cannot go backwards.");
 
+        return AdvanceTo(_state.ElapsedTime + deltaSeconds);
+    }
+
+    /// <summary>Moves the match to an exact time. A time already passed changes nothing.</summary>
+    public IReadOnlyList<GameEvent> AdvanceTo(double time)
+    {
         var events = new List<GameEvent>();
+        while (StepTowards(time, events))
+        {
+        }
+        return events;
+    }
+
+    /// <summary>
+    /// Runs the next event due by the given time, or if there are none, moves to that time.
+    /// Returns true if an event ran, since more may be due. This lets a caller act between any two events.
+    /// </summary>
+    public bool StepTowards(double time, List<GameEvent> events)
+    {
         if (_state.IsMatchOver)
-            return events;
+            return false;
 
-        var end = Math.Min(_state.ElapsedTime + deltaSeconds, _state.Settings.MatchDurationSeconds);
+        var end = Math.Min(Math.Max(time, _state.ElapsedTime), _state.Settings.MatchDurationSeconds);
 
-        while (!_state.IsMatchOver && NextEvent(end) is { } next)
+        if (NextEvent(end) is { } next)
         {
             MoveTimeTo(next.Time);
             if (Apply(next) is { } gameEvent)
                 events.Add(gameEvent);
             events.AddRange(_followUps);
             _followUps.Clear();
+            return true;
         }
-
-        if (_state.IsMatchOver)
-            return events;
 
         MoveTimeTo(end);
         if (_state.ElapsedTime >= _state.Settings.MatchDurationSeconds)
@@ -52,7 +68,7 @@ public sealed class Simulation
             events.AddRange(_followUps);
             _followUps.Clear();
         }
-        return events;
+        return false;
     }
 
     private enum EventKind
@@ -375,12 +391,6 @@ public sealed class Simulation
             return;
 
         player.CapitalVillageId = null;
-        if (player.IsAi)
-        {
-            _followUps.Add(PickCapitalAutomatically(player, now));
-            return;
-        }
-
         player.CapitalChoiceDeadline = now + _data.Villages.Capital.ChoiceSeconds;
         _followUps.Add(new CapitalChoiceRequired(now, player.Id, player.CapitalChoiceDeadline.Value));
     }
