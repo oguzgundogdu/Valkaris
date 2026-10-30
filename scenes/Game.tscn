@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/Presentation/GameScreen.cs" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ResourceBar.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/BuildingPanel.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/QueuePanel.tscn" id="4"]
 
 [node name="Game" type="Control"]
 layout_mode = 3
@@ -51,5 +52,9 @@ layout_mode = 2
 theme_override_constants/separation = 16
 
 [node name="BuildingPanel" parent="Layout/Margin/Columns/Side" instance=ExtResource("3")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="QueuePanel" parent="Layout/Margin/Columns/Side" instance=ExtResource("4")]
 unique_name_in_owner = true
 layout_mode = 2

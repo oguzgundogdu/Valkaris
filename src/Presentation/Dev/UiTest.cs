@@ -82,6 +82,49 @@ public partial class UiTest : Control
 
         var rate = Find<ResourceBar>().GetNode<Label>("Box/Chips/Stone/Rate").Text;
         Expect(rate == "+1.0/s", $"Numbers ignore the system locale, got '{rate}'");
+
+        await TestQueue(game, panel);
+    }
+
+    private async Task TestQueue(GameScreen game, BuildingPanel panel)
+    {
+        var session = game.Session;
+        var village = session.State.Villages[1];
+        var queue = Find<QueuePanel>();
+        var upgrade = panel.GetNode<Button>("%Upgrade");
+
+        session.Tick(120);
+        await Frames();
+        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Empty slot", "Queue starts empty");
+
+        game.Select(BuildingType.Quarry);
+        await Frames();
+        upgrade.EmitSignal(BaseButton.SignalName.Pressed);
+        game.Select(BuildingType.Farm);
+        await Frames();
+        upgrade.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+
+        Expect(queue.GetNode<Label>("%Count").Text == "2 / 2", "Queue count updates");
+        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Quarry → level 2", "First row names the build");
+        Expect(queue.GetNode<Label>("Box/Rows/Row1/Top/Time").Text.StartsWith("starts in"), "Second row is waiting");
+        Expect(upgrade.Disabled, "A full queue disables the button");
+        Expect(panel.GetNode<Label>("%Reason").Text == "The build queue is full.", "The button says why it is disabled");
+
+        session.Tick(21);
+        await Frames();
+        var bar = queue.GetNode<ProgressBar>("Box/Rows/Row0/Bar");
+        Expect(bar.Value is > 0.4 and < 0.6, $"Progress bar follows time, got {bar.Value}");
+        await Shot("queue-full");
+
+        session.Tick(21);
+        await Frames();
+        Expect(queue.GetNode<Label>("%Count").Text == "1 / 2", "Completed item leaves the queue");
+        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Farm → level 2", "Waiting item moves up");
+        Expect(!upgrade.Disabled, "A free slot enables the button again");
+
+        session.Tick(60);
+        await Frames();
     }
 
     private T Find<T>() where T : Node =>

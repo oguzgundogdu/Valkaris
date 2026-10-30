@@ -10,6 +10,7 @@ public partial class GameScreen : Control
 {
     private ResourceBar _resourceBar = null!;
     private BuildingPanel _buildingPanel = null!;
+    private QueuePanel _queuePanel = null!;
     private BuildingType _selected = BuildingType.MainBuilding;
 
     public IGameSession Session { get; private set; } = null!;
@@ -20,6 +21,7 @@ public partial class GameScreen : Control
     {
         _resourceBar = GetNode<ResourceBar>("%ResourceBar");
         _buildingPanel = GetNode<BuildingPanel>("%BuildingPanel");
+        _queuePanel = GetNode<QueuePanel>("%QueuePanel");
 
         // Temporary list until the village ground replaces it.
         var list = new VBoxContainer();
@@ -41,5 +43,6 @@ public partial class GameScreen : Control
         var village = Session.State.Villages[Session.State.Players[Session.LocalPlayerId].CapitalVillageId];
         _resourceBar.Refresh(Session, village);
         _buildingPanel.Refresh(Session, village, _selected);
+        _queuePanel.Refresh(Session, village);
     }
 }
