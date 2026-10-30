@@ -1,0 +1,19 @@
+# Godot
+.godot/
+.import/
+export.cfg
+export_credentials.cfg
+*.translation
+
+# .NET
+bin/
+obj/
+*.user
+*.DotSettings.user
+TestResults/
+
+# Editors / OS
+.vs/
+.vscode/
+.idea/
+.DS_Store
