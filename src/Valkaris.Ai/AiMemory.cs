@@ -80,12 +80,12 @@ public sealed class AiMemory
         if (_sightings.TryGetValue(village.Id, out var sighting) && sighting.OwnerId == village.OwnerId)
         {
             var minutes = (_view.Now - sighting.Time) * _view.GameSpeed / 60;
-            var regrown = sighting.PeakDefence * beliefs.GrowthAfterSightingPerMinute * minutes;
-            var estimate = DefenceOf(sighting.Remaining, sighting.WallLevel) + regrown;
+            var remaining = DefenceOf(sighting.Remaining, sighting.WallLevel);
 
+            // A camp's garrison comes back to what it was. A player's grows with what they can train.
             return village.IsBarbarian
-                ? Math.Min(estimate, sighting.PeakDefence)
-                : estimate + beliefs.PlayerPowerPerMinute * minutes;
+                ? Math.Min(remaining + sighting.PeakDefence * beliefs.GrowthAfterSightingPerMinute * minutes, sighting.PeakDefence)
+                : remaining + beliefs.PlayerPowerPerMinute * minutes;
         }
 
         return village.BarbarianTier is { } tier

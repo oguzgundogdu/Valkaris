@@ -285,7 +285,7 @@ public sealed record AiBeliefs
     public required double PlayerPowerAtStart { get; init; }
     public required double PlayerPowerPerMinute { get; init; }
 
-    /// <summary>How fast a sighted garrison is assumed to grow, as a share per minute.</summary>
+    /// <summary>How fast a sighted barbarian garrison is assumed to come back, as a share per minute. Players grow by PlayerPowerPerMinute.</summary>
     public required double GrowthAfterSightingPerMinute { get; init; }
 
     public required double BarbarianLootRecoveryPerMinute { get; init; }

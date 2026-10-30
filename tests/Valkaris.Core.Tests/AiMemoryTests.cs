@@ -34,8 +34,6 @@ public class AiMemoryTests
 
     private static double SpearDefence => (TestData.Shipped.Units.Units[UnitType.Spearman].DefenceVsInfantry + TestData.Shipped.Units.Units[UnitType.Spearman].DefenceVsCavalry) / 2;
 
-    private static readonly double GrowthPerMinute = TestData.Shipped.Ai.Beliefs.GrowthAfterSightingPerMinute;
-
     [Fact]
     public void AnUnseenCampUsesTheBeliefFromData()
     {
@@ -97,7 +95,7 @@ public class AiMemoryTests
         _state.ElapsedTime = 300;
 
         var beliefs = TestData.Shipped.Ai.Beliefs;
-        var expected = 100 * SpearDefence * GrowthPerMinute * 5 + beliefs.PlayerPowerPerMinute * 5;
+        var expected = beliefs.PlayerPowerPerMinute * 5;
         Assert.Equal(expected, _memory.EstimateDefence(Known(Enemy)), 6);
     }
 
