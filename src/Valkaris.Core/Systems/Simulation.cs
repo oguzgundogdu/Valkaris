@@ -43,6 +43,7 @@ public sealed class Simulation
     {
         Build,
         Training,
+        Arrival,
     }
 
     /// <summary>Events at the same moment run in this kind order, then by id, so results are deterministic.</summary>
@@ -71,6 +72,9 @@ public sealed class Simulation
                 Consider(new PendingEvent(village.TrainingQueue[0].FinishTime, EventKind.Training, village.Id));
         }
 
+        foreach (var movement in _state.Movements)
+            Consider(new PendingEvent(movement.ArrivalTime, EventKind.Arrival, movement.Id));
+
         return next;
     }
 
@@ -78,6 +82,7 @@ public sealed class Simulation
     {
         EventKind.Build => CompleteBuild(_state.Villages[pending.Id]),
         EventKind.Training => CompleteTraining(_state.Villages[pending.Id]),
+        EventKind.Arrival => CompleteMovement(_state.Movements.First(m => m.Id == pending.Id)),
         _ => throw new ArgumentOutOfRangeException(nameof(pending), pending.Kind, null),
     };
 
@@ -88,6 +93,61 @@ public sealed class Simulation
 
         Produce(time - _state.ElapsedTime);
         _state.ElapsedTime = time;
+    }
+
+    private GameEvent CompleteMovement(Movement movement)
+    {
+        _state.RemoveMovement(movement);
+
+        switch (movement.Type)
+        {
+            case MovementType.Return:
+                return CompleteReturn(movement);
+            case MovementType.Reinforce:
+                AddTroops(_state.Villages[movement.ToVillageId], movement.Troops);
+                return new ReinforcementsArrived(movement.ArrivalTime, movement.ToVillageId);
+            default:
+                // Battles are resolved in the next task; until then attackers simply turn back.
+                SendHome(movement, movement.Troops, Resources.Zero);
+                return new ReinforcementsArrived(movement.ArrivalTime, movement.ToVillageId);
+        }
+    }
+
+    private TroopsReturned CompleteReturn(Movement movement)
+    {
+        var home = _state.Villages[movement.ToVillageId];
+        AddTroops(home, movement.Troops);
+        home.Resources = (home.Resources + movement.Loot).CappedAt(BuildingRules.VillageCapacity(_data, home));
+        return new TroopsReturned(movement.ArrivalTime, home.Id, movement.Loot);
+    }
+
+    private static void AddTroops(Village village, IReadOnlyDictionary<UnitType, int> troops)
+    {
+        foreach (var (unit, count) in troops)
+            village.AddTroops(unit, count);
+    }
+
+    /// <summary>Starts the trip home from where the movement arrived. The survivors set the pace.</summary>
+    private void SendHome(Movement movement, IReadOnlyDictionary<UnitType, int> survivors, Resources loot)
+    {
+        if (survivors.Values.All(count => count == 0))
+            return;
+
+        var from = _state.Villages[movement.ToVillageId];
+        var home = _state.Villages[movement.FromVillageId];
+        var duration = UnitRules.TravelSeconds(_data, _state, from.Position, home.Position, survivors);
+
+        _state.AddMovement(new Movement(
+            _state.NextMovementId++,
+            movement.OwnerId,
+            movement.ToVillageId,
+            movement.FromVillageId,
+            MovementType.Return,
+            survivors,
+            loot,
+            movement.ArrivalTime,
+            movement.ArrivalTime + duration,
+            null));
     }
 
     private static TroopsTrained CompleteTraining(Village village)

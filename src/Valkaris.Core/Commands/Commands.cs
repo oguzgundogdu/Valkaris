@@ -16,6 +16,14 @@ public sealed record BuildCommand(int VillageId, BuildingType Building) : IComma
 /// <summary>Trains a batch of units. The whole batch arrives together when it finishes.</summary>
 public sealed record TrainCommand(int VillageId, UnitType Unit, int Count) : ICommand;
 
+/// <summary>Sends troops from a village. They leave at once and do not defend while away.</summary>
+public sealed record SendTroopsCommand(
+    int FromVillageId,
+    int ToVillageId,
+    MovementType Type,
+    IReadOnlyDictionary<UnitType, int> Troops,
+    BuildingType? CatapultTarget = null) : ICommand;
+
 public enum CommandRejection
 {
     UnknownCommand,
@@ -29,6 +37,10 @@ public enum CommandRejection
     GamePaused,
     InvalidCount,
     BarracksLevelTooLow,
+    InvalidMission,
+    NoTroopsSelected,
+    NotEnoughTroops,
+    CatapultsCannotRaid,
 }
 
 public sealed record CommandResult(CommandRejection? Rejection)

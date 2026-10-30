@@ -72,6 +72,36 @@ public class SimulationSteppingTests
     }
 
     [Fact]
+    public void ResultDoesNotDependOnStepSizeWithTroopsOnTheMove()
+    {
+        (GameState State, IReadOnlyList<GameEvent> Events) Play(double step)
+        {
+            var state = TestMatch.Create();
+            state.Villages[1].SetBuildingLevel(BuildingType.Barracks, 1);
+            state.Villages[1].Resources = new Resources(1000, 1000, 1000);
+            var handler = new CommandHandler(state, Data);
+            Assert.True(handler.Handle(Owner, new TrainCommand(1, UnitType.Spearman, 3)).Success);
+            Assert.True(handler.Handle(Owner, new SendTroopsCommand(1, 2, MovementType.Raid,
+                new Dictionary<UnitType, int> { [UnitType.Spearman] = 5 })).Success);
+
+            var simulation = new Simulation(state, Data);
+            var events = new List<GameEvent>();
+            for (var i = 0; i < (int)Math.Round(600 / step); i++)
+                events.AddRange(simulation.Advance(step));
+            return (state, events);
+        }
+
+        var (big, bigEvents) = Play(600);
+        var (small, smallEvents) = Play(0.25);
+
+        AssertEquivalent(big, small);
+        Assert.Equal(big.Movements, small.Movements);
+        Assert.Equal(big.Villages[1].TroopCount(UnitType.Spearman), small.Villages[1].TroopCount(UnitType.Spearman));
+        Assert.Equal(bigEvents.Select(e => e.GetType()), smallEvents.Select(e => e.GetType()));
+        Assert.Equal(bigEvents.Select(e => e.Time), smallEvents.Select(e => e.Time));
+    }
+
+    [Fact]
     public void ProductionUpgradeTakesEffectAtTheMomentItCompletes()
     {
         var state = TestMatch.Create();

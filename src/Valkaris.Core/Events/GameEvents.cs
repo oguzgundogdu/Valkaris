@@ -8,3 +8,7 @@ public abstract record GameEvent(double Time);
 public sealed record BuildingCompleted(double Time, int VillageId, BuildingType Building, int NewLevel) : GameEvent(Time);
 
 public sealed record TroopsTrained(double Time, int VillageId, UnitType Unit, int Count) : GameEvent(Time);
+
+public sealed record TroopsReturned(double Time, int VillageId, Resources Loot) : GameEvent(Time);
+
+public sealed record ReinforcementsArrived(double Time, int VillageId) : GameEvent(Time);
