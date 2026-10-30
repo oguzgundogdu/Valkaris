@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Valkaris.Core.Commands;
 using Valkaris.Core.Hosting;
@@ -68,6 +69,15 @@ public static class UiContent
         movement.OwnerId == session.LocalPlayerId
         || (movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
 
+    /// <summary>The local player's villages, in the order they are shown and cycled through.</summary>
+    public static IReadOnlyList<Village> OwnVillages(IGameSession session) =>
+        session.State.Villages.Values.Where(v => v.OwnerId == session.LocalPlayerId).OrderBy(v => v.Id).ToList();
+
+    public static bool IsThreatened(IGameSession session, Village village) =>
+        session.State.Movements.Any(m => m.ToVillageId == village.Id
+            && m.OwnerId != village.OwnerId
+            && m.Type is MovementType.Attack or MovementType.Raid);
+
     public static string DescribeMovement(IGameSession session, Movement movement)
     {
         if (movement.OwnerId != session.LocalPlayerId)
@@ -113,6 +123,7 @@ public static class UiContent
         CommandRejection.VillageLimitReached => "Upgrade your capital's Main Building to found more villages.",
         CommandRejection.NoCapitalChoicePending => "There's no capital to choose right now.",
         CommandRejection.NoCapital => "Choose a new capital first.",
+        CommandRejection.NotOwner => "That isn't your village.",
         CommandRejection.InsufficientResources => "Not enough resources yet.",
         CommandRejection.QueueFull => "The queue is full.",
         CommandRejection.MainBuildingLevelTooLow => "Upgrade the Main Building to go higher.",

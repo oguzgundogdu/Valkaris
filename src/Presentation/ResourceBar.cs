@@ -24,6 +24,7 @@ public partial class ResourceBar : PanelContainer
     private int _incomingTarget;
 
     public event Action? PauseRequested;
+    public event Action? CapitalWarningPressed;
     public event Action<int>? IncomingPressed;
     public event Action<GameScreen.MainView>? ViewRequested;
 
@@ -34,6 +35,7 @@ public partial class ResourceBar : PanelContainer
         _incoming = GetNode<Button>("%Incoming");
         _incoming.Pressed += () => IncomingPressed?.Invoke(_incomingTarget);
         _pause.Pressed += () => PauseRequested?.Invoke();
+        GetNode<Button>("%CapitalWarning").Pressed += () => CapitalWarningPressed?.Invoke();
 
         _viewVillage = GetNode<Button>("%ViewVillage");
         _viewWorld = GetNode<Button>("%ViewWorld");
@@ -70,11 +72,18 @@ public partial class ResourceBar : PanelContainer
         return new Chip(amount, capacity, rate);
     }
 
-    public void Refresh(IGameSession session, Village village, GameScreen.MainView view)
+    /// <summary>With no village, the player is only watching: there is nothing of theirs to show.</summary>
+    /// <summary>Shown while a new capital is due and its dialog has been set aside.</summary>
+    public void RefreshCapitalWarning(double? secondsLeft)
     {
-        _viewVillage.ButtonPressed = view == GameScreen.MainView.Village;
-        _viewWorld.ButtonPressed = view == GameScreen.MainView.World;
+        var warning = GetNode<Button>("%CapitalWarning");
+        warning.Visible = secondsLeft is not null;
+        if (secondsLeft is { } seconds)
+            warning.Text = $"Choose a capital {Format.Time(seconds)}";
+    }
 
+    private void RefreshResources(IGameSession session, Village village)
+    {
         var capacity = BuildingRules.VillageCapacity(session.Data, village);
         var production = BuildingRules.VillageProduction(session.Data, village) * session.State.Settings.SpeedMultiplier;
 
@@ -86,6 +95,17 @@ public partial class ResourceBar : PanelContainer
             chip.Capacity.Text = $"/ {Format.Amount(capacity)}";
             chip.Rate.Text = Format.Rate(production.Get(type));
         }
+    }
+
+    public void Refresh(IGameSession session, Village? village, GameScreen.MainView view)
+    {
+        _viewVillage.ButtonPressed = view == GameScreen.MainView.Village;
+        _viewWorld.ButtonPressed = view == GameScreen.MainView.World;
+        GetNode<Control>("%ViewToggle").Visible = village is not null;
+        GetNode<Control>("%Chips").Modulate = village is null ? Colors.Transparent : Colors.White;
+
+        if (village is not null)
+            RefreshResources(session, village);
 
         var remaining = session.State.Settings.MatchDurationSeconds - session.State.ElapsedTime;
         _clock.Text = Format.Time(remaining);

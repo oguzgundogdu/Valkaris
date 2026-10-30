@@ -5,6 +5,7 @@ using Valkaris.Core.Commands;
 using Valkaris.Core.Events;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
@@ -26,16 +27,24 @@ public partial class GameScreen : Control
     private Toast _toast = null!;
     private Overlay _pauseOverlay = null!;
     private Overlay _leaveOverlay = null!;
-    private Overlay _matchOverOverlay = null!;
+    private Overlay _eliminatedOverlay = null!;
+    private CapitalDialog _capitalDialog = null!;
+    private MatchEndScreen _matchEndScreen = null!;
+    private bool _capitalSetAside;
+    private bool _watching;
     private bool _confirmingLeave;
     private double? _devRivalAttackAt;
     private BuildingType _selected = BuildingType.MainBuilding;
-    private int _currentVillageId;
+    private int? _currentVillageId;
+    private VillageStrip _villageStrip = null!;
+    private Label _villageInfo = null!;
     private Tween? _viewTween;
 
     public IGameSession Session { get; private set; } = null!;
 
     public MainView CurrentView { get; private set; } = MainView.Village;
+
+    public int? CurrentVillageId => _currentVillageId;
 
     public event Action? ExitRequested;
 
@@ -49,6 +58,9 @@ public partial class GameScreen : Control
     public override void _Ready()
     {
         _resourceBar = GetNode<ResourceBar>("%ResourceBar");
+        _villageStrip = GetNode<VillageStrip>("%VillageStrip");
+        _villageInfo = GetNode<Label>("%VillageInfo");
+        _villageStrip.VillageSelected += SwitchVillage;
         _villageView = GetNode<VillageView>("%VillageView");
         _worldMap = GetNode<WorldMapView>("%WorldMapView");
         _buildingPanel = GetNode<BuildingPanel>("%BuildingPanel");
@@ -62,7 +74,9 @@ public partial class GameScreen : Control
         _toast = GetNode<Toast>("%Toast");
         _pauseOverlay = GetNode<Overlay>("%PauseOverlay");
         _leaveOverlay = GetNode<Overlay>("%LeaveOverlay");
-        _matchOverOverlay = GetNode<Overlay>("%MatchOverOverlay");
+        _eliminatedOverlay = GetNode<Overlay>("%EliminatedOverlay");
+        _capitalDialog = GetNode<CapitalDialog>("%CapitalDialog");
+        _matchEndScreen = GetNode<MatchEndScreen>("%MatchEndScreen");
 
         _villageView.BuildingSelected += building =>
         {
@@ -78,6 +92,11 @@ public partial class GameScreen : Control
             _worldMap.CentreOn(Session.State.Villages[villageId]);
         };
         _worldMap.EnterRequested += EnterVillage;
+        _worldMap.FoundRequested += tile =>
+        {
+            if (_currentVillageId is { } from)
+                Session.Send(new FoundVillageCommand(from, tile));
+        };
         _worldMap.SendRequested += villageId =>
         {
             _sendPanel.SetTarget(villageId);
@@ -93,8 +112,15 @@ public partial class GameScreen : Control
         _leaveOverlay.ActionPressed += () => ExitRequested?.Invoke();
         _leaveOverlay.SecondaryPressed += () => _confirmingLeave = false;
 
-        _matchOverOverlay.Configure("Time's up", "The match has ended.", "Back to start");
-        _matchOverOverlay.ActionPressed += () => ExitRequested?.Invoke();
+        _matchEndScreen.BackRequested += () => ExitRequested?.Invoke();
+
+        _eliminatedOverlay.Configure("You were eliminated", "You have no villages left. The match goes on without you.", "Keep watching", "Leave match");
+        _eliminatedOverlay.ActionPressed += () => _watching = true;
+        _eliminatedOverlay.SecondaryPressed += () => ExitRequested?.Invoke();
+
+        _capitalDialog.CapitalChosen += villageId => Session.Send(new SetCapitalCommand(villageId));
+        _capitalDialog.Dismissed += () => _capitalSetAside = true;
+        _resourceBar.CapitalWarningPressed += () => _capitalSetAside = false;
 
         Session.EventRaised += OnGameEvent;
         Session.CommandRejected += rejection => _toast.ShowMessage(UiContent.RejectionText(rejection));
@@ -105,9 +131,10 @@ public partial class GameScreen : Control
         Session.Tick(delta);
         RunDevRivalAttack();
 
-        var village = Session.State.Villages[_currentVillageId];
+        var village = ResolveCurrentVillage();
         _resourceBar.Refresh(Session, village, CurrentView);
-        if (CurrentView == MainView.Village)
+        _villageStrip.Refresh(Session, _currentVillageId);
+        if (CurrentView == MainView.Village && village is not null)
             _villageView.Refresh(village, Session.State.ElapsedTime, _selected);
         else
             _worldMap.Refresh(Session, village);
@@ -115,7 +142,34 @@ public partial class GameScreen : Control
 
         _pauseOverlay.Visible = Session.IsPaused && !_confirmingLeave;
         _leaveOverlay.Visible = _confirmingLeave;
-        _matchOverOverlay.Visible = Session.State.IsMatchOver;
+        RefreshDialogs();
+    }
+
+    private void RefreshDialogs()
+    {
+        var state = Session.State;
+        var player = state.Players[Session.LocalPlayerId];
+
+        if (player.CapitalChoiceDeadline is null)
+            _capitalSetAside = false;
+
+        var deadline = state.IsMatchOver ? null : player.CapitalChoiceDeadline;
+        _capitalDialog.Visible = deadline is not null && !_capitalSetAside;
+        if (deadline is { } time)
+        {
+            if (_capitalDialog.Visible)
+                _capitalDialog.Refresh(Session, time);
+            _resourceBar.RefreshCapitalWarning(_capitalSetAside ? time - state.ElapsedTime : null);
+        }
+        else
+        {
+            _resourceBar.RefreshCapitalWarning(null);
+        }
+
+        _eliminatedOverlay.Visible = player.IsEliminated && !_watching && !state.IsMatchOver;
+
+        if (state.Outcome is { } outcome && !_matchEndScreen.Visible)
+            _matchEndScreen.ShowOutcome(Session, outcome);
     }
 
     public override void _UnhandledKeyInput(InputEvent @event)
@@ -125,8 +179,14 @@ public partial class GameScreen : Control
 
         if (key.Keycode == Key.P)
             TogglePause();
-        else if (key.Keycode == Key.M && !Session.IsPaused && !Session.State.IsMatchOver)
+        else if (Session.IsPaused || Session.State.IsMatchOver || _currentVillageId is null || _capitalDialog.Visible)
+            return;
+        else if (key.Keycode == Key.M)
             ShowView(CurrentView == MainView.Village ? MainView.World : MainView.Village);
+        else if (key.Keycode == Key.Q)
+            CycleVillage(-1);
+        else if (key.Keycode == Key.E)
+            CycleVillage(1);
     }
 
     /// <summary>Dev only: the idle rival sends its whole garrison, so being attacked can be tried before AI exists.</summary>
@@ -143,9 +203,60 @@ public partial class GameScreen : Control
         local.SendAs(rival.OwnerId, new SendTroopsCommand(rival.Id, home, MovementType.Attack, rival.Troops.ToDictionary(t => t.Key, t => t.Value)));
     }
 
+    private void CycleVillage(int direction)
+    {
+        var villages = UiContent.OwnVillages(Session);
+        if (villages.Count < 2)
+            return;
+
+        var index = villages.ToList().FindIndex(v => v.Id == _currentVillageId);
+        SwitchVillage(villages[(index + direction + villages.Count) % villages.Count].Id);
+    }
+
+    /// <summary>Keeps the view, the tab and the Send target. On the map, the camera follows.</summary>
+    public void SwitchVillage(int villageId)
+    {
+        if (villageId == _currentVillageId)
+            return;
+
+        _currentVillageId = villageId;
+        _sendPanel.ClearAmounts();
+        if (CurrentView == MainView.World)
+            _worldMap.CentreOn(Session.State.Villages[villageId]);
+    }
+
+    /// <summary>Moves off a village that was lost: to the capital if there is one. Null once the player has no villages.</summary>
+    private Village? ResolveCurrentVillage()
+    {
+        if (_currentVillageId is { } id && Session.State.Villages[id].OwnerId == Session.LocalPlayerId)
+            return Session.State.Villages[id];
+
+        var player = Session.State.Players[Session.LocalPlayerId];
+        var next = player.CapitalVillageId is { } capital
+            ? Session.State.Villages[capital]
+            : UiContent.OwnVillages(Session).FirstOrDefault();
+
+        _currentVillageId = next?.Id;
+        _sendPanel.ClearAmounts();
+        if (next is null)
+            StartWatching();
+        return next;
+    }
+
+    /// <summary>A player with no villages keeps only the map and the reports.</summary>
+    private void StartWatching()
+    {
+        ShowView(MainView.World);
+        ShowTab(SideTab.Reports);
+        _tabs.SetTabHidden((int)SideTab.Village, true);
+        _tabs.SetTabHidden((int)SideTab.Troops, true);
+        _tabs.SetTabHidden((int)SideTab.Send, true);
+    }
+
     private void EnterVillage(int villageId)
     {
         _currentVillageId = villageId;
+        _sendPanel.ClearAmounts();
         _worldMap.ClearSelection();
         ShowTab(SideTab.Village);
         ShowView(MainView.Village);
@@ -168,7 +279,7 @@ public partial class GameScreen : Control
         Control outgoing = view == MainView.World ? _villageView : _worldMap;
 
         if (view == MainView.World)
-            _worldMap.Refresh(Session, Session.State.Villages[_currentVillageId]);
+            _worldMap.Refresh(Session, _currentVillageId is { } id ? Session.State.Villages[id] : null);
 
         _viewTween?.Kill();
         incoming.Visible = true;
@@ -191,11 +302,35 @@ public partial class GameScreen : Control
 
     public void ShowTab(SideTab tab) => _tabs.CurrentTab = (int)tab;
 
-    private void RefreshActiveTab(Village village)
+    private void RefreshVillageInfo(Village village)
     {
+        var text = $"{village.Name}  ·  Loyalty {Format.Amount(village.Loyalty)}";
+        if (LoyaltyRules.IsCapital(Session.State, village))
+        {
+            var threshold = Session.Data.Villages.Capital.LockedAboveMainLevel;
+            text += LoyaltyRules.IsLocked(Session.State, Session.Data, village)
+                ? $"\nCapital: protected while its Main Building is above level {threshold}"
+                : $"\nCapital: not protected until its Main Building is above level {threshold}";
+        }
+        _villageInfo.Text = text;
+    }
+
+    private void RefreshActiveTab(Village? village)
+    {
+        var unread = _reportsPanel.UnreadCount(Session);
+        _tabs.SetTabTitle((int)SideTab.Reports, unread > 0 ? $"Reports ({unread})" : "Reports");
+
+        if (village is null)
+        {
+            _reportsPanel.Refresh(Session);
+            _reportsPanel.MarkAllRead(Session);
+            return;
+        }
+
         switch ((SideTab)_tabs.CurrentTab)
         {
             case SideTab.Village:
+                RefreshVillageInfo(village);
                 _buildingPanel.Refresh(Session, village, _selected);
                 _queuePanel.Refresh("Build queue", Session.Data.Game.MaxBuildQueueLength, Session.State.ElapsedTime, village.BuildQueue
                     .Select(item => new QueueRow(
@@ -216,9 +351,6 @@ public partial class GameScreen : Control
                 _reportsPanel.MarkAllRead(Session);
                 break;
         }
-
-        var unread = _reportsPanel.UnreadCount(Session);
-        _tabs.SetTabTitle((int)SideTab.Reports, unread > 0 ? $"Reports ({unread})" : "Reports");
     }
 
     private void TogglePause()
@@ -246,6 +378,24 @@ public partial class GameScreen : Control
                 break;
             case TroopsTrained trained when IsLocalVillage(trained.VillageId):
                 _toast.ShowMessage($"{UiContent.Units[trained.Unit].Name} × {trained.Count} trained");
+                break;
+            case ReinforcementsArrived arrived when IsLocalVillage(arrived.VillageId):
+                _toast.ShowMessage($"Troops arrived at {Session.State.Villages[arrived.VillageId].Name}");
+                break;
+            case VillageFounded founded when IsLocalVillage(founded.VillageId):
+                _toast.ShowMessage($"{Session.State.Villages[founded.VillageId].Name} was founded");
+                break;
+            case SettlingFailed failed when failed.OwnerId == Session.LocalPlayerId:
+                _toast.ShowMessage($"Settler turned back. {UiContent.RejectionText(failed.Reason)}");
+                break;
+            case VillageCaptured captured when captured.NewOwnerId == Session.LocalPlayerId:
+                _toast.ShowMessage($"You captured {Session.State.Villages[captured.VillageId].Name}");
+                break;
+            case VillageCaptured captured when captured.PreviousOwnerId == Session.LocalPlayerId:
+                _toast.ShowMessage($"{Session.State.Villages[captured.VillageId].Name} was captured by {UiContent.OwnerName(Session, captured.NewOwnerId)}");
+                break;
+            case PlayerEliminated eliminated when eliminated.PlayerId != Session.LocalPlayerId:
+                _toast.ShowMessage($"{UiContent.OwnerName(Session, eliminated.PlayerId)} was eliminated");
                 break;
         }
     }

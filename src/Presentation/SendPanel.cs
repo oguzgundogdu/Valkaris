@@ -37,6 +37,13 @@ public partial class SendPanel : VBoxContainer
 
     public void SetTarget(int villageId) => _targetId = villageId;
 
+    /// <summary>The amounts belonged to the village being left. The target stays.</summary>
+    public void ClearAmounts()
+    {
+        foreach (var row in _units.Values)
+            row.Amount.Value = 0;
+    }
+
     public override void _Ready()
     {
         _targetLine = GetNode<Label>("%TargetLine");
@@ -92,6 +99,8 @@ public partial class SendPanel : VBoxContainer
     {
         _session = session;
 
+        GetNode<Label>("%FromLine").Text = $"From {village.Name}";
+
         var target = _targetId is { } id ? session.State.Villages[id] : null;
         RefreshTarget(session, village, target, mapIsOpen);
         RefreshMissions(target is not null && target.OwnerId == village.OwnerId);
@@ -120,6 +129,7 @@ public partial class SendPanel : VBoxContainer
         _reason.Visible = _send.Disabled;
         _reason.Text = option is null
             ? "Pick a target on the world map."
+            : target!.Id == village.Id ? "Troops are already in this village."
             : option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : "";
 
         RefreshMoving(session);
@@ -156,8 +166,7 @@ public partial class SendPanel : VBoxContainer
             return;
 
         _session.Send(_command);
-        foreach (var row in _units.Values)
-            row.Amount.Value = 0;
+        ClearAmounts();
     }
 
     private void RefreshMoving(IGameSession session)

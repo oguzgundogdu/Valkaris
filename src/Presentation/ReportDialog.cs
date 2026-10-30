@@ -35,6 +35,13 @@ public partial class ReportDialog : ColorRect
         if (report.CatapultDamage is { } hit)
             damage.Text = $"Catapults hit the {UiContent.Buildings[hit.Building].Name}: level {hit.FromLevel} → {hit.ToLevel}";
 
+        var loyalty = GetNode<Label>("%Loyalty");
+        loyalty.Visible = report.Loyalty is not null || report.CapitalProtected;
+        loyalty.Text = report.CapitalProtected ? "Capital protected: loyalty unchanged"
+            : report.Loyalty is { Captured: true } ? "Village captured"
+            : report.Loyalty is { } change ? $"Loyalty: {Format.Amount(change.From)} → {Format.Amount(change.To)}"
+            : "";
+
         Visible = true;
     }
 

@@ -22,6 +22,7 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 26
 
 [node name="ViewToggle" type="HBoxContainer" parent="Box"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 2
 
@@ -42,6 +43,16 @@ focus_mode = 0
 theme_type_variation = &"SecondaryButton"
 toggle_mode = true
 text = "World"
+
+[node name="CapitalWarning" type="Button" parent="Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Choose a new capital"
+focus_mode = 0
+theme_type_variation = &"SecondaryButton"
+theme_override_colors/font_color = Color(0.898, 0.439, 0.345, 1)
+theme_override_colors/font_hover_color = Color(0.898, 0.439, 0.345, 1)
 
 [node name="Incoming" type="Button" parent="Box"]
 unique_name_in_owner = true

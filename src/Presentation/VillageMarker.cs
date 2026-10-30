@@ -1,6 +1,7 @@
 using Godot;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
@@ -12,11 +13,15 @@ public partial class VillageMarker : Control
 
     private const float IconSize = 64;
 
+    private static readonly Texture2D CapitalIcon = ResizedIcon("res://assets/icons/capital.svg", 20);
+
     private readonly TextureRect _icon = new();
     private readonly Label _name = new();
     private Color _banner = Colors.White;
     private bool _isLocal;
     private bool _selected;
+    private bool _current;
+    private bool _capital;
 
     public int VillageId { get; set; }
 
@@ -43,20 +48,30 @@ public partial class VillageMarker : Control
         AddChild(_name);
     }
 
-    public void Refresh(IGameSession session, Village village, bool selected)
+    public void Refresh(IGameSession session, Village village, bool selected, bool current)
     {
         _name.Text = village.Name;
         _icon.Texture = GD.Load<Texture2D>(UiContent.VillageIconPath(session, village));
 
         var banner = UiContent.OwnerColour(session, village.OwnerId);
         var isLocal = village.OwnerId == session.LocalPlayerId;
-        if (banner != _banner || isLocal != _isLocal || selected != _selected)
+        var capital = LoyaltyRules.IsCapital(session.State, village);
+        if (banner != _banner || isLocal != _isLocal || selected != _selected || current != _current || capital != _capital)
         {
+            _current = current;
+            _capital = capital;
             _banner = banner;
             _isLocal = isLocal;
             _selected = selected;
             QueueRedraw();
         }
+    }
+
+    private static Texture2D ResizedIcon(string path, int size)
+    {
+        var image = GD.Load<Texture2D>(path).GetImage();
+        image.Resize(size, size);
+        return ImageTexture.CreateFromImage(image);
     }
 
     public override void _Draw()
@@ -65,6 +80,12 @@ public partial class VillageMarker : Control
             DrawArc(new Vector2(0, 6), 34, 0, Mathf.Tau, 48, Colors.White, 3, antialiased: true);
         else if (_isLocal)
             DrawArc(new Vector2(0, 6), 32, 0, Mathf.Tau, 48, new Color(_banner, 0.75f), 2, antialiased: true);
+
+        if (_current)
+            DrawArc(new Vector2(0, 6), 28, 0, Mathf.Tau, 48, new Color(1, 0.93f, 0.7f), 3, antialiased: true);
+
+        if (_capital)
+            DrawTexture(CapitalIcon, new Vector2(-IconSize / 2, -IconSize * 0.72f));
 
         var pole = new Vector2(22, -IconSize * 0.72f);
         DrawLine(pole, pole + new Vector2(0, 26), new Color(0.2f, 0.16f, 0.12f), 2, antialiased: true);

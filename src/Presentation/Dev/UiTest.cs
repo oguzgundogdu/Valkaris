@@ -942,8 +942,8 @@ public partial class UiTest : Control
 
         session.Tick(session.State.Settings.MatchDurationSeconds);
         await Frames();
-        var overlay = game.GetNode<Overlay>("%MatchOverOverlay");
-        Expect(overlay.Visible, "Match end shows the overlay");
+        var endScreen = game.GetNode<MatchEndScreen>("%MatchEndScreen");
+        Expect(endScreen.Visible, "Match end shows the results");
 
         SelectTile(BuildingType.Woodcutter);
         await Frames();
@@ -955,7 +955,7 @@ public partial class UiTest : Control
         game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
         Expect(!session.IsPaused, "A finished match cannot be paused");
 
-        overlay.GetNode<Button>("%Action").EmitSignal(BaseButton.SignalName.Pressed);
+        endScreen.GetNode<Button>("%Back").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
         Find<StartScreen>().GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -1051,6 +1051,421 @@ public partial class UiTest : Control
         await Frames();
         await TestBeingAttacked(data);
         await TestCrowdedMediumMap(data);
+        await TestSwitchingVillages(data);
+        await TestReinforce(data);
+        await TestReportsOfLoyalty(data);
+        await TestFounding(data);
+        await TestCapitalChoice(data);
+        await TestCapitalTimeout(data);
+        await TestWatchingAfterElimination(data);
+        await TestMatchResults(data);
+    }
+
+    private async Task<(GameScreen Game, LocalGameSession Session)> StartMatch(GameData data, string? scenario, int players = 2, double? rivalAttackAt = null, double duration = TestDuration)
+    {
+        foreach (var child in GetChildren().OfType<GameScreen>())
+            child.QueueFree();
+        await Frames();
+
+        var slots = Enumerable.Range(1, players)
+            .Select(i => new PlayerSlot(i == 1 ? "You" : i == 2 ? "Rival" : $"Other {i}", Nation.Valdren, i > 1))
+            .ToArray();
+        var state = GameFactory.CreateMatch(new GameSettings(duration, 1, MapSize.Small, 11), slots, data);
+        if (scenario is not null)
+            Expect(Valkaris.Core.Dev.DevScenario.Apply(state, data, scenario), $"Scenario {scenario} exists");
+
+        var session = new LocalGameSession(state, data, 1);
+        var game = GD.Load<PackedScene>("res://scenes/Game.tscn").Instantiate<GameScreen>();
+        game.Init(session, rivalAttackAt);
+        AddChild(game);
+        await Frames();
+        return (game, session);
+    }
+
+    private static void Click(WorldMapView world, Vector2 at)
+    {
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at });
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at });
+    }
+
+    private static void PressKey(GameScreen game, Key key) =>
+        game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = key });
+
+    private static void Press(Button button) => button.EmitSignal(BaseButton.SignalName.Pressed);
+
+    /// <summary>Runs until nothing is on the way, or the match ends.</summary>
+    private async Task RunUntilArrived(LocalGameSession session)
+    {
+        while (session.State.Movements.Count > 0 && !session.State.IsMatchOver)
+            session.Tick(session.State.Movements.Min(m => m.ArrivalTime) - session.State.ElapsedTime + 0.001);
+        await Frames();
+    }
+
+    private async Task TestSwitchingVillages(GameData data)
+    {
+        var (game, session) = await StartMatch(data, null);
+        var strip = game.GetNode<VillageStrip>("%VillageStrip");
+        Expect(!strip.Visible, "The strip is hidden with one village");
+        PressKey(game, Key.E);
+        Expect(game.CurrentVillageId == 1, "Cycling does nothing with one village");
+
+        (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
+        strip = game.GetNode<VillageStrip>("%VillageStrip");
+        await Frames();
+        var own = UiContent.OwnVillages(session);
+        var chips = strip.GetChildren().OfType<Button>().ToList();
+        Expect(strip.Visible && chips.Count == 3, $"One chip per village, got {chips.Count}");
+        Expect(chips[0].ButtonPressed && !chips[1].ButtonPressed, "The current village's chip is pressed");
+        Expect(chips[0].Icon is not null && chips[1].Icon is null, "The capital's chip has the star");
+        await Shot("villages-strip");
+
+        Press(chips[1]);
+        await Frames();
+        Expect(game.CurrentVillageId == own[1].Id, "Clicking a chip switches village");
+        Expect(chips[1].ButtonPressed && !chips[0].ButtonPressed, "The chips follow the switch");
+        Expect(game.CurrentView == GameScreen.MainView.Village, "Switching keeps the view");
+
+        PressKey(game, Key.E);
+        Expect(game.CurrentVillageId == own[2].Id, "E moves to the next village");
+        PressKey(game, Key.E);
+        Expect(game.CurrentVillageId == own[0].Id, "E wraps around");
+        PressKey(game, Key.Q);
+        Expect(game.CurrentVillageId == own[2].Id, "Q moves to the previous village");
+
+        var send = game.GetNode<SendPanel>("%Send");
+        game.ShowTab(GameScreen.SideTab.Send);
+        Press(chips[1]);
+        await Frames();
+        Expect(send.GetNode<Label>("%FromLine").Text == $"From {own[1].Name}", "The Send form names the village");
+        var amount = send.GetNode<SpinBox>("%Units/Swordsman/Amount");
+        amount.Value = 50;
+        await Frames();
+        Press(chips[0]);
+        await Frames();
+        Expect(amount.Value == 0, "Switching clears the amounts");
+        Expect(game.GetNode<TabContainer>("%Side").CurrentTab == (int)GameScreen.SideTab.Send, "Switching keeps the tab");
+
+        amount.GetLineEdit().GrabFocus();
+        await Frames();
+        var typed = new InputEventKey { Pressed = true, Keycode = Key.E, Unicode = 'e' };
+        var before = game.CurrentVillageId;
+        GetViewport().PushInput(typed);
+        await Frames();
+        Expect(game.CurrentVillageId == before, "E does not switch while typing in a number field");
+        amount.GetLineEdit().ReleaseFocus();
+
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        for (var i = 0; i < 12; i++)
+            world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.WheelUp, Pressed = true, Position = world.Size / 2 });
+        await Frames();
+        Press(chips[2]);
+        await Frames();
+        var centred = world.WorldToView(WorldMapView.VillageWorldPosition(own[2]));
+        Expect(new Rect2(Vector2.Zero, world.Size).HasPoint(centred), "Switching on the map brings the village into view");
+        Expect(game.CurrentView == GameScreen.MainView.World, "Switching keeps the map open");
+        await Shot("villages-map");
+    }
+
+    private async Task TestReinforce(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
+        var own = UiContent.OwnVillages(session);
+        game.SwitchVillage(own[1].Id);
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var popup = world.GetNode<VillagePopup>("Popup");
+        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(own[2])));
+        await Frames();
+        Expect(popup.GetNode<Button>("%Reinforce").Visible, "Your other village offers Reinforce");
+        Expect(popup.GetNode<Button>("%Enter").Visible, "Your other village offers Enter");
+        Expect(!popup.GetNode<Button>("%Send").Visible, "Your own village offers no attack");
+        await Shot("reinforce-popup");
+
+        Press(popup.GetNode<Button>("%Reinforce"));
+        await Frames();
+        var send = game.GetNode<SendPanel>("%Send");
+        Expect(game.GetNode<TabContainer>("%Side").CurrentTab == (int)GameScreen.SideTab.Send, "Reinforce opens the Send tab");
+        Expect(send.GetNode<OptionButton>("%Mission").GetItemText(0) == "Reinforce", "The mission is Reinforce");
+
+        send.GetNode<SpinBox>("%Units/Swordsman/Amount").Value = 40;
+        await Frames();
+        var before = own[2].TroopCount(UnitType.Swordsman);
+        Press(send.GetNode<Button>("%Send"));
+        await Frames();
+        Expect(session.State.Movements.Any(m => m.Type == MovementType.Reinforce), "Reinforcements leave");
+        await RunUntilArrived(session);
+        Expect(own[2].TroopCount(UnitType.Swordsman) == before + 40, "Reinforcements join the garrison");
+
+        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(own[1])));
+        await Frames();
+        Expect(!popup.GetNode<Button>("%Reinforce").Visible, "The current village can't reinforce itself");
+    }
+
+    private async Task TestReportsOfLoyalty(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
+        var own = UiContent.OwnVillages(session);
+        var army = own[1];
+        var dialog = game.GetNode<ReportDialog>("%ReportDialog");
+        var label = dialog.GetNode<Label>("%Loyalty");
+
+        session.Send(new SendTroopsCommand(army.Id, 2, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 40, [UnitType.Lord] = 1 }));
+        await RunUntilArrived(session);
+        dialog.ShowReport(session, session.State.Reports[^1]);
+        Expect(label.Visible && label.Text == "Capital protected: loyalty unchanged", $"A locked capital is reported, got '{label.Text}'");
+        await Shot("report-protected");
+        dialog.Visible = false;
+
+        // A big enough force that the Lords survive the battle.
+        var camp = session.State.Villages.Values.Where(v => v.IsBarbarian).MinBy(v => v.Troops.Values.Sum())!;
+        session.Send(new SendTroopsCommand(army.Id, camp.Id, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 100, [UnitType.Lord] = 2 }));
+        await RunUntilArrived(session);
+        dialog.ShowReport(session, session.State.Reports[^1]);
+        Expect(label.Visible && label.Text.StartsWith("Loyalty: "), $"A lowered loyalty is reported, got '{label.Text}'");
+        dialog.Visible = false;
+
+        var (endGame, endSession) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Endgame, players: 3);
+        endSession.Send(new SendTroopsCommand(1, 2, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 100, [UnitType.Lord] = 1 }));
+        endSession.Tick(endSession.State.Movements[0].ArrivalTime);
+        await Frames();
+        var endDialog = endGame.GetNode<ReportDialog>("%ReportDialog");
+        endDialog.ShowReport(endSession, endSession.State.Reports[^1]);
+        Expect(endDialog.GetNode<Label>("%Loyalty").Text == "Village captured", "A capture is reported");
+        await Shot("report-captured");
+        endDialog.Visible = false;
+
+        endGame.ShowTab(GameScreen.SideTab.Village);
+        await Frames();
+        var info = endGame.GetNode<Label>("%VillageInfo").Text;
+        Expect(info.Contains("Loyalty") && info.Contains("Capital"), $"The Village tab shows loyalty and the capital, got '{info}'");
+    }
+
+    private async Task TestFounding(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Founding);
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var popup = world.GetNode<VillagePopup>("Popup");
+        var found = popup.GetNode<Button>("%Found");
+        var map = session.State.Map;
+        var tiles = (from x in Enumerable.Range(0, map.Width) from y in Enumerable.Range(0, map.Height) select new TileCoord(x, y)).ToList();
+
+        var water = tiles.Where(t => map.TileAt(t).Terrain == Terrain.Water)
+            .Where(t => session.State.Villages.Values.All(v => UnitRules.Distance(v.Position, t) >= 2)).ToList();
+        Expect(water.Count > 0, "This seed has water to try");
+        if (water.Count > 0)
+        {
+            Click(world, world.WorldToView(WorldMapView.TileWorldPosition(water[0])));
+            await Frames();
+            Expect(popup.Visible && found.Visible && found.Disabled, "Water can't be settled");
+            Expect(popup.GetNode<Label>("%Reason").Text == UiContent.RejectionText(CommandRejection.TileIsWater), "Water states the reason");
+        }
+
+        var near = tiles.First(t => map.TileAt(t).VillageId is null && map.TileAt(t).Terrain != Terrain.Water
+            && UnitRules.Distance(t, session.State.Villages[1].Position) is > 1 and < 2.9);
+        Click(world, world.WorldToView(WorldMapView.TileWorldPosition(near)));
+        await Frames();
+        Expect(found.Disabled, "A tile too close can't be settled");
+        Expect(popup.GetNode<Label>("%Reason").Text == UiContent.RejectionText(CommandRejection.TooCloseToVillage), "Too close states the reason");
+        await Shot("found-too-close");
+
+        var free = tiles.First(t => FoundPreview.Evaluate(session.State, data, 1, 1, t).CanFound);
+        Click(world, world.WorldToView(WorldMapView.TileWorldPosition(free)));
+        await Frames();
+        Expect(popup.Visible && !found.Disabled, "Free land can be settled");
+        await Shot("found-popup");
+        Press(found);
+        await Frames();
+        Expect(!popup.Visible, "Sending closes the popup");
+        Expect(session.State.Movements.Any(m => m.Type == MovementType.Settle), "The Settler leaves");
+        var layer = world.GetNode<MovementLayer>("World/Movements");
+        Expect(layer.Entries.Count == 1, "The Settler's route is drawn");
+        await Shot("found-travelling");
+
+        var villages = session.State.Villages.Count;
+        await RunUntilArrived(session);
+        Expect(session.State.Villages.Count == villages + 1, "The village is founded");
+        var founded = session.State.Villages[map.TileAt(free).VillageId ?? -1];
+        Expect(world.GetNode("World/Markers").HasNode($"Village{founded.Id}"), "The new village gets a marker");
+        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(founded)));
+        await Frames();
+        Expect(world.SelectedVillageId == founded.Id && popup.GetNode<Label>("%Name").Text == founded.Name, "The new village can be selected");
+        Expect(game.GetNode<VillageStrip>("%VillageStrip").Visible, "The strip appears with a second village");
+        await Shot("found-done");
+
+        var (plain, plainSession) = await StartMatch(data, null);
+        plain.ShowView(GameScreen.MainView.World);
+        await Frames();
+        var plainWorld = plain.GetNode<WorldMapView>("%WorldMapView");
+        Click(plainWorld, plainWorld.WorldToView(WorldMapView.TileWorldPosition(tiles.First(t => FoundPreview.Evaluate(plainSession.State, data, 1, 1, t).Rejection == CommandRejection.VillageLimitReached))));
+        await Frames();
+        Expect(!plainWorld.GetNode<VillagePopup>("Popup").Visible, "Without a Settler, clicking land opens nothing");
+    }
+
+    private async Task<(GameScreen Game, LocalGameSession Session)> LoseCapital(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages, rivalAttackAt: 0.001);
+        session.Tick(0.01);
+        await Frames();
+        await RunUntilCapitalLost(session);
+        await Frames();
+        Expect(session.State.Villages[1].OwnerId == 2, "The rival takes the capital");
+        return (game, session);
+    }
+
+    private static Task RunUntilCapitalLost(LocalGameSession session)
+    {
+        while (session.State.Players[1].CapitalChoiceDeadline is null && session.State.Movements.Any(m => m.ToVillageId == 1))
+            session.Tick(session.State.Movements.Where(m => m.ToVillageId == 1).Min(m => m.ArrivalTime) - session.State.ElapsedTime);
+        return Task.CompletedTask;
+    }
+
+    private async Task TestCapitalChoice(GameData data)
+    {
+        var (game, session) = await LoseCapital(data);
+        var dialog = game.GetNode<CapitalDialog>("%CapitalDialog");
+        var warning = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Button>("%CapitalWarning");
+        var own = UiContent.OwnVillages(session);
+
+        Expect(dialog.Visible, "Losing the capital opens the dialog");
+        Expect(game.CurrentVillageId == own[0].Id, "The view moves to a village you still own");
+        Expect(!warning.Visible, "No warning while the dialog is open");
+        await Shot("capital-dialog");
+
+        PressKey(game, Key.E);
+        Expect(game.CurrentVillageId == own[0].Id, "Keys don't reach the game behind the dialog");
+
+        var countdown = dialog.GetNode<Label>("%Countdown").Text;
+        session.Tick(5);
+        await Frames();
+        Expect(dialog.GetNode<Label>("%Countdown").Text != countdown, "The countdown runs");
+
+        Press(dialog.GetNode<Button>("%Later"));
+        await Frames();
+        Expect(!dialog.Visible, "The dialog can be set aside");
+        Expect(warning.Visible && warning.Text.StartsWith("Choose a capital"), $"The top bar warns, got '{warning.Text}'");
+        PressKey(game, Key.E);
+        Expect(game.CurrentVillageId == own[1].Id, "The game can be played with the dialog set aside");
+        await Shot("capital-warning");
+
+        Press(warning);
+        await Frames();
+        Expect(dialog.Visible && !warning.Visible, "The warning reopens the dialog");
+
+        var row = dialog.GetNode<VBoxContainer>("%Villages").GetNode<Button>("Village0");
+        Expect(row.Text.Contains(own[0].Name), "The dialog lists your villages");
+        Press(row);
+        await Frames();
+        var player = session.State.Players[1];
+        Expect(player.CapitalVillageId == own[0].Id, "Choosing sets the capital");
+        Expect(own[0].BuildingLevel(BuildingType.MainBuilding) == data.Villages.Capital.PenaltyMainLevel, "Choosing applies the penalty");
+        Expect(!dialog.Visible && !warning.Visible, "Choosing closes the dialog and warning");
+    }
+
+    private async Task TestCapitalTimeout(GameData data)
+    {
+        var (game, session) = await LoseCapital(data);
+        var dialog = game.GetNode<CapitalDialog>("%CapitalDialog");
+        var expected = CapitalRules.AutomaticChoice(session.State, 1).Id;
+        Press(dialog.GetNode<Button>("%Later"));
+        await Frames();
+
+        session.Tick(data.Villages.Capital.ChoiceSeconds);
+        await Frames();
+
+        Expect(session.State.Players[1].CapitalVillageId == expected, "Time running out picks the capital");
+        Expect(!dialog.Visible, "The dialog stays closed after the timeout");
+        Expect(!game.GetNode<ResourceBar>("%ResourceBar").GetNode<Button>("%CapitalWarning").Visible, "The warning clears after the timeout");
+    }
+
+    private async Task TestWatchingAfterElimination(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, players: 3, rivalAttackAt: 0.001);
+        session.Tick(0.01);
+        await RunUntilArrived(session);
+        await Frames();
+
+        Expect(session.State.Players[1].IsEliminated, "Losing the last village eliminates you");
+        Expect(!session.State.IsMatchOver, "The match goes on with two players left");
+        Expect(game.CurrentVillageId is null, "No village is current");
+        var overlay = game.GetNode<Overlay>("%EliminatedOverlay");
+        Expect(overlay.Visible, "Elimination is announced");
+        await Shot("eliminated");
+
+        Press(overlay.GetNode<Button>("%Action"));
+        await Frames();
+        Expect(!overlay.Visible, "Keep watching closes the message");
+        Expect(game.CurrentView == GameScreen.MainView.World, "Watching shows the map");
+        var tabs = game.GetNode<TabContainer>("%Side");
+        Expect(tabs.CurrentTab == (int)GameScreen.SideTab.Reports, "Watching shows the reports");
+        Expect(tabs.IsTabHidden((int)GameScreen.SideTab.Send), "Watching hides the Send tab");
+
+        PressKey(game, Key.M);
+        Expect(game.CurrentView == GameScreen.MainView.World, "M can't leave the map while watching");
+
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var popup = world.GetNode<VillagePopup>("Popup");
+        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(session.State.Villages[2])));
+        await Frames();
+        Expect(popup.Visible && !popup.GetNode<Button>("%Send").Visible, "A watcher can look but not send");
+        await Shot("watching");
+
+        session.Tick(10);
+        await Frames();
+        session.Tick(TestDuration);
+        await Frames();
+        Expect(game.GetNode<MatchEndScreen>("%MatchEndScreen").Visible, "The results appear for a watcher too");
+        Expect(game.GetNode<MatchEndScreen>("%MatchEndScreen").GetNode<Label>("%Title").Text == "Defeat", "A watcher has lost");
+    }
+
+    private async Task TestMatchResults(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Endgame);
+        session.Send(new SendTroopsCommand(1, 2, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 100, [UnitType.Lord] = 1 }));
+        session.Tick(session.State.Movements[0].ArrivalTime);
+        await Frames();
+        var end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
+        Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Victory", "Taking the last village wins");
+        Expect(end.GetNode<Label>("%Reason").Text.Contains("last player standing"), "The reason is stated");
+        var cells = end.GetNode<GridContainer>("%Table").GetChildren().OfType<Label>().Select(l => l.Text).ToList();
+        var top = session.State.Outcome!.Scores[0];
+        Expect(cells.Count == 18, $"A header and one row per player, got {cells.Count} cells");
+        Expect(cells[7] == "You" && cells[8] == $"{top.Villages}" && cells[9] == $"{top.Population}" && cells[10] == $"{top.Captures}" && cells[11] == $"{top.Score:0}", "The table matches the score");
+        Expect(cells[13].EndsWith("(eliminated)"), "Eliminated players are marked");
+        await Shot("end-victory");
+
+        (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, rivalAttackAt: 0.001);
+        session.Tick(0.01);
+        await RunUntilArrived(session);
+        end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
+        Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Defeat", "Losing the last village loses");
+        Expect(!game.GetNode<Overlay>("%EliminatedOverlay").Visible, "The results replace the elimination message");
+        await Shot("end-defeat");
+
+        (game, session) = await StartMatch(data, null, duration: 30);
+        session.Tick(30);
+        await Frames();
+        end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
+        Expect(end.GetNode<Label>("%Title").Text == "Draw", "Equal scores at time-out are a draw");
+        Expect(end.GetNode<Label>("%Reason").Text.Contains("tied"), "The draw is explained");
+        await Shot("end-draw");
+
+        (game, session) = await StartMatch(data, null, duration: 100);
+        session.Send(new BuildCommand(1, BuildingType.Farm));
+        session.Tick(100);
+        await Frames();
+        end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
+        Expect(end.GetNode<Label>("%Title").Text == "Victory", "The higher score wins at time-out");
+        Expect(end.GetNode<Label>("%Reason").Text.Contains("highest score"), "The time-out win is explained");
+
+        foreach (var child in GetChildren().OfType<GameScreen>())
+            child.QueueFree();
+        await Frames();
     }
 
     private void SelectTile(BuildingType building) =>

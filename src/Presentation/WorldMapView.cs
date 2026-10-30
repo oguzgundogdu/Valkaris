@@ -35,12 +35,16 @@ public partial class WorldMapView : Control
     private TileHighlight _highlight = null!;
     private IGameSession? _session;
     private int? _selectedId;
+    private TileCoord? _selectedTile;
+    private Village? _currentVillage;
     private Vector2? _hoverPoint;
 
     public event Action<int>? SendRequested;
     public event Action<int>? EnterRequested;
+    public event Action<TileCoord>? FoundRequested;
 
     public int? SelectedVillageId => _selectedId;
+    public TileCoord? SelectedTile => _selectedTile;
     public float Zoom => _zoom;
     public Vector2 CameraPosition => _world.Position;
 
@@ -84,6 +88,11 @@ public partial class WorldMapView : Control
 
         _popup.SendRequested += id => SendRequested?.Invoke(id);
         _popup.EnterRequested += id => EnterRequested?.Invoke(id);
+        _popup.FoundRequested += tile =>
+        {
+            _selectedTile = null;
+            FoundRequested?.Invoke(tile);
+        };
 
         Resized += OnResized;
     }
@@ -95,28 +104,42 @@ public partial class WorldMapView : Control
         DrawStyleBox(surround, new Rect2(Vector2.Zero, Size));
     }
 
-    public void Refresh(IGameSession session, Village currentVillage)
+    public void Refresh(IGameSession session, Village? currentVillage)
     {
         _session = session;
+        _currentVillage = currentVillage;
         if (!_built)
             Build(session);
 
+        AddNewMarkers(session);
         foreach (var (id, marker) in _markers)
-            marker.Refresh(session, session.State.Villages[id], id == _selectedId);
+            marker.Refresh(session, session.State.Villages[id], id == _selectedId, id == currentVillage?.Id);
 
         _movements.Refresh(session, _zoom);
         RefreshHoverLabel();
 
-        _popup.Visible = _selectedId is not null;
+        if (currentVillage is null || currentVillage.TroopCount(UnitType.Settler) == 0)
+            _selectedTile = null;
+
+        _popup.Visible = _selectedId is not null || _selectedTile is not null;
         if (_selectedId is { } selected)
         {
             var village = session.State.Villages[selected];
             _popup.Refresh(session, village, currentVillage);
-            PlacePopup(village);
+            PlacePopup(VillageWorldPosition(village));
+        }
+        else if (_selectedTile is { } tile)
+        {
+            _popup.RefreshLand(session, tile, currentVillage!);
+            PlacePopup(TileWorldPosition(tile));
         }
     }
 
-    public void ClearSelection() => _selectedId = null;
+    public void ClearSelection()
+    {
+        _selectedId = null;
+        _selectedTile = null;
+    }
 
     /// <summary>Puts a village in the middle of the view, as far as the map's edges allow.</summary>
     public void CentreOn(Village village)
@@ -144,9 +167,9 @@ public partial class WorldMapView : Control
     }
 
     /// <summary>Beside the marker, kept inside the view.</summary>
-    private void PlacePopup(Village village)
+    private void PlacePopup(Vector2 world)
     {
-        var anchor = WorldToView(VillageWorldPosition(village));
+        var anchor = WorldToView(world);
         var size = _popup.GetCombinedMinimumSize();
         var position = anchor + new Vector2(PopupGap, -size.Y / 2);
         if (position.X + size.X > Size.X)
@@ -185,15 +208,24 @@ public partial class WorldMapView : Control
         _worldSize = new Vector2(state.Map.Width, state.Map.Height) * TileSize;
         _terrain.Build(state);
 
-        foreach (var village in state.Villages.Values)
+        AddNewMarkers(session);
+        FitToView();
+    }
+
+    /// <summary>Villages appear during a match when a Settler arrives.</summary>
+    private void AddNewMarkers(IGameSession session)
+    {
+        foreach (var village in session.State.Villages.Values)
         {
+            if (_markers.ContainsKey(village.Id))
+                continue;
+
             var marker = new VillageMarker { Name = $"Village{village.Id}", VillageId = village.Id };
             marker.Position = VillageWorldPosition(village);
+            marker.Scale = Vector2.One * MarkerScale / _zoom;
             _markerLayer.AddChild(marker);
             _markers[village.Id] = marker;
         }
-
-        FitToView();
     }
 
     private void OnResized()
@@ -270,8 +302,22 @@ public partial class WorldMapView : Control
         }
 
         if (_pressed && !_dragging)
+        {
             _selectedId = VillageAt(button.Position);
+            _selectedTile = _selectedId is null ? LandForSettlerAt(button.Position) : null;
+        }
         _pressed = false;
+    }
+
+    /// <summary>Empty land only responds to a click when the current village has a Settler to send there.</summary>
+    private TileCoord? LandForSettlerAt(Vector2 viewPoint)
+    {
+        if (_session is null || _currentVillage is null || _currentVillage.TroopCount(UnitType.Settler) == 0)
+            return null;
+
+        var tile = (ViewToWorld(viewPoint) / TileSize).Floor();
+        var coord = new TileCoord((int)tile.X, (int)tile.Y);
+        return _session.State.Map.Contains(coord) ? coord : null;
     }
 
     private void HandleHover(Vector2 viewPoint)
