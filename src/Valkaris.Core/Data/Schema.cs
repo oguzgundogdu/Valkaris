@@ -242,6 +242,9 @@ public sealed record AiConfig
     /// <summary>Share of a safe village's garrison sent to help another under attack.</summary>
     public required double ReinforceShare { get; init; }
 
+    /// <summary>A raid isn't worth sending for less expected loot than this.</summary>
+    public required double RaidMinLoot { get; init; }
+
     public required IReadOnlyList<AiBuildStep> BuildOrder { get; init; }
     public required AiBeliefs Beliefs { get; init; }
     public required IReadOnlyDictionary<AiDifficulty, AiProfile> Difficulties { get; init; }

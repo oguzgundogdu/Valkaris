@@ -4,6 +4,7 @@
   "trainingBatchMax": 10,
   "cavalryPerSwordsman": 0.5,
   "reinforceShare": 0.5,
+  "raidMinLoot": 100,
   "buildOrder": [
     { "building": "Woodcutter", "level": 2 },
     { "building": "Quarry", "level": 2 },

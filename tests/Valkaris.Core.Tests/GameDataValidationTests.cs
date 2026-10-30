@@ -255,6 +255,9 @@ public class GameDataValidationTests
     public void ReinforceShareOutOfRange() => AssertAiInvalid(r => r["reinforceShare"] = 0, "reinforceShare");
 
     [Fact]
+    public void NegativeRaidMinLoot() => AssertAiInvalid(r => r["raidMinLoot"] = -1, "raidMinLoot");
+
+    [Fact]
     public void EmptyBuildOrder() => AssertAiInvalid(r => r["buildOrder"] = new JsonArray(), "buildOrder");
 
     [Fact]

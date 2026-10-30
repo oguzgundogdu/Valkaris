@@ -11,6 +11,14 @@ public class AiDefenceTests
     private static AiMatch Match(AiDifficulty difficulty) =>
         new(new[] { difficulty, AiDifficulty.Normal }, idle: new[] { Attacker });
 
+    /// <summary>For measuring training alone: raids would kill some of what is being counted.</summary>
+    private static AiMatch MatchWithoutRaids(AiDifficulty difficulty) =>
+        new(new[] { difficulty, AiDifficulty.Normal }, idle: new[] { Attacker }, data: TestData.Mutated("ai.json", root =>
+        {
+            foreach (var level in Enum.GetNames<AiDifficulty>())
+                root["difficulties"]![level]!["maxRaidsPerVillage"] = 0;
+        }));
+
     private static void SendAttack(AiMatch match, int count = 5)
     {
         var enemy = match.State.Villages[Attacker];
@@ -51,7 +59,7 @@ public class AiDefenceTests
     [InlineData(AiDifficulty.Hard)]
     public void TheGarrisonShareFollowsTheProfile(AiDifficulty difficulty)
     {
-        var match = Match(difficulty);
+        var match = MatchWithoutRaids(difficulty);
         var village = match.State.Villages[Ai];
         village.SetBuildingLevel(BuildingType.Barracks, 3);
         village.SetBuildingLevel(BuildingType.Warehouse, 8);
@@ -69,7 +77,7 @@ public class AiDefenceTests
     [Fact]
     public void CavalryFollowsItsRatioOnceUnlocked()
     {
-        var match = Match(AiDifficulty.Hard);
+        var match = MatchWithoutRaids(AiDifficulty.Hard);
         var village = match.State.Villages[Ai];
         village.SetBuildingLevel(BuildingType.Barracks, 3);
         village.SetBuildingLevel(BuildingType.Warehouse, 8);
@@ -179,7 +187,7 @@ public class AiDefenceTests
     [Fact]
     public void OneAttackIsAnsweredOnce()
     {
-        var match = Match(AiDifficulty.Hard);
+        var match = MatchWithoutRaids(AiDifficulty.Hard);
         var second = Second(match);
         second.AddTroops(UnitType.Cavalry, 40);
         SendAttack(match);

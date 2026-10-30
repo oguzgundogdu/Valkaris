@@ -378,6 +378,8 @@ internal static class GameDataValidator
             Error("cavalryPerSwordsman", "must not be negative.");
         if (config.ReinforceShare is <= 0 or > 1)
             Error("reinforceShare", "must be above 0 and at most 1.");
+        if (config.RaidMinLoot < 0)
+            Error("raidMinLoot", "must not be negative.");
         if (config.BuildOrder.Count == 0)
             Error("buildOrder", "must not be empty.");
 
