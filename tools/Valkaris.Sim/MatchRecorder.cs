@@ -18,6 +18,8 @@ public sealed class MatchRecorder
     private readonly Dictionary<int, double> _firstFounded = new();
     private readonly Dictionary<int, double> _firstCapture = new();
     private readonly Dictionary<string, int> _rejections = new();
+    private readonly Dictionary<int, double> _defenceSpent = new();
+    private readonly Dictionary<int, (double Wall, double Home)> _atMid = new();
     private double _lastSample;
     private double _samples;
     private double _atCap;
@@ -52,6 +54,12 @@ public sealed class MatchRecorder
     {
         switch (gameEvent)
         {
+            case BuildingCompleted { Building: BuildingType.Wall } wall:
+                AddDefenceSpent(_state.Villages[wall.VillageId].OwnerId, BuildingRules.UpgradeCost(_data, BuildingType.Wall, wall.NewLevel));
+                break;
+            case TroopsTrained { Unit: UnitType.Spearman } spears:
+                AddDefenceSpent(_state.Villages[spears.VillageId].OwnerId, _data.Units.Units[UnitType.Spearman].Cost * spears.Count);
+                break;
             case BuildingCompleted { Building: BuildingType.Barracks } built:
                 _firstBarracks.TryAdd(_state.Villages[built.VillageId].OwnerId, built.Time);
                 break;
@@ -90,9 +98,34 @@ public sealed class MatchRecorder
         }
     }
 
+    private void AddDefenceSpent(int playerId, Resources cost) =>
+        _defenceSpent[playerId] = _defenceSpent.GetValueOrDefault(playerId) + Total(cost);
+
+    /// <summary>The mean Wall level and defence power per village: what an attacker meets, with the attacker's mix unknown.</summary>
+    private (double Wall, double Home) MeasureDefence(int playerId)
+    {
+        var villages = _state.Villages.Values.Where(v => v.OwnerId == playerId).ToList();
+        if (villages.Count == 0)
+            return (0, 0);
+
+        double HomePower(Village village)
+        {
+            var troops = village.Troops.Sum(t => t.Value * (_data.Units.Units[t.Key].DefenceVsInfantry + _data.Units.Units[t.Key].DefenceVsCavalry) / 2);
+            return troops * (1 + _data.Combat.WallBonusPerLevel * village.BuildingLevel(BuildingType.Wall));
+        }
+
+        return (villages.Average(v => v.BuildingLevel(BuildingType.Wall)), villages.Average(HomePower));
+    }
+
     /// <summary>Looks at every player's village and resource. Call this at regular times.</summary>
     public void Sample()
     {
+        if (_atMid.Count == 0 && _state.ElapsedTime >= _state.Settings.MatchDurationSeconds / 2)
+        {
+            foreach (var id in _state.Players.Keys)
+                _atMid[id] = MeasureDefence(id);
+        }
+
         var elapsed = _state.ElapsedTime - _lastSample;
         _lastSample = _state.ElapsedTime;
         var gameSeconds = elapsed * _state.Settings.SpeedMultiplier;
@@ -125,6 +158,8 @@ public sealed class MatchRecorder
         {
             var score = outcome.Scores.Single(s => s.PlayerId == player.Id);
             var sent = battles.Where(r => r.AttackerId == player.Id && IsAttackOnPlayer(r)).ToList();
+            var atEnd = MeasureDefence(player.Id);
+            var hasMid = _atMid.TryGetValue(player.Id, out var atMid);
             return new SeatResult(
                 player.Id,
                 player.Difficulty ?? AiDifficulty.Normal,
@@ -139,7 +174,14 @@ public sealed class MatchRecorder
                 _firstCapture.TryGetValue(player.Id, out var capture) ? capture : null,
                 sent.Count,
                 battles.Count(r => r.DefenderId == player.Id),
-                sent.GroupBy(r => r.DefenderId).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.Count()));
+                sent.GroupBy(r => r.DefenderId).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => g.Count()),
+                new SeatDefence(
+                    _defenceSpent.GetValueOrDefault(player.Id),
+                    hasMid ? atMid.Wall : null,
+                    atEnd.Wall,
+                    hasMid ? atMid.Home : null,
+                    atEnd.Home,
+                    sent.Count(r => r.AttackerWon)));
         }).ToList();
 
         return new MatchResult(

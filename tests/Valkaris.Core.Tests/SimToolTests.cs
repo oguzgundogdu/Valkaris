@@ -1,6 +1,7 @@
 using Valkaris.Core.Commands;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 using Valkaris.Sim;
 
 namespace Valkaris.Core.Tests;
@@ -179,6 +180,64 @@ public class SimToolTests
         Assert.Equal(1, result.Transfers);
         Assert.Equal(10, result.ResourcesMoved, 6);
         Assert.Equal(40, result.ResourcesLostInTransfer, 6);
+    }
+
+    [Fact]
+    public void DefenceSpendingCountsSpearmenAndWallsOnly()
+    {
+        var match = new Recorded();
+        var village = match.State.Villages[1];
+        village.SetBuildingLevel(BuildingType.Barracks, 2);
+        village.SetBuildingLevel(BuildingType.Warehouse, 8);
+        village.Resources = new Resources(5000, 5000, 5000);
+        match.Send(1, new TrainCommand(1, UnitType.Spearman, 2));
+        match.Send(1, new TrainCommand(1, UnitType.Swordsman, 2));
+        match.Send(1, new BuildCommand(1, BuildingType.Wall));
+        match.Send(1, new BuildCommand(1, BuildingType.Farm));
+
+        var defence = match.Finish().Seats[0].Defence!;
+
+        var spearman = TestData.Shipped.Units.Units[UnitType.Spearman].Cost;
+        var wall = BuildingRules.UpgradeCost(TestData.Shipped, BuildingType.Wall, 1);
+        Assert.Equal(2 * (spearman.Wood + spearman.Stone + spearman.Food) + wall.Wood + wall.Stone + wall.Food, defence.Spent, 6);
+        Assert.Equal(1, defence.WallAtEnd);
+    }
+
+    [Fact]
+    public void HomeDefenceIsMeasuredAtMidMatchAndAtTheEnd()
+    {
+        var match = new Recorded(duration: 1000);
+        var village = match.State.Villages[1];
+        foreach (var (unit, count) in village.Troops.ToList())
+            village.RemoveTroops(unit, count);
+        village.AddTroops(UnitType.Spearman, 10);
+
+        match.Session.Tick(400);
+        match.Recorder.Sample();
+        match.Session.Tick(100);
+        match.Recorder.Sample();
+        village.AddTroops(UnitType.Spearman, 10);
+
+        var defence = match.Finish().Seats[0].Defence!;
+
+        Assert.Equal(300, defence.HomeDefenceAtMid!.Value, 6);
+        Assert.Equal(600, defence.HomeDefenceAtEnd, 6);
+    }
+
+    [Fact]
+    public void AttacksWonAreCountedPerSeat()
+    {
+        var match = new Recorded();
+        var target = match.State.Villages[2];
+        foreach (var (unit, count) in target.Troops.ToList())
+            target.RemoveTroops(unit, count);
+        match.State.Villages[1].AddTroops(UnitType.Cavalry, 5);
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Attack, Force(UnitType.Cavalry, 5)));
+
+        var result = match.Finish();
+
+        Assert.Equal(1, result.Seats[0].Defence!.AttacksWon);
+        Assert.Equal(0, result.Seats[1].Defence!.AttacksWon);
     }
 
     [Fact]

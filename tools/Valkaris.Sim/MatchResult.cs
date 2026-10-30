@@ -2,6 +2,15 @@ using Valkaris.Core.Model;
 
 namespace Valkaris.Sim;
 
+/// <summary>What a seat spent on defence and what an attacker would have met. Home defence is per village, and mid-match values are null if the match ended first.</summary>
+public sealed record SeatDefence(
+    double Spent,
+    double? WallAtMid,
+    double WallAtEnd,
+    double? HomeDefenceAtMid,
+    double HomeDefenceAtEnd,
+    int AttacksWon);
+
 /// <summary>What one seat did in one match.</summary>
 public sealed record SeatResult(
     int PlayerId,
@@ -17,7 +26,8 @@ public sealed record SeatResult(
     double? FirstCapture,
     int AttacksSent,
     int AttacksReceived,
-    IReadOnlyDictionary<int, int> AttacksAtPlayers);
+    IReadOnlyDictionary<int, int> AttacksAtPlayers,
+    SeatDefence? Defence = null);
 
 /// <summary>Everything recorded about one match. Only numbers from the match, so the same seed always gives the same record.</summary>
 public sealed record MatchResult(

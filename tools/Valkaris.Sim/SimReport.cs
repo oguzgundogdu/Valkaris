@@ -7,6 +7,16 @@ namespace Valkaris.Sim;
 
 public sealed record Spread(double Median, double P10, double P90, int Count);
 
+/// <summary>Means per seat. Values at the end leave out eliminated players, who have no villages to measure.</summary>
+public sealed record DefenceStats(
+    double Spent,
+    double SpentPerVillage,
+    double WallAtMid,
+    double WallAtEnd,
+    double HomeDefenceAtMid,
+    double HomeDefenceAtEnd,
+    double AttackWinShare);
+
 public sealed record DifficultyStats(
     AiDifficulty Difficulty,
     int Seats,
@@ -24,7 +34,8 @@ public sealed record DifficultyStats(
     Spread? FirstFounded,
     double FoundedShare,
     Spread? FirstCapture,
-    double CaptureShare);
+    double CaptureShare,
+    DefenceStats Defence);
 
 public sealed record AttackSpread(
     double MeanAttacksPerMatch,
@@ -154,7 +165,28 @@ public sealed record SimReport(
             seats.Count == 0 ? 0 : (double)wins / seats.Count,
             seats.Count == 0 ? null : SpreadOf(seats.Select(s => (double)s.Seat.Villages)),
             seats.Count == 0 ? null : SpreadOf(seats.Select(s => s.Seat.Score)),
-            barracks, barracksShare, settler, settlerShare, lord, lordShare, founded, foundedShare, capture, captureShare);
+            barracks, barracksShare, settler, settlerShare, lord, lordShare, founded, foundedShare, capture, captureShare,
+            DefenceOf(seats.Select(s => s.Seat).ToList()));
+    }
+
+    private static DefenceStats DefenceOf(IReadOnlyList<SeatResult> seats)
+    {
+        static double Mean(IEnumerable<double> values)
+        {
+            var list = values.ToList();
+            return list.Count == 0 ? 0 : list.Average();
+        }
+
+        var measured = seats.Where(s => s.Defence is not null).ToList();
+        var standing = measured.Where(s => !s.Eliminated).ToList();
+        return new DefenceStats(
+            Mean(measured.Select(s => s.Defence!.Spent)),
+            Mean(measured.Select(s => s.Defence!.Spent / Math.Max(1, s.Villages))),
+            Mean(measured.Select(s => s.Defence!.WallAtMid).OfType<double>()),
+            Mean(standing.Select(s => s.Defence!.WallAtEnd)),
+            Mean(measured.Select(s => s.Defence!.HomeDefenceAtMid).OfType<double>()),
+            Mean(standing.Select(s => s.Defence!.HomeDefenceAtEnd)),
+            Safe(measured.Sum(s => s.Defence!.AttacksWon), measured.Sum(s => s.AttacksSent)));
     }
 
     /// <summary>How attacks fell on players, to show ganging up: the most-attacked player's share of each match, against an even split.</summary>
@@ -225,6 +257,10 @@ public sealed record SimReport(
             Line("First Lord", $"{Mins(d.FirstLord)} in {Pct(d.LordShare)}");
             Line("First founded village", $"{Mins(d.FirstFounded)} in {Pct(d.FoundedShare)}");
             Line("First capture", $"{Mins(d.FirstCapture)} in {Pct(d.CaptureShare)}");
+            Line("Defence spent", $"{d.Defence.Spent:0}, {d.Defence.SpentPerVillage:0} per village");
+            Line("Wall level (mid, end)", $"{d.Defence.WallAtMid:0.0}, {d.Defence.WallAtEnd:0.0}");
+            Line("Home defence (mid, end)", $"{d.Defence.HomeDefenceAtMid:0}, {d.Defence.HomeDefenceAtEnd:0}");
+            Line("Attacks on players won", Pct(d.Defence.AttackWinShare));
         }
         text.AppendLine("Economy");
         Line("Resources at the cap", Pct(AtCapShare));
