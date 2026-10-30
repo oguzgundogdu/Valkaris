@@ -71,6 +71,7 @@ public partial class GameScreen : Control
         _reportsPanel = GetNode<ReportsPanel>("%Reports");
         _reportDialog = GetNode<ReportDialog>("%ReportDialog");
         _reportsPanel.ReportOpened += report => _reportDialog.ShowReport(Session, report);
+        _reportsPanel.ScoutReportOpened += report => _reportDialog.ShowScoutReport(Session, report);
         _toast = GetNode<Toast>("%Toast");
         _pauseOverlay = GetNode<Overlay>("%PauseOverlay");
         _leaveOverlay = GetNode<Overlay>("%LeaveOverlay");
@@ -371,6 +372,11 @@ public partial class GameScreen : Control
                 var report = Session.State.Reports.First(r => r.Id == resolved.ReportId);
                 if (report.AttackerId == Session.LocalPlayerId || report.DefenderId == Session.LocalPlayerId)
                     _toast.ShowMessage($"{UiContent.ReportHeadline(Session, report)}. See Reports.");
+                break;
+            case ScoutResolved scouted:
+                var scoutReport = Session.State.ScoutReports.First(r => r.Id == scouted.ReportId);
+                if (scoutReport.VisibleTo(Session.LocalPlayerId))
+                    _toast.ShowMessage($"{UiContent.ScoutHeadline(Session, scoutReport)}. See Reports.");
                 break;
             case TroopsReturned returned when IsLocalVillage(returned.VillageId):
                 var loot = returned.Loot.Wood + returned.Loot.Stone + returned.Loot.Food;

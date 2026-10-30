@@ -677,7 +677,7 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         await Frames();
         Expect(send.IsVisibleInTree(), "The Send tab opens");
-        Expect(mission.ItemCount == 2, "Reinforce isn't offered without a second village");
+        Expect(mission.ItemCount == 3, "Attack, Raid and Scout are offered, and Reinforce isn't without a second village");
         Expect(button.Disabled && reason.Text == "Pick a target on the world map.", "No target disables Send and says why");
         Expect(send.GetNode<Button>("%PickTarget").Visible, "The form offers a way to the map");
         send.SetTarget(2);
@@ -1061,6 +1061,7 @@ public partial class UiTest : Control
         await TestTransfers(data);
         await TestStrayReturnDoesNotWarn(data);
         await TestReportsOfLoyalty(data);
+        await TestScouting(data);
         await TestFounding(data);
         await TestCapitalChoice(data);
         await TestCapitalTimeout(data);
@@ -1504,6 +1505,109 @@ public partial class UiTest : Control
 
     private static void SelectGameTile(GameScreen game, BuildingType building) =>
         game.GetNode<VillageView>("%VillageView").GetNode<BuildingTile>(building.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
+
+    private async Task TestScouting(GameData data)
+    {
+        var (game, session) = await StartMatch(data, null);
+        var state = session.State;
+        var send = game.GetNode<SendPanel>("%Send");
+        var mission = send.GetNode<OptionButton>("%Mission");
+        var intel = send.GetNode<Label>("%Intel");
+        var rule = send.GetNode<Label>("%ScoutRule");
+        var reports = game.GetNode<ReportsPanel>("%Reports");
+        var dialog = game.GetNode<ReportDialog>("%ReportDialog");
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var home = state.Villages[1];
+        var rival = state.Villages[2];
+        var spearmen = send.GetNode<VBoxContainer>("%Units").GetNode(nameof(UnitType.Spearman));
+
+        foreach (var (unit, count) in rival.Troops.ToList())
+            rival.RemoveTroops(unit, count);
+        rival.AddTroops(UnitType.Spearman, data.Combat.TroopsPerScout);
+        rival.SetBuildingLevel(BuildingType.Wall, 2);
+        foreach (var (unit, count) in home.Troops.ToList())
+            home.RemoveTroops(unit, count);
+        home.AddTroops(UnitType.Spearman, 4);
+
+        game.ShowTab(GameScreen.SideTab.Send);
+        send.SetTarget(2);
+        await Frames();
+        mission.Select(2);
+        await Frames();
+        Expect(!intel.Visible, "No intel before any scouting");
+        Expect(rule.Visible && rule.Text.Contains($"every {data.Combat.TroopsPerScout} troops") && rule.Text.Contains("Cavalry"), $"The form states the scouting rule, got '{rule.Text}'");
+        spearmen.GetNode<SpinBox>("Amount").Value = 1;
+        await Frames();
+        await Shot("scout-form");
+        Press(send.GetNode<Button>("%Send"));
+        await Frames();
+        var scoutTrip = state.Movements.Single();
+        Expect(scoutTrip.Type == MovementType.Scout, "The form sends a Scout mission");
+        Expect(UiContent.IsVisibleMovement(session, scoutTrip), "The sender sees their scouts");
+
+        await RunUntilArrived(session);
+        Expect(state.ScoutReports.Single().Succeeded, "A garrison at the limit is scouted");
+        Expect(state.Reports.Count == 0, "Scouting fights no battle");
+        game.ShowTab(GameScreen.SideTab.Send);
+        send.SetTarget(2);
+        await Frames();
+        Expect(intel.Visible && intel.Text.Contains($"{data.Combat.TroopsPerScout} troops") && intel.Text.Contains("Wall 2"), $"The form shows the latest intel, got '{intel.Text}'");
+        await Shot("scout-intel");
+
+        game.ShowTab(GameScreen.SideTab.Reports);
+        await Frames();
+        var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutReports.Single().Id}");
+        Expect(row.Text.StartsWith($"Scouted {rival.Name}"), $"The scout report is listed, got '{row.Text}'");
+        Press(row);
+        await Frames();
+        Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == "Scouted", "The scout report opens");
+        Expect(dialog.GetNode<Label>("%Powers").Text.StartsWith("Wall level 2"), "The report gives the Wall level");
+        Expect(dialog.GetNode<Label>("%Loot").Text.StartsWith("Resources:"), "The report gives the resources");
+        await Shot("scout-report");
+        Press(dialog.GetNode<Button>("%Close"));
+
+        // Scouts that are caught, seen from the side that sent them.
+        rival.AddTroops(UnitType.Spearman, 50);
+        Expect(session.Send(new SendTroopsCommand(1, 2, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 })).Success, "A second scout goes out");
+        await RunUntilArrived(session);
+        Expect(!state.ScoutReports[^1].Succeeded, "A large garrison catches the scouts");
+        game.ShowTab(GameScreen.SideTab.Send);
+        send.SetTarget(2);
+        await Frames();
+        Expect(intel.Text.StartsWith("Scouts caught"), $"The form shows the failure, got '{intel.Text}'");
+
+        // Both directions, seen from the side being scouted.
+        var theirs = state.Villages[2];
+        var ownBefore = home.TroopCount(UnitType.Spearman);
+        foreach (var (unit, count) in home.Troops.ToList())
+            home.RemoveTroops(unit, count);
+        theirs.AddTroops(UnitType.Cavalry, 2);
+        Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 })).Success, "The rival sends a scout");
+        await Frames();
+        var incoming = state.Movements.Single(m => m.OwnerId == 2);
+        Expect(!UiContent.IsVisibleMovement(session, incoming), "Incoming scouts are hidden");
+        Expect(!game.GetNode<Button>("%Incoming").Visible, "Incoming scouts raise no warning");
+        Expect(world.GetNode<MovementLayer>("World/Movements").Entries.All(e => e.MovementId != incoming.Id), "Incoming scouts have no marker");
+        var known = game.GetNode<ReportsPanel>("%Reports").UnreadCount(session);
+        await RunUntilArrived(session);
+        Expect(state.ScoutReports[^1].Succeeded, "An empty village is scouted");
+        Expect(reports.UnreadCount(session) == known, "A successful scout tells the defender nothing");
+
+        home.AddTroops(UnitType.Spearman, 50 + ownBefore);
+        Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 })).Success, "The rival tries again");
+        await RunUntilArrived(session);
+        Expect(!state.ScoutReports[^1].Succeeded, "The garrison catches the rival's scout");
+        Expect(reports.UnreadCount(session) == known + 1, "The defender is told about caught scouts");
+        game.ShowTab(GameScreen.SideTab.Reports);
+        await Frames();
+        var notice = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutReports[^1].Id}");
+        Expect(notice.Text.StartsWith("Caught scouts from Rival"), $"The notice names the sender, got '{notice.Text}'");
+        Press(notice);
+        await Frames();
+        Expect(dialog.GetNode<Label>("%Result").Text == "Scouts caught", "The notice opens");
+        await Shot("scout-caught");
+        Press(dialog.GetNode<Button>("%Close"));
+    }
 
     private async Task TestReportsOfLoyalty(GameData data)
     {

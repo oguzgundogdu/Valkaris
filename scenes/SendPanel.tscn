@@ -46,6 +46,13 @@ layout_mode = 2
 focus_mode = 0
 theme_type_variation = &"SecondaryButton"
 
+[node name="Intel" type="Label" parent="Scroll/Content/Form/Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+autowrap_mode = 2
+
 [node name="MissionRow" type="HBoxContainer" parent="Scroll/Content/Form/Box"]
 layout_mode = 2
 
@@ -84,6 +91,13 @@ text = "Catapults aim at"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(170, 0)
 layout_mode = 2
+
+[node name="ScoutRule" type="Label" parent="Scroll/Content/Form/Box"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+autowrap_mode = 2
 
 [node name="Arrival" type="Label" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true

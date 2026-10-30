@@ -166,6 +166,7 @@ public partial class SendPanel : VBoxContainer
         }
 
         RefreshTarget(session, village, target, mapIsOpen);
+        RefreshIntel(session, target);
         RefreshMissions(target, village);
         var type = _missions[_mission.Selected];
         _sendingResources = type == MovementType.Transfer;
@@ -173,6 +174,9 @@ public partial class SendPanel : VBoxContainer
         GetNode<Control>("%Units").Visible = !_sendingResources;
         GetNode<Control>("%ResourceRows").Visible = _sendingResources;
         GetNode<Control>("%Warning").Visible = false;
+        var scoutRule = GetNode<Label>("%ScoutRule");
+        scoutRule.Visible = type == MovementType.Scout;
+        scoutRule.Text = $"One scout gets past every {session.Data.Combat.TroopsPerScout} troops in the garrison. With too few, they all die. Cavalry are fastest.";
         _send.Text = _sendingResources ? "Send resources" : "Send troops";
 
         if (_sendingResources)
@@ -266,13 +270,22 @@ public partial class SendPanel : VBoxContainer
         _pickTarget.Text = target is null ? "Pick a village on the map" : "Change target on the map";
     }
 
+    /// <summary>What the player last learned here, so it is in view while choosing troops.</summary>
+    private void RefreshIntel(IGameSession session, Village? target)
+    {
+        var intel = GetNode<Label>("%Intel");
+        var text = target is null || target.OwnerId == session.LocalPlayerId ? null : UiContent.LatestIntel(session, target);
+        intel.Visible = text is not null;
+        intel.Text = text ?? "";
+    }
+
     private void RefreshMissions(Village? target, Village village)
     {
         var offered = target is not null && target.OwnerId == village.OwnerId
             ? new List<MovementType> { MovementType.Reinforce, MovementType.Transfer }
             : target is null && _sendingResources
                 ? new List<MovementType> { MovementType.Transfer }
-                : new List<MovementType> { MovementType.Attack, MovementType.Raid };
+                : new List<MovementType> { MovementType.Attack, MovementType.Raid, MovementType.Scout };
 
         if (!offered.SequenceEqual(_missions))
         {

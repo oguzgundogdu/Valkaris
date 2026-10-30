@@ -68,7 +68,7 @@ public static class UiContent
     /// <summary>The local player sees their own movements and anything heading for their villages.</summary>
     public static bool IsVisibleMovement(IGameSession session, Movement movement) =>
         movement.OwnerId == session.LocalPlayerId
-        || (movement.Type is not (MovementType.Transfer or MovementType.CarrierReturn) && movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
+        || (movement.Type is not (MovementType.Transfer or MovementType.CarrierReturn or MovementType.Scout) && movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
 
     /// <summary>The local player's villages, in the order they are shown and cycled through.</summary>
     public static IReadOnlyList<Village> OwnVillages(IGameSession session) =>
@@ -108,6 +108,33 @@ public static class UiContent
         return report.AttackerId == session.LocalPlayerId
             ? $"{result}: {report.Type} on {OwnerName(session, report.DefenderId)}"
             : $"{result}: {report.Type} by {OwnerName(session, report.AttackerId)}";
+    }
+
+    public static bool LocalLostScouts(IGameSession session, ScoutReport report) =>
+        !report.Succeeded && report.SenderId == session.LocalPlayerId;
+
+    public static string ScoutHeadline(IGameSession session, ScoutReport report)
+    {
+        var target = session.State.Villages[report.TargetVillageId].Name;
+        return report.SenderId != session.LocalPlayerId ? $"Caught scouts from {OwnerName(session, report.SenderId)} at {target}"
+            : report.Succeeded ? $"Scouted {target}"
+            : $"Scouts lost at {target}";
+    }
+
+    /// <summary>The player's latest scouting of a village under its current owner. Null if there is none.</summary>
+    public static string? LatestIntel(IGameSession session, Village target)
+    {
+        var report = session.State.ScoutReports.LastOrDefault(r =>
+            r.SenderId == session.LocalPlayerId && r.TargetVillageId == target.Id && r.DefenderId == target.OwnerId);
+        if (report is null)
+            return null;
+
+        var age = Format.Time(session.State.ElapsedTime - report.Time);
+        if (!report.Succeeded)
+            return $"Scouts caught {age} ago: more than {report.Sent.Values.Sum() * session.Data.Combat.TroopsPerScout} troops";
+
+        var wall = report.WallLevel > 0 ? $", Wall {report.WallLevel}" : "";
+        return $"Scouted {age} ago: {report.Garrison!.Values.Sum()} troops{wall}, {Format.Total(report.Stock!.Value)} resources";
     }
 
     public static string RejectionText(CommandRejection rejection) => rejection switch
