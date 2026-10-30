@@ -6,6 +6,8 @@
   "reinforceShare": 0.5,
   "raidMinLoot": 100,
   "capitalMainLevelWeight": 2,
+  "marketplaceLevel": 2,
+  "donorKeepShare": 0.4,
   "lordsWanted": 2,
   "lordMinAttack": 400,
   "catapultsWanted": 10,

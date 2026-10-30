@@ -249,6 +249,12 @@ public sealed record AiConfig
     /// <summary>When choosing a new capital: tiles from the nearest enemy that one Main Building level, lost to the penalty, is worth.</summary>
     public required double CapitalMainLevelWeight { get; init; }
 
+    /// <summary>The capital's Marketplace level, once there is a second village to supply.</summary>
+    public required int MarketplaceLevel { get; init; }
+
+    /// <summary>A village only gives away what it holds above this share of its capacity.</summary>
+    public required double DonorKeepShare { get; init; }
+
     public required int LordsWanted { get; init; }
 
     /// <summary>A Lord never leaves with less attack than this, however weak the target seems. Casualties round against small groups.</summary>

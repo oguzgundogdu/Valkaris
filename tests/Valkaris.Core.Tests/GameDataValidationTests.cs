@@ -263,6 +263,12 @@ public class GameDataValidationTests
     public void NegativeAiCount(string field) => AssertAiInvalid(r => r[field] = -1, field);
 
     [Fact]
+    public void MarketplaceLevelOutOfRange() => AssertAiInvalid(r => r["marketplaceLevel"] = 99, "marketplaceLevel");
+
+    [Fact]
+    public void DonorKeepShareOutOfRange() => AssertAiInvalid(r => r["donorKeepShare"] = 2, "donorKeepShare");
+
+    [Fact]
     public void NegativeRaidMinLoot() => AssertAiInvalid(r => r["raidMinLoot"] = -1, "raidMinLoot");
 
     [Fact]

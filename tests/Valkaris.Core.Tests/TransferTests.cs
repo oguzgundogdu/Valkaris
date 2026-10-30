@@ -356,6 +356,17 @@ public class TransferTests
     }
 
     [Fact]
+    public void ADeliveryWithRoomLosesExactlyNothing()
+    {
+        _target.Resources = new Resources(1.0 / 3.0, 0.1, 0.7);
+
+        Send(Load(wood: 37, stone: 41, food: 53));
+        var delivery = RunUntilArrival().OfType<ResourcesDelivered>().Single();
+
+        Assert.Equal(Resources.Zero, delivery.Lost);
+    }
+
+    [Fact]
     public void CarriersAreFreeOnlyAfterReturning()
     {
         Send(Load(wood: Capacity * 2));

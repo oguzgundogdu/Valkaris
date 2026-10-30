@@ -32,6 +32,26 @@ public sealed class BuildPlanner
         return Resources.Zero;
     }
 
+    /// <summary>What the village's most urgent build lacks, so another village can send it.</summary>
+    public Resources Shortfall(Village village)
+    {
+        foreach (var building in Wanted(village, threatened: false))
+        {
+            var option = _view.PreviewBuild(village.Id, building);
+            if (option.Rejection == CommandRejection.InsufficientResources)
+            {
+                return new Resources(
+                    Math.Max(0, option.Cost.Wood - village.Resources.Wood),
+                    Math.Max(0, option.Cost.Stone - village.Resources.Stone),
+                    Math.Max(0, option.Cost.Food - village.Resources.Food));
+            }
+
+            if (option.Rejection is null or CommandRejection.QueueFull)
+                return Resources.Zero;
+        }
+        return Resources.Zero;
+    }
+
     /// <summary>Most urgent first.</summary>
     private IEnumerable<BuildingType> Wanted(Village village, bool threatened)
     {
@@ -42,6 +62,11 @@ public sealed class BuildPlanner
         var full = capacity * _view.Config.WarehouseFullShare;
         if (village.Resources.Wood >= full || village.Resources.Stone >= full || village.Resources.Food >= full)
             yield return BuildingType.Warehouse;
+
+        if (village.Id == _view.CapitalVillageId
+            && _view.OwnVillages.Count >= 2
+            && PlannedLevel(village, BuildingType.Marketplace) < _view.Config.MarketplaceLevel)
+            yield return BuildingType.Marketplace;
 
         foreach (var step in _view.Config.BuildOrder)
         {

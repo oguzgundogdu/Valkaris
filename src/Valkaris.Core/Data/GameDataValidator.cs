@@ -382,6 +382,10 @@ internal static class GameDataValidator
             Error("lordMinAttack", "must not be negative.");
         if (config.CapitalMainLevelWeight < 0)
             Error("capitalMainLevelWeight", "must not be negative.");
+        if (config.MarketplaceLevel < 0 || (buildings.Buildings.TryGetValue(BuildingType.Marketplace, out var marketplace) && config.MarketplaceLevel > marketplace.MaxLevel))
+            Error("marketplaceLevel", "is outside the building's levels.");
+        if (config.DonorKeepShare is < 0 or > 1)
+            Error("donorKeepShare", "must be between 0 and 1.");
         if (config.LordsWanted < 0)
             Error("lordsWanted", "must not be negative.");
         if (config.CatapultsWanted < 0)

@@ -208,12 +208,15 @@ public sealed class Simulation
     /// <summary>Adds what the warehouse can hold and returns that amount. The rest is lost.</summary>
     private Resources Deposit(Village village, Resources load)
     {
+        var capacity = BuildingRules.VillageCapacity(_data, village);
         var before = village.Resources;
-        village.Resources = (before + load).CappedAt(BuildingRules.VillageCapacity(_data, village));
-        return new Resources(
-            Math.Max(0, village.Resources.Wood - before.Wood),
-            Math.Max(0, village.Resources.Stone - before.Stone),
-            Math.Max(0, village.Resources.Food - before.Food));
+
+        // Worked out from the room left: subtracting afterwards would report rounding errors as lost resources.
+        double Fits(double amount, double stock) => Math.Clamp(capacity - stock, 0, amount);
+        var delivered = new Resources(Fits(load.Wood, before.Wood), Fits(load.Stone, before.Stone), Fits(load.Food, before.Food));
+
+        village.Resources = (before + delivered).CappedAt(capacity);
+        return delivered;
     }
 
     /// <summary>
