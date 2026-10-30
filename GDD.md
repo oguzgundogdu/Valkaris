@@ -47,6 +47,9 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
    - A disconnected player's slot is taken over by AI. If the host leaves, the match ends.
 3. **Presentation (Godot scenes)**
    - Only reads state and sends commands. Never mutates `GameState` directly.
+   - Talks only to `IGameSession` (state, data, `Send`, `Tick`, events). `Send` returns nothing and rejections arrive as an event, because a command sent over the network cannot answer immediately. Views read `State` fresh each frame, because a snapshot may replace it.
+   - `LocalGameSession` runs everything in-process. Multiplayer adds another implementation of the same interface.
+   - `BuildPreview` in Core is the single evaluation of the build rules, used by both `CommandHandler` and the UI, so rules are never duplicated in Presentation.
 4. **AI**
    - AI players issue the same commands as human players through the same `CommandHandler`.
 
@@ -119,6 +122,10 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 - Match duration: configurable (e.g. 20 / 30 / 45 / 60 minutes)
 - Game speed multiplier (optional). Scales production, build, training and travel speed and loyalty regeneration. It does not scale match duration: a 30-minute match lasts 30 real minutes.
 - Map size (small / medium)
+
+**Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
+
+**Dev overrides:** `--dev-speed=` and `--dev-duration=` command-line arguments override match settings in debug builds only. Dev values never go in `data/`.
 
 ---
 
@@ -196,6 +203,10 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 2. **Village view:** buildings, upgrades, troop training, queues.
 
 Players must be able to manage their villages from both views.
+
+**Village view layout:** a top bar (resources with cap and rate, pause, match clock), the village ground with one clickable tile per building, and a side column with the selected building's details and the build queue. A disabled upgrade button always states why, including when a cost is above warehouse capacity and saving up alone can never pay it.
+
+**Scenes:** `Main` (screen switching), `StartScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `BuildingPanel`, `QueuePanel`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
 
 ---
 
