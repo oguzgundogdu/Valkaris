@@ -24,6 +24,7 @@ public sealed class CommandHandler
         return command switch
         {
             BuildCommand build => HandleBuild(issuerId, build),
+            TrainCommand train => HandleTrain(issuerId, train),
             _ => CommandResult.Rejected(CommandRejection.UnknownCommand),
         };
     }
@@ -39,6 +40,23 @@ public sealed class CommandHandler
         village.EnqueueBuild(new BuildQueueItem(
             command.Building,
             option.TargetLevel,
+            option.StartTime,
+            option.StartTime + option.DurationSeconds));
+
+        return CommandResult.Ok;
+    }
+
+    private CommandResult HandleTrain(int issuerId, TrainCommand command)
+    {
+        var option = TrainPreview.Evaluate(_state, _data, issuerId, command.VillageId, command.Unit, command.Count);
+        if (option.Rejection is { } rejection)
+            return CommandResult.Rejected(rejection);
+
+        var village = _state.Villages[command.VillageId];
+        village.Resources -= option.Cost;
+        village.EnqueueTraining(new TrainingQueueItem(
+            command.Unit,
+            command.Count,
             option.StartTime,
             option.StartTime + option.DurationSeconds));
 

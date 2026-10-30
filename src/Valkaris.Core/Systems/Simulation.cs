@@ -18,7 +18,7 @@ public sealed class Simulation
 
     /// <summary>
     /// Moves the match forward by real seconds and returns what happened, in time order.
-    /// Time stops at the end of the match. The step is split at each completion, so a new rate or
+    /// Time stops at the end of the match. The step is split at each event, so a new rate or
     /// cap applies from that exact moment and the result does not depend on the step size.
     /// </summary>
     public IReadOnlyList<GameEvent> Advance(double deltaSeconds)
@@ -29,34 +29,57 @@ public sealed class Simulation
         var end = Math.Min(_state.ElapsedTime + deltaSeconds, _state.Settings.MatchDurationSeconds);
         var events = new List<GameEvent>();
 
-        while (NextCompletion(end) is { } village)
+        while (NextEvent(end) is { } next)
         {
-            MoveTimeTo(village.BuildQueue[0].FinishTime);
-            events.Add(CompleteBuild(village));
+            MoveTimeTo(next.Time);
+            events.Add(Apply(next));
         }
 
         MoveTimeTo(end);
         return events;
     }
 
-    /// <summary>The village whose next build finishes first, by or at the given time. Ties go to the lowest id.</summary>
-    private Village? NextCompletion(double byTime)
+    private enum EventKind
     {
-        Village? next = null;
+        Build,
+        Training,
+    }
+
+    /// <summary>Events at the same moment run in this kind order, then by id, so results are deterministic.</summary>
+    private readonly record struct PendingEvent(double Time, EventKind Kind, int Id)
+    {
+        public bool IsBefore(PendingEvent other) =>
+            (Time, (int)Kind, Id).CompareTo((other.Time, (int)other.Kind, other.Id)) < 0;
+    }
+
+    /// <summary>The first event due by the given time.</summary>
+    private PendingEvent? NextEvent(double byTime)
+    {
+        PendingEvent? next = null;
+
+        void Consider(PendingEvent candidate)
+        {
+            if (candidate.Time <= byTime && (next is null || candidate.IsBefore(next.Value)))
+                next = candidate;
+        }
+
         foreach (var village in _state.Villages.Values)
         {
-            if (village.BuildQueue.Count == 0 || village.BuildQueue[0].FinishTime > byTime)
-                continue;
-
-            var finish = village.BuildQueue[0].FinishTime;
-            if (next is null
-                || finish < next.BuildQueue[0].FinishTime
-                || (finish == next.BuildQueue[0].FinishTime && village.Id < next.Id))
-                next = village;
+            if (village.BuildQueue.Count > 0)
+                Consider(new PendingEvent(village.BuildQueue[0].FinishTime, EventKind.Build, village.Id));
+            if (village.TrainingQueue.Count > 0)
+                Consider(new PendingEvent(village.TrainingQueue[0].FinishTime, EventKind.Training, village.Id));
         }
 
         return next;
     }
+
+    private GameEvent Apply(PendingEvent pending) => pending.Kind switch
+    {
+        EventKind.Build => CompleteBuild(_state.Villages[pending.Id]),
+        EventKind.Training => CompleteTraining(_state.Villages[pending.Id]),
+        _ => throw new ArgumentOutOfRangeException(nameof(pending), pending.Kind, null),
+    };
 
     private void MoveTimeTo(double time)
     {
@@ -65,6 +88,14 @@ public sealed class Simulation
 
         Produce(time - _state.ElapsedTime);
         _state.ElapsedTime = time;
+    }
+
+    private static TroopsTrained CompleteTraining(Village village)
+    {
+        var item = village.TrainingQueue[0];
+        village.DequeueTraining();
+        village.AddTroops(item.Unit, item.Count);
+        return new TroopsTrained(item.FinishTime, village.Id, item.Unit, item.Count);
     }
 
     private static BuildingCompleted CompleteBuild(Village village)

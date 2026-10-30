@@ -6,3 +6,5 @@ namespace Valkaris.Core.Events;
 public abstract record GameEvent(double Time);
 
 public sealed record BuildingCompleted(double Time, int VillageId, BuildingType Building, int NewLevel) : GameEvent(Time);
+
+public sealed record TroopsTrained(double Time, int VillageId, UnitType Unit, int Count) : GameEvent(Time);

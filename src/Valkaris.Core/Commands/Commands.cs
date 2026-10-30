@@ -13,6 +13,9 @@ public interface ICommand
 /// <summary>Upgrades a building by one level, or builds it if it is at level 0.</summary>
 public sealed record BuildCommand(int VillageId, BuildingType Building) : ICommand;
 
+/// <summary>Trains a batch of units. The whole batch arrives together when it finishes.</summary>
+public sealed record TrainCommand(int VillageId, UnitType Unit, int Count) : ICommand;
+
 public enum CommandRejection
 {
     UnknownCommand,
@@ -24,6 +27,8 @@ public enum CommandRejection
     MainBuildingLevelTooLow,
     InsufficientResources,
     GamePaused,
+    InvalidCount,
+    BarracksLevelTooLow,
 }
 
 public sealed record CommandResult(CommandRejection? Rejection)
