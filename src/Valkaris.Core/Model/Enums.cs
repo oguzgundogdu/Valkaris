@@ -25,6 +25,14 @@ public enum UnitClass
     Cavalry,
 }
 
+public enum MovementType
+{
+    Attack,
+    Raid,
+    Reinforce,
+    Return,
+}
+
 public enum ResourceType
 {
     Wood,

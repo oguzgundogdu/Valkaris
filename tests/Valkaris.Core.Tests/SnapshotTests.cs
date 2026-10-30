@@ -46,6 +46,18 @@ public class SnapshotTests
         village.SetBuildingLevel(BuildingType.Wall, 4);
         village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 2, 100.25, 200.5));
         village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 3, 200.5, 300.75));
+        village.AddTroops(UnitType.Cavalry, 7);
+        village.EnqueueTraining(new TrainingQueueItem(UnitType.Swordsman, 5, 100, 250));
+
+        var troops = new Dictionary<UnitType, int> { [UnitType.Cavalry] = 3, [UnitType.Catapult] = 1 };
+        state.AddMovement(new Movement(4, 1, 1, 2, MovementType.Attack, troops, Resources.Zero, 100, 150.5, BuildingType.Wall));
+        state.AddMovement(new Movement(5, 1, 2, 1, MovementType.Return, troops, new Resources(1, 2, 3), 100, 151, null));
+        state.AddReport(new BattleReport(
+            2, 90.5, MovementType.Raid, 1, 2, 1, 2, troops, troops, troops, troops, 3, 120.5, 80.25, true,
+            new Resources(10, 20, 30), new CatapultDamage(BuildingType.Wall, 3, 2)));
+        state.NextMovementId = 6;
+        state.NextReportId = 3;
+        state.NextRandom();
         return state;
     }
 
@@ -74,6 +86,15 @@ public class SnapshotTests
         Assert.Equal(original.Villages[1].Resources, village.Resources);
         Assert.Equal(4, village.BuildingLevel(BuildingType.Wall));
         Assert.Equal(original.Villages[1].BuildQueue, village.BuildQueue);
+        Assert.Equal(original.Villages[1].TroopCount(UnitType.Cavalry), village.TroopCount(UnitType.Cavalry));
+        Assert.Equal(original.Villages[1].TrainingQueue, village.TrainingQueue);
+        Assert.Equal(2, restored.Movements.Count);
+        Assert.Equal(BuildingType.Wall, restored.Movements[0].CatapultTarget);
+        Assert.Equal(3, restored.Movements[1].Troops[UnitType.Cavalry]);
+        Assert.Equal(new CatapultDamage(BuildingType.Wall, 3, 2), restored.Reports[0].CatapultDamage);
+        Assert.Equal(6, restored.NextMovementId);
+        Assert.Equal(3, restored.NextReportId);
+        Assert.Equal(original.RngState, restored.RngState);
         Assert.Equal(village.Id, restored.Map.TileAt(village.Position).VillageId);
     }
 

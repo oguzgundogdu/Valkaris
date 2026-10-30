@@ -3,14 +3,19 @@ using Valkaris.Core.Model;
 namespace Valkaris.Core.Snapshots;
 
 // Wire format for state sync. Immutable model records (GameSettings, Resources, TileCoord,
-// BuildQueueItem) are used directly; model classes each have a snapshot here.
+// queue items, Movement, BattleReport) are used directly; model classes each have a snapshot here.
 
 public sealed record GameStateSnapshot(
     GameSettings Settings,
     double ElapsedTime,
     IReadOnlyList<PlayerSnapshot> Players,
     IReadOnlyList<VillageSnapshot> Villages,
-    GameMapSnapshot Map);
+    GameMapSnapshot Map,
+    IReadOnlyList<Movement> Movements,
+    IReadOnlyList<BattleReport> Reports,
+    int NextMovementId,
+    int NextReportId,
+    ulong RngState);
 
 public sealed record PlayerSnapshot(
     int Id,
@@ -26,7 +31,9 @@ public sealed record VillageSnapshot(
     TileCoord Position,
     Resources Resources,
     IReadOnlyDictionary<BuildingType, int> Buildings,
-    IReadOnlyList<BuildQueueItem> BuildQueue);
+    IReadOnlyList<BuildQueueItem> BuildQueue,
+    IReadOnlyDictionary<UnitType, int> Troops,
+    IReadOnlyList<TrainingQueueItem> TrainingQueue);
 
 public sealed record GameMapSnapshot(int Width, int Height, IReadOnlyList<MapTileSnapshot> Tiles);
 

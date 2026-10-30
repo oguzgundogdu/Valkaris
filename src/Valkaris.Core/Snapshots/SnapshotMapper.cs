@@ -27,7 +27,12 @@ public static class SnapshotMapper
         new GameMapSnapshot(
             state.Map.Width,
             state.Map.Height,
-            state.Map.Tiles.Select(t => new MapTileSnapshot(t.VillageId)).ToList()));
+            state.Map.Tiles.Select(t => new MapTileSnapshot(t.VillageId)).ToList()),
+        state.Movements.ToList(),
+        state.Reports.ToList(),
+        state.NextMovementId,
+        state.NextReportId,
+        state.RngState);
 
     private static PlayerSnapshot ToSnapshot(Player player) => new(
         player.Id,
@@ -43,7 +48,9 @@ public static class SnapshotMapper
         village.Position,
         village.Resources,
         village.Buildings.OrderBy(b => b.Key).ToDictionary(b => b.Key, b => b.Value),
-        village.BuildQueue.ToList());
+        village.BuildQueue.ToList(),
+        village.Troops.OrderBy(t => t.Key).ToDictionary(t => t.Key, t => t.Value),
+        village.TrainingQueue.ToList());
 
     public static GameState Restore(GameStateSnapshot snapshot)
     {
@@ -55,7 +62,18 @@ public static class SnapshotMapper
         for (var i = 0; i < map.Tiles.Count; i++)
             map.Tiles[i].VillageId = snapshot.Map.Tiles[i].VillageId;
 
-        var state = new GameState(snapshot.Settings, map) { ElapsedTime = snapshot.ElapsedTime };
+        var state = new GameState(snapshot.Settings, map)
+        {
+            ElapsedTime = snapshot.ElapsedTime,
+            NextMovementId = snapshot.NextMovementId,
+            NextReportId = snapshot.NextReportId,
+            RngState = snapshot.RngState,
+        };
+
+        foreach (var movement in snapshot.Movements)
+            state.AddMovement(movement);
+        foreach (var report in snapshot.Reports)
+            state.AddReport(report);
 
         foreach (var p in snapshot.Players)
         {
@@ -73,6 +91,10 @@ public static class SnapshotMapper
                 village.SetBuildingLevel(type, level);
             foreach (var item in v.BuildQueue)
                 village.EnqueueBuild(item);
+            foreach (var (unit, count) in v.Troops)
+                village.AddTroops(unit, count);
+            foreach (var item in v.TrainingQueue)
+                village.EnqueueTraining(item);
             state.AddVillage(village);
         }
 

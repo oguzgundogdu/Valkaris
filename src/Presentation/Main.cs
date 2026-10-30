@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using Godot;
 using Valkaris.Core.Data;
@@ -58,7 +59,8 @@ public partial class Main : Control
             new PlayerSlot("Rival", Nation.Karuk, IsAi: true),
         };
         var devOptions = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
-        var state = GameFactory.CreateMatch(devOptions.Apply(settings), slots, _data);
+        var seeded = devOptions.Apply(settings) with { Seed = (ulong)Random.Shared.NextInt64() };
+        var state = GameFactory.CreateMatch(seeded, slots, _data);
 
         var screen = GameScene.Instantiate<GameScreen>();
         screen.Init(new LocalGameSession(state, _data, LocalPlayerId));

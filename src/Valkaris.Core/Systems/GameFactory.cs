@@ -42,6 +42,8 @@ public static class GameFactory
         var village = new Village(id, ownerId, position) { Resources = data.Game.StartingResources };
         foreach (var (type, level) in data.Game.StartingBuildings)
             village.SetBuildingLevel(type, level);
+        foreach (var (unit, count) in data.Game.StartingTroops)
+            village.AddTroops(unit, count);
 
         tile.VillageId = village.Id;
         return village;

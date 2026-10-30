@@ -38,6 +38,16 @@ public class GameFactoryTests
     }
 
     [Fact]
+    public void VillagesStartWithDataDefinedTroops()
+    {
+        var village = TestMatch.Create().Villages[1];
+
+        foreach (var (unit, count) in Data.Game.StartingTroops)
+            Assert.Equal(count, village.TroopCount(unit));
+        Assert.Empty(village.TrainingQueue);
+    }
+
+    [Fact]
     public void StartingValuesComeFromData()
     {
         var altered = TestData.Mutated(GameData.GameFile, root =>
