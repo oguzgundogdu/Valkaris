@@ -18,7 +18,8 @@ public sealed class Simulation
 
     /// <summary>
     /// Moves the match forward by real seconds and returns what happened, in time order.
-    /// Time stops at the end of the match.
+    /// Time stops at the end of the match. The step is split at each completion, so a new rate or
+    /// cap applies from that exact moment and the result does not depend on the step size.
     /// </summary>
     public IReadOnlyList<GameEvent> Advance(double deltaSeconds)
     {
@@ -26,17 +27,44 @@ public sealed class Simulation
             throw new ArgumentOutOfRangeException(nameof(deltaSeconds), deltaSeconds, "Time cannot go backwards.");
 
         var end = Math.Min(_state.ElapsedTime + deltaSeconds, _state.Settings.MatchDurationSeconds);
-        Produce(end - _state.ElapsedTime);
-        _state.ElapsedTime = end;
-
         var events = new List<GameEvent>();
-        foreach (var village in _state.Villages.Values.OrderBy(v => v.Id))
+
+        while (NextCompletion(end) is { } village)
         {
-            while (village.BuildQueue.Count > 0 && village.BuildQueue[0].FinishTime <= end)
-                events.Add(CompleteBuild(village));
+            MoveTimeTo(village.BuildQueue[0].FinishTime);
+            events.Add(CompleteBuild(village));
         }
 
-        return events.OrderBy(e => e.Time).ToList();
+        MoveTimeTo(end);
+        return events;
+    }
+
+    /// <summary>The village whose next build finishes first, by or at the given time. Ties go to the lowest id.</summary>
+    private Village? NextCompletion(double byTime)
+    {
+        Village? next = null;
+        foreach (var village in _state.Villages.Values)
+        {
+            if (village.BuildQueue.Count == 0 || village.BuildQueue[0].FinishTime > byTime)
+                continue;
+
+            var finish = village.BuildQueue[0].FinishTime;
+            if (next is null
+                || finish < next.BuildQueue[0].FinishTime
+                || (finish == next.BuildQueue[0].FinishTime && village.Id < next.Id))
+                next = village;
+        }
+
+        return next;
+    }
+
+    private void MoveTimeTo(double time)
+    {
+        if (time <= _state.ElapsedTime)
+            return;
+
+        Produce(time - _state.ElapsedTime);
+        _state.ElapsedTime = time;
     }
 
     private static BuildingCompleted CompleteBuild(Village village)
@@ -49,9 +77,6 @@ public sealed class Simulation
 
     private void Produce(double seconds)
     {
-        if (seconds <= 0)
-            return;
-
         var gameSeconds = seconds * _state.Settings.SpeedMultiplier;
         foreach (var village in _state.Villages.Values)
         {
