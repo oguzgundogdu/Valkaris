@@ -8,6 +8,7 @@ Build a village, train troops, raid barbarians, found and capture villages, and 
 - Resources, buildings, troops and attacks with travel time, in real time with low event frequency
 - A world map with terrain, barbarian camps that slowly recover, and villages you can found or capture
 - Settlers, Lords and loyalty, with a protected capital and a timed choice of a new one if it falls
+- Scouting, so you can check a target's garrison, Wall and resources before you attack
 - Resource transfers between your own villages through a Marketplace
 - Rule-based AI opponents (Easy, Normal, Hard) that play by the same rules and see only what a player sees
 - A headless AI-vs-AI simulation tool for balance work

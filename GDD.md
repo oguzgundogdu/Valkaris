@@ -52,7 +52,7 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
    - `BuildPreview` in Core is the single evaluation of the build rules, used by both `CommandHandler` and the UI, so rules are never duplicated in Presentation.
 4. **AI (`Valkaris.Ai`, a separate assembly with no access to Core's internals)**
    - AI players issue the same commands as human players through the same `CommandHandler`, and check the same previews first.
-   - Decisions see the game only through `AiView`: what a player's own UI shows. It never exposes other players' garrisons, resources, buildings or loyalty, troop counts in incoming attacks, or whether a player is human. A guard test enforces this. The AI learns about targets from reports it took part in, starting from beliefs in `data/ai.json`, which stand for experience and are separate from the real garrison data.
+   - Decisions see the game only through `AiView`: what a player's own UI shows. It never exposes other players' garrisons, resources, buildings or loyalty, troop counts in incoming attacks, or whether a player is human. A guard test enforces this. The AI learns about targets from its own battle and scout reports, starting from beliefs in `data/ai.json`, which stand for experience and are separate from the real garrison data. It scouts its next target through the same command when its news is older than the profile allows, and allows for troops that were away when reading a player's scout report. Difficulty is data only: Easy keeps the smallest garrison share, builds no Wall, and has a limit on its army size, so it is the softest level to attack.
    - `LocalGameSession` runs agents (`IMatchAgent`) and stops at every event and decision, so what they do does not depend on the frame rate. Same seed, same match. AI memory lives on the host and is not in snapshots.
    - Difficulty (Easy, Normal, Hard) is one profile per level in `ai.json`, on one code path, with no rule or information advantage. A test confirms the AI code never branches on the level.
    - `tools/Valkaris.Sim` runs seeded AI-only matches headlessly and reports stats for balance work.
@@ -77,6 +77,7 @@ public class GameState
     public Dictionary<int, Village> Villages;
     public List<Movement> Movements;       // troops on the way
     public List<BattleReport> Reports;     // immutable; both sides see the same report
+    public List<ScoutReport> ScoutReports; // immutable; shares report ids; check VisibleTo before showing one
     public GameMap Map;                    // Width, Height, flat row-major list of MapTile (VillageId, Terrain)
     public ulong RngState;                 // seeded SplitMix64, saved so a restored snapshot continues identically
     public MatchOutcome Outcome;           // null until the match ends; IsMatchOver reads it
@@ -206,6 +207,18 @@ Each unit has: class (infantry or cavalry), attack, defence vs infantry, defence
 - **Lost villages:** if the target is lost, carriers bring the load home, capped by that warehouse. If the home village is lost, a delivery still completes, a load goes to the owner's nearest village (lowest id on a tie) and is deposited there, and those carriers then stop existing, as do empty carriers.
 - Transfers cannot be attacked or looted, and only their owner sees them. An eliminated player's transfers are removed with their other movements.
 
+### 7.2 Scouting
+
+A minimal version, moved forward from v2 so a player can judge a target before attacking.
+
+- **Scout** is a mission in the Send form, for any village that isn't yours, using Spearmen, Swordsmen or Cavalry. Catapults, Settlers and Lords can't scout. Scouts travel at the slowest unit's speed, so Cavalry are the fast choice and Spearmen the cheap one.
+- **There is never a battle.** On arrival, scouts succeed if the garrison's head count is at most `scouts × troopsPerScout` (`data/combat.json`). An empty garrison always counts as a success. No random numbers are used.
+- **Success:** all scouts return with no loot. The sender gets a report with the garrison, Wall level and resources at that moment, and the defender is told nothing. Troops away from the village aren't counted, so a report can understate a player's real strength.
+- **Failure:** all scouts die, and the defender loses nothing. The sender gets a report with no intel, which still shows the garrison is larger than the limit. The defender gets a notice naming the sender and how many were caught.
+- Incoming scouts are not shown to the target: no map marker, warning or AI alert. A successful scout would otherwise never go unnoticed.
+- With a target picked, the Send form shows the sender's latest intel under the village's current owner, and with the Scout mission selected, the rule itself.
+- A village the sender's side now holds merges the scouts in, and scouts whose home was lost go to the nearest village, as other movements do.
+
 ---
 
 ## 8. Nations (v1: passive bonuses only)
@@ -223,7 +236,7 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 **Solari – Speed / Flexibility**
 - Faster units, shorter build times
 - More expensive units
-- "Better scouting" is deferred to v2 with the scouting unit and fog of war (section 12), since it has no effect in v1. A replacement bonus and all bonus values are set in `nations.json` in the Nations milestone.
+- "Better scouting" is deferred to v2 with the scouting unit and fog of war (section 12), even though v1 has a minimal Scout mission (7.2). A replacement bonus and all bonus values are set in `nations.json` in the Nations milestone.
 
 ---
 
@@ -244,7 +257,7 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 - They have no production buildings, training or attacks. Instead, resources and garrison slowly regenerate back up to their tier's starting values, at separate rates in data, so a looted camp is worth raiding again after a few minutes. Game speed scales both. Buildings damaged by catapults do not recover.
 - Resources regenerate continuously. Troops return one at a time as scheduled simulation events, so results are exact at any tick rate; at the same moment, regeneration runs before an arriving attack.
 
-**Hidden information:** other villages' garrisons and loyalty are not shown on the map. The map shows name, owner, tier, capital and distance; reports carry troop numbers and loyalty. Only your own movements and those heading for your villages are shown.
+**Hidden information:** other villages' garrisons and loyalty are not shown on the map. The map shows name, owner, tier, capital and distance; reports carry troop numbers and loyalty. Only your own movements and those heading for your villages are shown, except incoming scouts (7.2). Scouting (7.2) is how a player learns a target's strength before attacking.
 
 **Two views:**
 1. **World map (bird's-eye):** all villages, movements in progress, sending troops, selecting villages.
@@ -294,7 +307,7 @@ Players must be able to manage their villages from both views.
 - Survivors return home (Return movement).
 - **Hostile warning:** the top bar warns only of attacks and raids heading for your villages.
 - **Movements around a change of owner:** troops returning to a lost village reroute to the owner's nearest village (lowest id on a tie) with their loot. Reinforcements heading for a lost village turn back the same way. An attack or raid reaching a village its owner now holds merges into the garrison with no battle.
-- A battle report is generated for both sides. Both see the same full report, since v1 has no fog of war. Read state is kept in the UI, not in game state.
+- A battle report is generated for both sides. Both see the same full report, since v1 has no fog of war. Scout reports differ: a success is private to the sender (7.2). Read state is kept in the UI, not in game state.
 - Reinforcements can only be sent to the player's own villages in v1. They merge into the village's garrison.
 
 ---
@@ -336,7 +349,7 @@ Players must be able to manage their villages from both views.
 
 **v2 (later)**
 - Nation-specific units (e.g. Valdren: Shield Guard, Armoured Rider; Karuk: Axe Warrior, Wolf Rider; Solari: Archer, Wind Cavalry).
-- Scouting unit and fog of war.
+- A dedicated scouting unit and fog of war. v1 has only the Scout mission (7.2).
 - Internet play without port forwarding (e.g. GodotSteam).
 
 ---
@@ -350,6 +363,7 @@ Players must be able to manage their villages from both views.
 5. **Villages:** settlers, loyalty, Lord, capital rule, elimination, win conditions.
 5.5. **Resource transfers:** Marketplace, carriers, sending resources between your own villages.
 6. **AI:** rule-based AI playing the full game, difficulty levels, and a headless simulation tool.
+6.5. **Scouting and an easier Easy:** the Scout mission, AI scouting, and Easy as the softest target to attack.
 7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
 8. **Nations:** passive bonuses.
 9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).
