@@ -294,6 +294,9 @@ public class GameDataValidationTests
     public void NegativeBelief(string field) => AssertAiInvalid(r => r["beliefs"]![field] = -1, $"beliefs.{field}");
 
     [Fact]
+    public void ArmyLimitBelowTheArmyWanted() => AssertAiInvalid(r => r["difficulties"]!["Easy"]!["maxFightersPerMinute"] = 0.01, "difficulties.Easy.maxFightersPerMinute");
+
+    [Fact]
     public void ScoutRetryNegative() => AssertAiInvalid(r => r["scoutRetrySeconds"] = -1, "scoutRetrySeconds");
 
     [Fact]
@@ -315,8 +318,9 @@ public class GameDataValidationTests
     [InlineData("wantedVillages", 0)]
     [InlineData("expansionDelaySeconds", -1)]
     [InlineData("scoutMaxAgeSeconds", -1)]
+    [InlineData("maxWallLevel", -1)]
     public void InvalidProfileValue(string field, double value) =>
-        AssertAiInvalid(r => r["difficulties"]!["Easy"]![field] = field is "maxRaidsPerVillage" or "wantedVillages" ? (int)value : value, $"difficulties.Easy.{field}");
+        AssertAiInvalid(r => r["difficulties"]!["Easy"]![field] = field is "maxRaidsPerVillage" or "wantedVillages" or "maxWallLevel" ? (int)value : value, $"difficulties.Easy.{field}");
 
     [Fact]
     public void ShortCarrierTable() =>

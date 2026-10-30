@@ -324,6 +324,12 @@ public sealed record AiProfile
     public required bool Reinforces { get; init; }
     public required bool SavesForGoals { get; init; }
 
+    /// <summary>Stops training fighters above this many per minute of game time, even under attack. Absent means no limit.</summary>
+    public double? MaxFightersPerMinute { get; init; }
+
+    /// <summary>The highest Wall it builds, in the build order or under attack.</summary>
+    public required int MaxWallLevel { get; init; }
+
     /// <summary>Game seconds that news of a target stays good enough to attack on. Older than this, it scouts first.</summary>
     public required double ScoutMaxAgeSeconds { get; init; }
 }

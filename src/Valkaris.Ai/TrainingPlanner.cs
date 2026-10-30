@@ -22,6 +22,10 @@ public sealed class TrainingPlanner
         return _view.OwnVillages.Sum(v => Count(v, null)) < wanted;
     }
 
+    private bool IsAtArmyLimit() =>
+        _view.Profile.MaxFightersPerMinute is { } limit
+        && _view.OwnVillages.Sum(v => Count(v, null)) >= limit * _view.Now * _view.GameSpeed / 60;
+
     /// <summary>Trains one batch. It leaves what the next build needs, unless the village is under attack.</summary>
     public void Plan(Village village, bool threatened, Resources saving)
     {
@@ -42,6 +46,9 @@ public sealed class TrainingPlanner
                 && Count(village, null) >= _view.Config.FightersBeforeSaving)
                 return;
         }
+
+        if (IsAtArmyLimit())
+            return;
 
         foreach (var unit in Wanted(village, threatened))
         {

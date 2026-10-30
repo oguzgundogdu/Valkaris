@@ -55,7 +55,7 @@ public sealed class BuildPlanner
     /// <summary>Most urgent first.</summary>
     private IEnumerable<BuildingType> Wanted(Village village, bool threatened)
     {
-        if (threatened)
+        if (threatened && PlannedLevel(village, BuildingType.Wall) < _view.Profile.MaxWallLevel)
             yield return BuildingType.Wall;
 
         var capacity = _view.CapacityOf(village);
@@ -71,6 +71,8 @@ public sealed class BuildPlanner
         foreach (var step in _view.Config.BuildOrder)
         {
             if (PlannedLevel(village, step.Building) >= step.Level)
+                continue;
+            if (step.Building == BuildingType.Wall && PlannedLevel(village, BuildingType.Wall) >= _view.Profile.MaxWallLevel)
                 continue;
 
             var option = _view.PreviewBuild(village.Id, step.Building);

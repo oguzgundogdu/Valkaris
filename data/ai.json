@@ -186,14 +186,16 @@
       "attackMargin": 1.5,
       "lordMargin": 2.5,
       "aggressionDelaySeconds": 900,
-      "garrisonShare": 0.5,
-      "maxRaidsPerVillage": 1,
+      "garrisonShare": 0.25,
+      "maxRaidsPerVillage": 2,
       "raidCooldownSeconds": 300,
       "wantedVillages": 2,
       "expansionDelaySeconds": 900,
       "reinforces": false,
       "savesForGoals": false,
-      "scoutMaxAgeSeconds": 900
+      "scoutMaxAgeSeconds": 900,
+      "maxWallLevel": 0,
+      "maxFightersPerMinute": 0.5
     },
     "Normal": {
       "decisionSeconds": 15,
@@ -209,7 +211,8 @@
       "expansionDelaySeconds": 720,
       "reinforces": true,
       "savesForGoals": true,
-      "scoutMaxAgeSeconds": 300
+      "scoutMaxAgeSeconds": 300,
+      "maxWallLevel": 5
     },
     "Hard": {
       "decisionSeconds": 8,
@@ -225,7 +228,8 @@
       "expansionDelaySeconds": 600,
       "reinforces": true,
       "savesForGoals": true,
-      "scoutMaxAgeSeconds": 180
+      "scoutMaxAgeSeconds": 180,
+      "maxWallLevel": 5
     }
   }
 }

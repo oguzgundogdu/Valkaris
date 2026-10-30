@@ -449,6 +449,10 @@ internal static class GameDataValidator
                 Error($"{path}.lordMargin", "must be at least 1.");
             if (profile.AggressionDelaySeconds < 0)
                 Error($"{path}.aggressionDelaySeconds", "must not be negative.");
+            if (profile.MaxFightersPerMinute < profile.FightersPerMinute)
+                Error($"{path}.maxFightersPerMinute", "must not be below fightersPerMinute.");
+            if (profile.MaxWallLevel < 0)
+                Error($"{path}.maxWallLevel", "must not be negative.");
             if (profile.ScoutMaxAgeSeconds < 0)
                 Error($"{path}.scoutMaxAgeSeconds", "must not be negative.");
             if (profile.GarrisonShare is < 0 or > 1)

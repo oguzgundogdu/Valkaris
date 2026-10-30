@@ -1,3 +1,4 @@
+using Valkaris.Ai;
 using Valkaris.Core.Commands;
 using Valkaris.Core.Model;
 
@@ -19,6 +20,7 @@ public class AiDefenceTests
             {
                 root["difficulties"]![level]!["maxRaidsPerVillage"] = 0;
                 root["difficulties"]![level]!["aggressionDelaySeconds"] = 1000000;
+                root["difficulties"]![level]!.AsObject().Remove("maxFightersPerMinute");
             }
         }));
 
@@ -199,4 +201,89 @@ public class AiDefenceTests
 
         Assert.Equal(20, second.TroopCount(UnitType.Cavalry));
     }
+
+    // How much a level is willing to spend on defence.
+
+    [Fact]
+    public void EasyKeepsTheSmallestGarrisonShareAndTheLowestWall()
+    {
+        var profiles = TestData.Shipped.Ai.Difficulties;
+
+        Assert.True(profiles[AiDifficulty.Easy].GarrisonShare < profiles[AiDifficulty.Normal].GarrisonShare);
+        Assert.True(profiles[AiDifficulty.Easy].MaxWallLevel < profiles[AiDifficulty.Normal].MaxWallLevel);
+        Assert.NotNull(profiles[AiDifficulty.Easy].MaxFightersPerMinute);
+    }
+
+    private static AiMatch MatchWithWallLimit(int limit) =>
+        new(new[] { AiDifficulty.Normal, AiDifficulty.Normal }, idle: new[] { Attacker }, data: TestData.Mutated("ai.json", root =>
+            root["difficulties"]!["Normal"]!["maxWallLevel"] = limit));
+
+    [Fact]
+    public void TheBuildOrderStopsAtTheWallLimit()
+    {
+        var match = MatchWithWallLimit(1);
+        var village = match.State.Villages[Ai];
+        foreach (var type in Enum.GetValues<BuildingType>().Where(b => b != BuildingType.Wall))
+            village.SetBuildingLevel(type, 10);
+        village.SetBuildingLevel(BuildingType.Wall, 1);
+        village.Resources = new Resources(5000, 5000, 5000);
+
+        var planner = new BuildPlanner(match.Views[Ai]);
+        for (var i = 0; i < 5; i++)
+            planner.Plan(village);
+
+        Assert.DoesNotContain(village.BuildQueue, q => q.Building == BuildingType.Wall);
+    }
+
+    [Fact]
+    public void AnAttackDoesNotPushTheWallPastTheLimit()
+    {
+        var match = MatchWithWallLimit(0);
+        var village = match.State.Villages[Ai];
+        village.Resources = new Resources(800, 800, 800);
+
+        new BuildPlanner(match.Views[Ai]).Plan(village, threatened: true);
+
+        Assert.DoesNotContain(village.BuildQueue, q => q.Building == BuildingType.Wall);
+    }
+
+    [Fact]
+    public void AnAttackStillRaisesTheWallBelowTheLimit()
+    {
+        var match = MatchWithWallLimit(5);
+        var village = match.State.Villages[Ai];
+        village.Resources = new Resources(800, 800, 800);
+
+        new BuildPlanner(match.Views[Ai]).Plan(village, threatened: true);
+
+        Assert.Contains(village.BuildQueue, q => q.Building == BuildingType.Wall);
+    }
+
+    private static int FightersAfterTraining(double? limit, bool threatened)
+    {
+        var match = new AiMatch(new[] { AiDifficulty.Normal, AiDifficulty.Normal }, idle: new[] { Attacker }, data: TestData.Mutated("ai.json", root =>
+        {
+            root["difficulties"]!["Normal"]!["fightersPerMinute"] = 0;
+            if (limit is { } value)
+                root["difficulties"]!["Normal"]!["maxFightersPerMinute"] = value;
+        }));
+        var village = match.State.Villages[Ai];
+        village.SetBuildingLevel(BuildingType.Barracks, 3);
+        village.SetBuildingLevel(BuildingType.Warehouse, 8);
+        village.Resources = new Resources(5000, 5000, 5000);
+        foreach (var (unit, count) in village.Troops.ToList())
+            village.RemoveTroops(unit, count);
+
+        new TrainingPlanner(match.Views[Ai], new AiMemory(match.Views[Ai])).Plan(village, threatened, Resources.Zero);
+        return village.TrainingQueue.Sum(q => q.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AtTheArmyLimitNoFightersAreTrained(bool threatened) =>
+        Assert.Equal(0, FightersAfterTraining(0, threatened));
+
+    [Fact]
+    public void WithNoLimitFightersAreTrained() => Assert.True(FightersAfterTraining(null, false) > 0);
 }
