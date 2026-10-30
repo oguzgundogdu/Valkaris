@@ -1,4 +1,5 @@
 using Valkaris.Core.Data;
+using Valkaris.Core.Events;
 using Valkaris.Core.Model;
 
 namespace Valkaris.Core.Systems;
@@ -15,8 +16,11 @@ public sealed class Simulation
         _data = data;
     }
 
-    /// <summary>Moves the match forward by real seconds. Time stops at the end of the match.</summary>
-    public void Advance(double deltaSeconds)
+    /// <summary>
+    /// Moves the match forward by real seconds and returns what happened, in time order.
+    /// Time stops at the end of the match.
+    /// </summary>
+    public IReadOnlyList<GameEvent> Advance(double deltaSeconds)
     {
         if (deltaSeconds < 0)
             throw new ArgumentOutOfRangeException(nameof(deltaSeconds), deltaSeconds, "Time cannot go backwards.");
@@ -24,6 +28,23 @@ public sealed class Simulation
         var end = Math.Min(_state.ElapsedTime + deltaSeconds, _state.Settings.MatchDurationSeconds);
         Produce(end - _state.ElapsedTime);
         _state.ElapsedTime = end;
+
+        var events = new List<GameEvent>();
+        foreach (var village in _state.Villages.Values.OrderBy(v => v.Id))
+        {
+            while (village.BuildQueue.Count > 0 && village.BuildQueue[0].FinishTime <= end)
+                events.Add(CompleteBuild(village));
+        }
+
+        return events.OrderBy(e => e.Time).ToList();
+    }
+
+    private static BuildingCompleted CompleteBuild(Village village)
+    {
+        var item = village.BuildQueue[0];
+        village.DequeueBuild();
+        village.SetBuildingLevel(item.Building, item.TargetLevel);
+        return new BuildingCompleted(item.FinishTime, village.Id, item.Building, item.TargetLevel);
     }
 
     private void Produce(double seconds)
