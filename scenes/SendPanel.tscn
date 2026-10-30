@@ -19,10 +19,17 @@ layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "Target"
 
-[node name="Targets" type="VBoxContainer" parent="Form/Box"]
+[node name="TargetLine" type="Label" parent="Form/Box"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_type_variation = &"StrongLabel"
+autowrap_mode = 2
+
+[node name="PickTarget" type="Button" parent="Form/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"SecondaryButton"
 
 [node name="MissionRow" type="HBoxContainer" parent="Form/Box"]
 layout_mode = 2

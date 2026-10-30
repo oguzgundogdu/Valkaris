@@ -73,6 +73,12 @@ public partial class GameScreen : Control
         _resourceBar.PauseRequested += TogglePause;
         _resourceBar.ViewRequested += ShowView;
         _worldMap.EnterRequested += EnterVillage;
+        _worldMap.SendRequested += villageId =>
+        {
+            _sendPanel.SetTarget(villageId);
+            ShowTab(SideTab.Send);
+        };
+        _sendPanel.MapRequested += () => ShowView(MainView.World);
 
         _pauseOverlay.Configure("Paused", "The match is on hold. Press P to resume.", "Resume", "Leave match");
         _pauseOverlay.ActionPressed += TogglePause;
@@ -196,7 +202,7 @@ public partial class GameScreen : Control
                 _troopsPanel.Refresh(Session, village);
                 break;
             case SideTab.Send:
-                _sendPanel.Refresh(Session, village);
+                _sendPanel.Refresh(Session, village, CurrentView == MainView.World);
                 break;
             case SideTab.Reports:
                 _reportsPanel.Refresh(Session);

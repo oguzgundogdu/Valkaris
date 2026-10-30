@@ -9,10 +9,7 @@ using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
-/// <summary>
-/// Sends troops and lists what is on the way. The mission and troop form stays when the world map arrives;
-/// only the temporary target list is replaced by picking a village on the map.
-/// </summary>
+/// <summary>Sends troops at the village picked on the map, and lists what is on the way.</summary>
 public partial class SendPanel : VBoxContainer
 {
     private sealed record UnitRow(SpinBox Amount, Label Available);
@@ -20,10 +17,9 @@ public partial class SendPanel : VBoxContainer
     private readonly Dictionary<UnitType, UnitRow> _units = new();
     private readonly List<(HBoxContainer Box, Label Title, Label Time)> _moving = new();
     private readonly List<MovementType> _missions = new();
-    private readonly ButtonGroup _targetGroup = new();
-    private readonly List<int> _targetIds = new();
 
-    private VBoxContainer _targets = null!;
+    private Label _targetLine = null!;
+    private Button _pickTarget = null!;
     private OptionButton _mission = null!;
     private Control _catapultRow = null!;
     private OptionButton _catapultTarget = null!;
@@ -35,11 +31,17 @@ public partial class SendPanel : VBoxContainer
 
     private IGameSession? _session;
     private SendTroopsCommand? _command;
-    private int _targetId;
+    private int? _targetId;
+
+    public event Action? MapRequested;
+
+    public void SetTarget(int villageId) => _targetId = villageId;
 
     public override void _Ready()
     {
-        _targets = GetNode<VBoxContainer>("%Targets");
+        _targetLine = GetNode<Label>("%TargetLine");
+        _pickTarget = GetNode<Button>("%PickTarget");
+        _pickTarget.Pressed += () => MapRequested?.Invoke();
         _mission = GetNode<OptionButton>("%Mission");
         _catapultRow = GetNode<Control>("%CatapultRow");
         _catapultTarget = GetNode<OptionButton>("%CatapultTarget");
@@ -86,15 +88,14 @@ public partial class SendPanel : VBoxContainer
         return new UnitRow(amount, available);
     }
 
-    public void Refresh(IGameSession session, Village village)
+    public void Refresh(IGameSession session, Village village, bool mapIsOpen)
     {
         _session = session;
 
-        var hasOtherOwnVillage = session.State.Villages.Values.Any(v => v.OwnerId == village.OwnerId && v.Id != village.Id);
-        RefreshMissions(hasOtherOwnVillage);
+        var target = _targetId is { } id ? session.State.Villages[id] : null;
+        RefreshTarget(session, village, target, mapIsOpen);
+        RefreshMissions(target is not null && target.OwnerId == village.OwnerId);
         var type = _missions[_mission.Selected];
-
-        RefreshTargets(session, village, type);
 
         foreach (var (unit, row) in _units)
         {
@@ -110,23 +111,35 @@ public partial class SendPanel : VBoxContainer
             ? Enum.GetValues<BuildingType>()[_catapultTarget.Selected - 1]
             : null;
 
-        _command = new SendTroopsCommand(village.Id, _targetId, type, troops, aim);
-        var option = SendPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, _command);
+        _command = target is null ? null : new SendTroopsCommand(village.Id, target.Id, type, troops, aim);
+        var option = _command is null ? null : SendPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, _command);
 
-        _send.Disabled = !option.CanSend;
-        _arrival.Text = option.CanSend ? $"Arrives in {Format.Time(option.DurationSeconds)}" : "";
-        _arrival.Visible = option.CanSend;
-        _reason.Text = option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : "";
-        _reason.Visible = !option.CanSend;
+        _send.Disabled = option is not { CanSend: true };
+        _arrival.Visible = option is { CanSend: true };
+        _arrival.Text = option is { CanSend: true } ? $"Arrives in {Format.Time(option.DurationSeconds)}" : "";
+        _reason.Visible = _send.Disabled;
+        _reason.Text = option is null
+            ? "Pick a target on the world map."
+            : option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : "";
 
         RefreshMoving(session);
     }
 
-    private void RefreshMissions(bool hasOtherOwnVillage)
+    private void RefreshTarget(IGameSession session, Village village, Village? target, bool mapIsOpen)
     {
-        var wanted = new List<MovementType> { MovementType.Attack, MovementType.Raid };
-        if (hasOtherOwnVillage)
-            wanted.Add(MovementType.Reinforce);
+        _targetLine.Text = target is null
+            ? "No target yet"
+            : $"{target.Name}  ·  {UiContent.OwnerName(session, target.OwnerId)}  ·  {UnitRules.Distance(village.Position, target.Position):0.0} tiles";
+
+        _pickTarget.Visible = !mapIsOpen;
+        _pickTarget.Text = target is null ? "Pick a village on the map" : "Change target on the map";
+    }
+
+    private void RefreshMissions(bool targetIsOwnVillage)
+    {
+        var wanted = targetIsOwnVillage
+            ? new List<MovementType> { MovementType.Reinforce }
+            : new List<MovementType> { MovementType.Attack, MovementType.Raid };
         if (wanted.SequenceEqual(_missions))
             return;
 
@@ -135,45 +148,6 @@ public partial class SendPanel : VBoxContainer
         _mission.Clear();
         foreach (var mission in _missions)
             _mission.AddItem(mission.ToString());
-    }
-
-    // Temporary until the world map lets the player pick a village.
-    private void RefreshTargets(IGameSession session, Village village, MovementType type)
-    {
-        var targets = session.State.Villages.Values
-            .Where(v => type == MovementType.Reinforce ? v.OwnerId == village.OwnerId && v.Id != village.Id : v.OwnerId != village.OwnerId)
-            .OrderBy(v => UnitRules.Distance(village.Position, v.Position))
-            .ToList();
-
-        if (!targets.Select(t => t.Id).SequenceEqual(_targetIds))
-        {
-            _targetIds.Clear();
-            _targetIds.AddRange(targets.Select(t => t.Id));
-            foreach (var child in _targets.GetChildren())
-                child.QueueFree();
-
-            foreach (var target in targets)
-            {
-                var id = target.Id;
-                var owner = UiContent.OwnerName(session, target.OwnerId);
-                var button = new Button
-                {
-                    Name = $"Target{id}",
-                    Text = $"{owner}'s village  ·  {UnitRules.Distance(village.Position, target.Position):0.0} tiles",
-                    ThemeTypeVariation = "SecondaryButton",
-                    ToggleMode = true,
-                    ButtonGroup = _targetGroup,
-                    FocusMode = FocusModeEnum.None,
-                };
-                button.Pressed += () => _targetId = id;
-                _targets.AddChild(button);
-                if (id == _targetId || !_targetIds.Contains(_targetId))
-                {
-                    _targetId = id;
-                    button.ButtonPressed = true;
-                }
-            }
-        }
     }
 
     private void SendTroops()

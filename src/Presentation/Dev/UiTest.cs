@@ -180,6 +180,7 @@ public partial class UiTest : Control
         await TestViewSwitching();
         await TestCamera();
         await TestSelection();
+        await TestSendFromMap();
         await TestLeaveMatch();
         await TestMatchEnd();
     }
@@ -382,6 +383,57 @@ public partial class UiTest : Control
         await Frames();
     }
 
+    private async Task TestSendFromMap()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var send = game.GetNode<SendPanel>("%Send");
+        var camp = session.State.Villages.Values.Where(v => v.IsBarbarian).Last();
+        var village = session.State.Villages[1];
+
+        game.ShowView(GameScreen.MainView.Village);
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+        send.GetNode<Button>("%PickTarget").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(game.CurrentView == GameScreen.MainView.World, "The form's button opens the map");
+        Expect(!send.GetNode<Button>("%PickTarget").Visible, "The button hides once the map is open");
+
+        var at = world.WorldToView(WorldMapView.VillageWorldPosition(camp));
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at });
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at });
+        await Frames();
+        game.ShowTab(GameScreen.SideTab.Village);
+        await Frames();
+        world.GetNode<VillagePopup>("Popup").GetNode<Button>("%Send").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(send.IsVisibleInTree(), "The popup opens the Send tab");
+        Expect(send.GetNode<Label>("%TargetLine").Text.StartsWith($"{camp.Name}  ·  Barbarians"), $"The popup sets the target, got '{send.GetNode<Label>("%TargetLine").Text}'");
+
+        // The filled form survives a trip to the village view.
+        var amount = send.GetNode<VBoxContainer>("%Units").GetNode(nameof(UnitType.Spearman)).GetNode<SpinBox>("Amount");
+        amount.Value = 1;
+        game.ShowView(GameScreen.MainView.Village);
+        await Frames();
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        Expect((int)amount.Value == 1 && send.GetNode<Label>("%TargetLine").Text.StartsWith(camp.Name), "The form and target survive switching views");
+        await Shot("map-send");
+
+        send.GetNode<Button>("%Send").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(session.State.Movements.Any(m => m.ToVillageId == camp.Id), "The attack leaves for the village picked on the map");
+        Expect(send.GetNode<Label>("%TargetLine").Text.StartsWith(camp.Name), "The target stays for the next send");
+
+        session.Tick(session.State.Movements.Max(m => m.ArrivalTime) - session.State.ElapsedTime);
+        if (session.State.Movements.Count > 0)
+            session.Tick(session.State.Movements.Max(m => m.ArrivalTime) - session.State.ElapsedTime);
+        world.ClearSelection();
+        game.ShowView(GameScreen.MainView.Village);
+        await Frames();
+    }
+
     private async Task TestLeaveMatch()
     {
         var game = Find<GameScreen>();
@@ -498,9 +550,12 @@ public partial class UiTest : Control
         await Frames();
         Expect(send.IsVisibleInTree(), "The Send tab opens");
         Expect(mission.ItemCount == 2, "Reinforce isn't offered without a second village");
-        var target = send.GetNode<VBoxContainer>("%Targets").GetNode<Button>("Target2");
-        target.EmitSignal(BaseButton.SignalName.Pressed);
-        Expect(target.Text.StartsWith("Rival's village"), $"The target list names the rival, got '{target.Text}'");
+        Expect(button.Disabled && reason.Text == "Pick a target on the world map.", "No target disables Send and says why");
+        Expect(send.GetNode<Button>("%PickTarget").Visible, "The form offers a way to the map");
+        send.SetTarget(2);
+        await Frames();
+        var line = send.GetNode<Label>("%TargetLine").Text;
+        Expect(line.StartsWith($"{session.State.Villages[2].Name}  ·  Rival  ·  "), $"The target line names the village, got '{line}'");
         Expect(button.Disabled && reason.Text == UiContent.RejectionText(CommandRejection.NoTroopsSelected), "No troops selected disables Send and says why");
         Expect(send.GetNode<Label>("%None").Visible, "Nothing on the move yet");
 
@@ -586,7 +641,7 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         await Frames();
 
-        send.GetNode<VBoxContainer>("%Targets").GetNode<Button>("Target2").EmitSignal(BaseButton.SignalName.Pressed);
+        send.SetTarget(2);
         units.GetNode(nameof(UnitType.Swordsman)).GetNode<Button>("Max").EmitSignal(BaseButton.SignalName.Pressed);
         units.GetNode(nameof(UnitType.Catapult)).GetNode<Button>("Max").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
