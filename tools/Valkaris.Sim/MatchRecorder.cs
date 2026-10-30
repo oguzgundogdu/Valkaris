@@ -181,7 +181,8 @@ public sealed class MatchRecorder
                     atEnd.Wall,
                     hasMid ? atMid.Home : null,
                     atEnd.Home,
-                    sent.Count(r => r.AttackerWon)));
+                    sent.Count(r => r.AttackerWon)),
+                ScoutingOf(player, sent));
         }).ToList();
 
         return new MatchResult(
@@ -208,6 +209,25 @@ public sealed class MatchRecorder
             _commands,
             _rejections.OrderBy(r => r.Key).ToDictionary(r => r.Key, r => r.Value));
     }
+
+    private SeatScouting ScoutingOf(Player player, IReadOnlyList<BattleReport> attacks)
+    {
+        var scouted = _state.ScoutReports.Where(r => r.SenderId == player.Id).ToList();
+        var maxAge = _data.Ai.Difficulties[player.Difficulty ?? AiDifficulty.Normal].ScoutMaxAgeSeconds / _state.Settings.SpeedMultiplier;
+
+        return new SeatScouting(
+            scouted.Count,
+            scouted.Count(r => r.Succeeded),
+            scouted.Where(r => !r.Succeeded).Sum(r => r.Sent.Values.Sum()),
+            attacks.Count(attack => scouted.Any(r => r.Succeeded
+                && r.TargetVillageId == attack.DefenderVillageId
+                && r.Time <= attack.Time
+                && attack.Time - r.Time <= maxAge + TravelAllowance(attack))));
+    }
+
+    /// <summary>News can be at its limit when the army leaves, and the army still has to walk there.</summary>
+    private double TravelAllowance(BattleReport attack) =>
+        UnitRules.TravelSeconds(_data, _state, _state.Villages[attack.AttackerVillageId].Position, _state.Villages[attack.DefenderVillageId].Position, attack.AttackerSent);
 
     private static double Total(Resources resources) => resources.Wood + resources.Stone + resources.Food;
 }

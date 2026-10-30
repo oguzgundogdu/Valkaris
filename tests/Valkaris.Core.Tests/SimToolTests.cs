@@ -241,6 +241,28 @@ public class SimToolTests
     }
 
     [Fact]
+    public void ScoutingIsCountedPerSeat()
+    {
+        var match = new Recorded();
+        var target = match.State.Villages[2];
+        foreach (var (unit, count) in target.Troops.ToList())
+            target.RemoveTroops(unit, count);
+        match.State.Villages[1].AddTroops(UnitType.Cavalry, 10);
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Cavalry, 1)));
+        match.Session.Tick(match.State.Movements.Single().ArrivalTime);
+        target.AddTroops(UnitType.Spearman, 1000);
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Cavalry, 2)));
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Attack, Force(UnitType.Cavalry, 1)));
+
+        var scouting = match.Finish().Seats[0].Scouting!;
+
+        Assert.Equal(2, scouting.Sent);
+        Assert.Equal(1, scouting.Succeeded);
+        Assert.Equal(2, scouting.TroopsLost);
+        Assert.Equal(1, scouting.AttacksWithIntel);
+    }
+
+    [Fact]
     public void RejectedCommandsAreCountedByReason()
     {
         var match = new Recorded();

@@ -17,6 +17,13 @@ public sealed record DefenceStats(
     double HomeDefenceAtEnd,
     double AttackWinShare);
 
+/// <summary>Means per seat, and shares of all seats' scouting and attacks.</summary>
+public sealed record ScoutingStats(
+    double SentPerSeat,
+    double SuccessShare,
+    double TroopsLostPerSeat,
+    double AttacksWithIntelShare);
+
 public sealed record DifficultyStats(
     AiDifficulty Difficulty,
     int Seats,
@@ -35,7 +42,8 @@ public sealed record DifficultyStats(
     double FoundedShare,
     Spread? FirstCapture,
     double CaptureShare,
-    DefenceStats Defence);
+    DefenceStats Defence,
+    ScoutingStats Scouting);
 
 public sealed record AttackSpread(
     double MeanAttacksPerMatch,
@@ -166,7 +174,18 @@ public sealed record SimReport(
             seats.Count == 0 ? null : SpreadOf(seats.Select(s => (double)s.Seat.Villages)),
             seats.Count == 0 ? null : SpreadOf(seats.Select(s => s.Seat.Score)),
             barracks, barracksShare, settler, settlerShare, lord, lordShare, founded, foundedShare, capture, captureShare,
-            DefenceOf(seats.Select(s => s.Seat).ToList()));
+            DefenceOf(seats.Select(s => s.Seat).ToList()),
+            ScoutingOf(seats.Select(s => s.Seat).ToList()));
+    }
+
+    private static ScoutingStats ScoutingOf(IReadOnlyList<SeatResult> seats)
+    {
+        var measured = seats.Where(s => s.Scouting is not null).ToList();
+        return new ScoutingStats(
+            Safe(measured.Sum(s => s.Scouting!.Sent), measured.Count),
+            Safe(measured.Sum(s => s.Scouting!.Succeeded), measured.Sum(s => s.Scouting!.Sent)),
+            Safe(measured.Sum(s => s.Scouting!.TroopsLost), measured.Count),
+            Safe(measured.Sum(s => s.Scouting!.AttacksWithIntel), measured.Sum(s => s.AttacksSent)));
     }
 
     private static DefenceStats DefenceOf(IReadOnlyList<SeatResult> seats)
@@ -261,6 +280,8 @@ public sealed record SimReport(
             Line("Wall level (mid, end)", $"{d.Defence.WallAtMid:0.0}, {d.Defence.WallAtEnd:0.0}");
             Line("Home defence (mid, end)", $"{d.Defence.HomeDefenceAtMid:0}, {d.Defence.HomeDefenceAtEnd:0}");
             Line("Attacks on players won", Pct(d.Defence.AttackWinShare));
+            Line("Scouting per seat", $"{d.Scouting.SentPerSeat:0.#} sent, {Pct(d.Scouting.SuccessShare)} succeed, {d.Scouting.TroopsLostPerSeat:0.#} troops lost");
+            Line("Attacks with fresh intel", Pct(d.Scouting.AttacksWithIntelShare));
         }
         text.AppendLine("Economy");
         Line("Resources at the cap", Pct(AtCapShare));

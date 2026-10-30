@@ -11,6 +11,9 @@ public sealed record SeatDefence(
     double HomeDefenceAtEnd,
     int AttacksWon);
 
+/// <summary>A seat's scouting. Attacks with intel are those on players after a success still within the profile's age limit.</summary>
+public sealed record SeatScouting(int Sent, int Succeeded, int TroopsLost, int AttacksWithIntel);
+
 /// <summary>What one seat did in one match.</summary>
 public sealed record SeatResult(
     int PlayerId,
@@ -27,7 +30,8 @@ public sealed record SeatResult(
     int AttacksSent,
     int AttacksReceived,
     IReadOnlyDictionary<int, int> AttacksAtPlayers,
-    SeatDefence? Defence = null);
+    SeatDefence? Defence = null,
+    SeatScouting? Scouting = null);
 
 /// <summary>Everything recorded about one match. Only numbers from the match, so the same seed always gives the same record.</summary>
 public sealed record MatchResult(
