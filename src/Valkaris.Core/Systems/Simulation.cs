@@ -107,10 +107,80 @@ public sealed class Simulation
                 AddTroops(_state.Villages[movement.ToVillageId], movement.Troops);
                 return new ReinforcementsArrived(movement.ArrivalTime, movement.ToVillageId);
             default:
-                // Battles are resolved in the next task; until then attackers simply turn back.
-                SendHome(movement, movement.Troops, Resources.Zero);
-                return new ReinforcementsArrived(movement.ArrivalTime, movement.ToVillageId);
+                return ResolveBattle(movement);
         }
+    }
+
+    private BattleResolved ResolveBattle(Movement movement)
+    {
+        var target = _state.Villages[movement.ToVillageId];
+        var defenders = target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
+        var wallLevel = target.BuildingLevel(BuildingType.Wall);
+
+        var result = CombatResolver.Resolve(_data, movement.Type, movement.Troops, defenders, wallLevel);
+
+        foreach (var (unit, lost) in result.DefenderLost)
+            target.RemoveTroops(unit, lost);
+
+        var survivors = movement.Troops.ToDictionary(t => t.Key, t => t.Value - result.AttackerLost[t.Key]);
+
+        var loot = Resources.Zero;
+        CatapultDamage? damage = null;
+        if (result.AttackerWon)
+        {
+            loot = LootRules.Calculate(_data, target, survivors);
+            target.Resources -= loot;
+
+            if (movement.Type == MovementType.Attack)
+                damage = ApplyCatapults(target, survivors.GetValueOrDefault(UnitType.Catapult), movement.CatapultTarget);
+        }
+
+        var report = new BattleReport(
+            _state.NextReportId++,
+            movement.ArrivalTime,
+            movement.Type,
+            movement.OwnerId,
+            target.OwnerId,
+            movement.FromVillageId,
+            target.Id,
+            movement.Troops,
+            result.AttackerLost,
+            defenders,
+            result.DefenderLost,
+            wallLevel,
+            result.AttackPower,
+            result.DefencePower,
+            result.AttackerWon,
+            loot,
+            damage);
+        _state.AddReport(report);
+
+        SendHome(movement, survivors.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value), loot);
+        return new BattleResolved(movement.ArrivalTime, report.Id);
+    }
+
+    private CatapultDamage? ApplyCatapults(Village target, int catapults, BuildingType? chosen)
+    {
+        if (catapults <= 0)
+            return null;
+
+        var building = chosen ?? PickRandomBuilding(target);
+        if (building is not { } hit || target.BuildingLevel(hit) == 0)
+            return null;
+
+        var levels = Math.Max(1, catapults / _data.Combat.CatapultsPerLevelOfDamage);
+        var from = target.BuildingLevel(hit);
+        var to = Math.Max(0, from - levels);
+
+        target.SetBuildingLevel(hit, to);
+        target.LowerQueuedBuildTargets(hit, from - to);
+        return new CatapultDamage(hit, from, to);
+    }
+
+    private BuildingType? PickRandomBuilding(Village village)
+    {
+        var standing = Enum.GetValues<BuildingType>().Where(b => village.BuildingLevel(b) > 0).ToList();
+        return standing.Count == 0 ? null : standing[_state.NextRandom(standing.Count)];
     }
 
     private TroopsReturned CompleteReturn(Movement movement)

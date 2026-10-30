@@ -12,3 +12,5 @@ public sealed record TroopsTrained(double Time, int VillageId, UnitType Unit, in
 public sealed record TroopsReturned(double Time, int VillageId, Resources Loot) : GameEvent(Time);
 
 public sealed record ReinforcementsArrived(double Time, int VillageId) : GameEvent(Time);
+
+public sealed record BattleResolved(double Time, int ReportId) : GameEvent(Time);
