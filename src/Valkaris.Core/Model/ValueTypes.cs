@@ -40,4 +40,4 @@ public readonly record struct Resources(double Wood, double Stone, double Food)
 
 public sealed record GameSettings(double MatchDurationSeconds, double SpeedMultiplier, MapSize MapSize);
 
-public sealed record BuildQueueItem(BuildingType Building, int TargetLevel, double FinishTime);
+public sealed record BuildQueueItem(BuildingType Building, int TargetLevel, double StartTime, double FinishTime);

@@ -30,36 +30,17 @@ public sealed class CommandHandler
 
     private CommandResult HandleBuild(int issuerId, BuildCommand command)
     {
-        if (!_state.Villages.TryGetValue(command.VillageId, out var village))
-            return CommandResult.Rejected(CommandRejection.VillageNotFound);
-        if (village.OwnerId != issuerId)
-            return CommandResult.Rejected(CommandRejection.NotOwner);
-        if (village.BuildQueue.Count >= _data.Game.MaxBuildQueueLength)
-            return CommandResult.Rejected(CommandRejection.QueueFull);
+        var option = BuildPreview.Evaluate(_state, _data, issuerId, command.VillageId, command.Building);
+        if (option.Rejection is { } rejection)
+            return CommandResult.Rejected(rejection);
 
-        var queuedUpgrades = village.BuildQueue.Count(item => item.Building == command.Building);
-        var targetLevel = village.BuildingLevel(command.Building) + queuedUpgrades + 1;
-
-        if (targetLevel > _data.Buildings.Buildings[command.Building].MaxLevel)
-            return CommandResult.Rejected(CommandRejection.MaxLevelReached);
-
-        if (command.Building != BuildingType.MainBuilding)
-        {
-            var mainLevel = village.BuildingLevel(BuildingType.MainBuilding);
-            if (targetLevel > BuildingRules.MaxOtherBuildingLevel(_data, mainLevel))
-                return CommandResult.Rejected(CommandRejection.MainBuildingLevelTooLow);
-        }
-
-        var cost = BuildingRules.UpgradeCost(_data, command.Building, targetLevel);
-        if (!village.Resources.Covers(cost))
-            return CommandResult.Rejected(CommandRejection.InsufficientResources);
-
-        village.Resources -= cost;
-
-        // One builder per village: this item starts when the one before it finishes.
-        var start = village.BuildQueue.Count > 0 ? village.BuildQueue[^1].FinishTime : _state.ElapsedTime;
-        var duration = BuildingRules.BuildTimeSeconds(_data, command.Building, targetLevel) / _state.Settings.SpeedMultiplier;
-        village.EnqueueBuild(new BuildQueueItem(command.Building, targetLevel, start + duration));
+        var village = _state.Villages[command.VillageId];
+        village.Resources -= option.Cost;
+        village.EnqueueBuild(new BuildQueueItem(
+            command.Building,
+            option.TargetLevel,
+            option.StartTime,
+            option.StartTime + option.DurationSeconds));
 
         return CommandResult.Ok;
     }

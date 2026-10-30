@@ -44,8 +44,8 @@ public class SnapshotTests
         village.OwnerId = 3;
         village.Resources = new Resources(1.5, 2.25, 1.0 / 3.0);
         village.SetBuildingLevel(BuildingType.Wall, 4);
-        village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 2, 200.5));
-        village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 3, 300.75));
+        village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 2, 100.25, 200.5));
+        village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 3, 200.5, 300.75));
         return state;
     }
 
