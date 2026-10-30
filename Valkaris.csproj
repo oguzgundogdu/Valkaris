@@ -11,6 +11,7 @@
   <ItemGroup>
     <Compile Remove="src/Valkaris.*/**" />
     <Compile Remove="tests/**" />
+    <Compile Remove="tools/**" />
     <!-- The UI test drives the game through dev-only paths and never ships. -->
     <Compile Remove="src/Presentation/Dev/**" Condition="'$(Configuration)' == 'ExportRelease'" />
   </ItemGroup>

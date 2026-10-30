@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Valkaris.Core/Valkaris.Core.csproj" />
     <ProjectReference Include="..\..\src\Valkaris.Ai\Valkaris.Ai.csproj" />
+    <ProjectReference Include="..\..\tools\Valkaris.Sim\Valkaris.Sim.csproj" />
   </ItemGroup>
 
   <ItemGroup>
