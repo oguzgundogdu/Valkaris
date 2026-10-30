@@ -32,7 +32,8 @@ public sealed class Simulation
         while (NextEvent(end) is { } next)
         {
             MoveTimeTo(next.Time);
-            events.Add(Apply(next));
+            if (Apply(next) is { } gameEvent)
+                events.Add(gameEvent);
         }
 
         MoveTimeTo(end);
@@ -43,6 +44,7 @@ public sealed class Simulation
     {
         Build,
         Training,
+        TroopRegen,
         Arrival,
     }
 
@@ -70,6 +72,8 @@ public sealed class Simulation
                 Consider(new PendingEvent(village.BuildQueue[0].FinishTime, EventKind.Build, village.Id));
             if (village.TrainingQueue.Count > 0)
                 Consider(new PendingEvent(village.TrainingQueue[0].FinishTime, EventKind.Training, village.Id));
+            if (village.NextTroopRegenTime is { } regenTime)
+                Consider(new PendingEvent(regenTime, EventKind.TroopRegen, village.Id));
         }
 
         foreach (var movement in _state.Movements)
@@ -78,8 +82,9 @@ public sealed class Simulation
         return next;
     }
 
-    private GameEvent Apply(PendingEvent pending) => pending.Kind switch
+    private GameEvent? Apply(PendingEvent pending) => pending.Kind switch
     {
+        EventKind.TroopRegen => RegenerateTroop(_state.Villages[pending.Id]),
         EventKind.Build => CompleteBuild(_state.Villages[pending.Id]),
         EventKind.Training => CompleteTraining(_state.Villages[pending.Id]),
         EventKind.Arrival => CompleteMovement(_state.Movements.First(m => m.Id == pending.Id)),
@@ -155,8 +160,51 @@ public sealed class Simulation
             damage);
         _state.AddReport(report);
 
+        if (target.IsBarbarian)
+            ScheduleTroopRegen(target, movement.ArrivalTime);
+
         SendHome(movement, survivors.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value), loot);
         return new BattleResolved(movement.ArrivalTime, report.Id);
+    }
+
+    private BarbarianTierConfig TierOf(Village village) => _data.Map.Barbarians.Tiers[village.BarbarianTier!.Value];
+
+    private void RegenerateResources(Village village, double gameSeconds)
+    {
+        var gain = _data.Map.Barbarians.ResourceRegenPerSecond * gameSeconds;
+        var cap = TierOf(village).Resources;
+        village.Resources = new Resources(
+            Math.Min(cap.Wood, village.Resources.Wood + gain),
+            Math.Min(cap.Stone, village.Resources.Stone + gain),
+            Math.Min(cap.Food, village.Resources.Food + gain));
+    }
+
+    private void ScheduleTroopRegen(Village village, double now)
+    {
+        if (village.NextTroopRegenTime is null && FirstUnitBelowCap(village) is not null)
+            village.NextTroopRegenTime = now + _data.Map.Barbarians.TroopRegenSeconds / _state.Settings.SpeedMultiplier;
+    }
+
+    private UnitType? FirstUnitBelowCap(Village village)
+    {
+        foreach (var (unit, cap) in TierOf(village).Garrison.OrderBy(g => g.Key))
+        {
+            if (village.TroopCount(unit) < cap)
+                return unit;
+        }
+        return null;
+    }
+
+    private GameEvent? RegenerateTroop(Village village)
+    {
+        var now = village.NextTroopRegenTime!.Value;
+        village.NextTroopRegenTime = null;
+
+        if (FirstUnitBelowCap(village) is { } unit)
+            village.AddTroops(unit, 1);
+
+        ScheduleTroopRegen(village, now);
+        return null;
     }
 
     private CatapultDamage? ApplyCatapults(Village target, int catapults, BuildingType? chosen)
@@ -241,6 +289,12 @@ public sealed class Simulation
         var gameSeconds = seconds * _state.Settings.SpeedMultiplier;
         foreach (var village in _state.Villages.Values)
         {
+            if (village.IsBarbarian)
+            {
+                RegenerateResources(village, gameSeconds);
+                continue;
+            }
+
             var produced = BuildingRules.VillageProduction(_data, village) * gameSeconds;
             village.Resources = (village.Resources + produced).CappedAt(BuildingRules.VillageCapacity(_data, village));
         }

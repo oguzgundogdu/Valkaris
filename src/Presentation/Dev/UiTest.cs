@@ -288,6 +288,7 @@ public partial class UiTest : Control
         Expect(send.IsVisibleInTree(), "The Send tab opens");
         Expect(mission.ItemCount == 2, "Reinforce isn't offered without a second village");
         var target = send.GetNode<VBoxContainer>("%Targets").GetNode<Button>("Target2");
+        target.EmitSignal(BaseButton.SignalName.Pressed);
         Expect(target.Text.StartsWith("Rival's village"), $"The target list names the rival, got '{target.Text}'");
         Expect(button.Disabled && reason.Text == UiContent.RejectionText(CommandRejection.NoTroopsSelected), "No troops selected disables Send and says why");
         Expect(send.GetNode<Label>("%None").Visible, "Nothing on the move yet");
@@ -374,6 +375,7 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         await Frames();
 
+        send.GetNode<VBoxContainer>("%Targets").GetNode<Button>("Target2").EmitSignal(BaseButton.SignalName.Pressed);
         units.GetNode(nameof(UnitType.Swordsman)).GetNode<Button>("Max").EmitSignal(BaseButton.SignalName.Pressed);
         units.GetNode(nameof(UnitType.Catapult)).GetNode<Button>("Max").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -444,8 +446,26 @@ public partial class UiTest : Control
         Expect(report.Text.StartsWith("Won: Attack by Rival"), $"The defender's report says they won, got '{report.Text}'");
         report.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
-        Expect(game.GetNode<ReportDialog>("%ReportDialog").GetNode<Label>("%Result").Text == "Victory", "A successful defence is a victory");
+        var dialog = game.GetNode<ReportDialog>("%ReportDialog");
+        Expect(dialog.GetNode<Label>("%Result").Text == "Victory", "A successful defence is a victory");
         await Shot("report-defended");
+        dialog.GetNode<Button>("%Close").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+
+        // A battle against barbarians, who have no player entry to look up.
+        var camp = session.State.Villages.Values.First(v => v.IsBarbarian);
+        session.Send(new SendTroopsCommand(1, camp.Id, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 }));
+        session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+        game.ShowTab(GameScreen.SideTab.Reports);
+        await Frames();
+        var barbarian = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report2");
+        Expect(barbarian.Text.Contains("Raid on Barbarians"), $"The barbarian battle is listed, got '{barbarian.Text}'");
+        barbarian.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(dialog.Visible && dialog.GetNode<VBoxContainer>("%Defender").GetChild<Label>(0).Text == "Barbarians (defending)", "The report names the barbarians");
+        await Shot("report-barbarian");
     }
 
     private static int TrainPreviewMax(Valkaris.Core.Hosting.IGameSession session, UnitType unit) =>

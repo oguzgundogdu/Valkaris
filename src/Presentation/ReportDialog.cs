@@ -16,8 +16,8 @@ public partial class ReportDialog : ColorRect
         GetNode<Label>("%Result").Text = UiContent.LocalWon(session, report) ? "Victory" : "Defeat";
         GetNode<Label>("%Summary").Text = $"{UiContent.ReportHeadline(session, report)}  ·  {Format.Time(report.Time)} into the match";
 
-        var attacker = session.State.Players[report.AttackerId].Name;
-        var defender = session.State.Players[report.DefenderId].Name;
+        var attacker = UiContent.OwnerName(session, report.AttackerId);
+        var defender = UiContent.OwnerName(session, report.DefenderId);
         FillSide(GetNode<VBoxContainer>("%Attacker"), $"{attacker} (attacking)", report.AttackerSent, report.AttackerLost);
         FillSide(GetNode<VBoxContainer>("%Defender"), $"{defender} (defending)", report.DefenderPresent, report.DefenderLost);
 

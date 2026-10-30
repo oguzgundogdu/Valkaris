@@ -155,7 +155,7 @@ public partial class SendPanel : VBoxContainer
             foreach (var target in targets)
             {
                 var id = target.Id;
-                var owner = session.State.Players[target.OwnerId].Name;
+                var owner = UiContent.OwnerName(session, target.OwnerId);
                 var button = new Button
                 {
                     Name = $"Target{id}",
@@ -217,9 +217,9 @@ public partial class SendPanel : VBoxContainer
     private static string Describe(IGameSession session, Movement movement)
     {
         if (movement.OwnerId != session.LocalPlayerId)
-            return $"{movement.Type} from {session.State.Players[movement.OwnerId].Name}";
+            return $"{movement.Type} from {UiContent.OwnerName(session, movement.OwnerId)}";
 
-        var target = session.State.Players[session.State.Villages[movement.ToVillageId].OwnerId].Name;
+        var target = UiContent.OwnerName(session, session.State.Villages[movement.ToVillageId].OwnerId);
         if (movement.Type != MovementType.Return)
             return $"{movement.Type} → {target}";
 

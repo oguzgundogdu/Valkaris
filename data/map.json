@@ -17,7 +17,7 @@
         "name": "Camp",
         "weight": 3,
         "garrison": { "Spearman": 6, "Swordsman": 2 },
-        "resources": { "wood": 300, "stone": 300, "food": 300 },
+        "resources": { "wood": 500, "stone": 500, "food": 500 },
         "buildings": { "MainBuilding": 1, "Warehouse": 1 }
       },
       {

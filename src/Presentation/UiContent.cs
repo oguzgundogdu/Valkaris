@@ -37,6 +37,9 @@ public static class UiContent
         [UnitType.Catapult] = new("Catapult", "res://assets/icons/catapult.svg"),
     };
 
+    public static string OwnerName(IGameSession session, int ownerId) =>
+        ownerId == Village.BarbarianOwnerId ? "Barbarians" : session.State.Players[ownerId].Name;
+
     public static bool LocalWon(IGameSession session, BattleReport report) =>
         report.AttackerId == session.LocalPlayerId ? report.AttackerWon : !report.AttackerWon;
 
@@ -44,8 +47,8 @@ public static class UiContent
     {
         var result = LocalWon(session, report) ? "Won" : "Lost";
         return report.AttackerId == session.LocalPlayerId
-            ? $"{result}: {report.Type} on {session.State.Players[report.DefenderId].Name}"
-            : $"{result}: {report.Type} by {session.State.Players[report.AttackerId].Name}";
+            ? $"{result}: {report.Type} on {OwnerName(session, report.DefenderId)}"
+            : $"{result}: {report.Type} by {OwnerName(session, report.AttackerId)}";
     }
 
     public static string RejectionText(CommandRejection rejection) => rejection switch
