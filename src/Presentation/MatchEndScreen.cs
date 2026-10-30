@@ -42,8 +42,10 @@ public partial class MatchEndScreen : ColorRect
         {
             var score = outcome.Scores[i];
             var style = outcome.WinnerIds.Contains(score.PlayerId) ? "StrongLabel" : "";
-            var name = UiContent.OwnerName(session, score.PlayerId)
-                + (session.State.Players[score.PlayerId].IsEliminated ? " (eliminated)" : "");
+            var player = session.State.Players[score.PlayerId];
+            var name = player.Name
+                + (player.Difficulty is { } difficulty ? $" ({difficulty})" : "")
+                + (player.IsEliminated ? " (eliminated)" : "");
 
             foreach (var cell in new[] { $"{i + 1}", name, $"{score.Villages}", $"{score.Population}", $"{score.Captures}", $"{score.Score:0}" })
                 table.AddChild(new Label { Text = cell, ThemeTypeVariation = style });

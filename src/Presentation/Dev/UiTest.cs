@@ -54,6 +54,7 @@ public partial class UiTest : Control
     private async Task Run()
     {
         _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
+        _main.IdleOpponents = true;
         AddChild(_main);
         await Frames();
 
@@ -62,6 +63,8 @@ public partial class UiTest : Control
 
         // The longest match, so the steps below can use plenty of game time.
         Expect(start.GetNode<OptionButton>("%MapSize").ItemCount == Enum.GetValues<MapSize>().Length, "Every map size is offered");
+        await TestOpponentChoices();
+        start = Find<StartScreen>();
         var durations = start.GetNode<OptionButton>("%Duration");
         durations.Select(durations.ItemCount - 1);
         start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
@@ -680,7 +683,7 @@ public partial class UiTest : Control
         send.SetTarget(2);
         await Frames();
         var line = send.GetNode<Label>("%TargetLine").Text;
-        Expect(line.StartsWith($"{session.State.Villages[2].Name}  ·  Rival  ·  "), $"The target line names the village, got '{line}'");
+        Expect(line.StartsWith($"{session.State.Villages[2].Name}  ·  Vargas  ·  "), $"The target line names the village, got '{line}'");
         Expect(button.Disabled && reason.Text == UiContent.RejectionText(CommandRejection.NoTroopsSelected), "No troops selected disables Send and says why");
         Expect(send.GetNode<Label>("%None").Visible, "Nothing on the move yet");
 
@@ -732,7 +735,7 @@ public partial class UiTest : Control
         await Frames();
         Expect(tabs.GetTabTitle(reportsTab) == "Reports", "Opening the tab clears the unread count");
         var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
-        Expect(row.Text.StartsWith("Lost: Raid on Rival"), $"The lost raid is listed, got '{row.Text}'");
+        Expect(row.Text.StartsWith("Lost: Raid on Vargas"), $"The lost raid is listed, got '{row.Text}'");
         await Shot("reports");
 
         row.EmitSignal(BaseButton.SignalName.Pressed);
@@ -1063,6 +1066,40 @@ public partial class UiTest : Control
         await TestCapitalTimeout(data);
         await TestWatchingAfterElimination(data);
         await TestMatchResults(data);
+    }
+
+    /// <summary>Every number of opponents at every difficulty, through the real start screen.</summary>
+    private async Task TestOpponentChoices()
+    {
+        var levels = Enum.GetValues<AiDifficulty>();
+        foreach (var opponents in new[] { 1, 2, 3 })
+        {
+            foreach (var level in levels)
+            {
+                var start = Find<StartScreen>();
+                var count = start.GetNode<OptionButton>("%Opponents");
+                var difficulty = start.GetNode<OptionButton>("%Difficulty");
+                Expect(count.ItemCount == 3, $"1 to 3 opponents are offered, got {count.ItemCount}");
+                Expect(difficulty.GetItemText(difficulty.Selected) == AiDifficulty.Normal.ToString(), "Normal is the default difficulty");
+                count.Select(opponents - 1);
+                difficulty.Select(Array.IndexOf(levels, level));
+                Press(start.GetNode<Button>("%Start"));
+                await Frames();
+
+                var game = Find<GameScreen>();
+                var players = game.Session.State.Players.Values.OrderBy(p => p.Id).ToList();
+                Expect(players.Count == opponents + 1, $"{opponents} opponents means {opponents + 1} players, got {players.Count}");
+                Expect(!players[0].IsAi && players[0].Difficulty is null, "The first seat is the human");
+                Expect(players.Skip(1).All(p => p.IsAi && p.Difficulty == level), $"Opponents are {level} AI");
+                Expect(players.Skip(1).Select(p => p.Name).Distinct().Count() == opponents, "Opponents have different names");
+
+                game.GetNode<ResourceBar>("%ResourceBar");
+                game.ShowView(GameScreen.MainView.World);
+                await Frames();
+                game.ExitToStart();
+                await Frames();
+            }
+        }
     }
 
     private async Task<(GameScreen Game, LocalGameSession Session)> StartMatch(GameData data, string? scenario, int players = 2, double? rivalAttackAt = null, double duration = TestDuration)

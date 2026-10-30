@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Globalization;
 using Godot;
+using Valkaris.Ai;
 using Valkaris.Core.Data;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
@@ -16,6 +19,9 @@ public partial class Main : Control
     private static readonly Vector2I MinWindowSize = new(1024, 640);
     private static readonly PackedScene StartScene = GD.Load<PackedScene>("res://scenes/StartScreen.tscn");
     private static readonly PackedScene GameScene = GD.Load<PackedScene>("res://scenes/Game.tscn");
+
+    /// <summary>Dev only: opponents stand still, for scripted tests that need a predictable match.</summary>
+    public bool IdleOpponents { get; set; }
 
     private GameData _data = null!;
     private Control? _screen;
@@ -64,24 +70,33 @@ public partial class Main : Control
         SwitchTo(screen);
     }
 
-    private void StartMatch(GameSettings settings)
+    private void StartMatch(MatchSetup setup)
     {
-        // Two slots are the minimum. The rival stays idle until AI arrives in milestone 6.
-        var slots = new[]
-        {
-            new PlayerSlot("You", Nation.Valdren, IsAi: false),
-            new PlayerSlot("Rival", Nation.Karuk, IsAi: true),
-        };
+        var nations = new[] { Nation.Karuk, Nation.Solari, Nation.Valdren };
+        var slots = new List<PlayerSlot> { new("You", Nation.Valdren, IsAi: false) };
+        for (var i = 0; i < setup.Opponents; i++)
+            slots.Add(new PlayerSlot(_data.Ai.Names[i], nations[i % nations.Length], IsAi: true, setup.Difficulty));
+
         var devOptions = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
-        var seeded = devOptions.Apply(settings) with { Seed = (ulong)Random.Shared.NextInt64() };
+        var seeded = devOptions.Apply(setup.Settings) with { Seed = (ulong)Random.Shared.NextInt64() };
         var state = GameFactory.CreateMatch(seeded, slots, _data);
 #if VALKARIS_DEV
         if (devOptions.Scenario is { } scenario && !Valkaris.Core.Dev.DevScenario.Apply(state, _data, scenario))
             GD.PrintErr($"Unknown dev scenario: {scenario}");
 #endif
 
+        var session = new LocalGameSession(state, _data, LocalPlayerId);
+        if (!IdleOpponents)
+        {
+            foreach (var slot in state.Players.Values.Where(p => p.IsAi))
+            {
+                var id = slot.Id;
+                session.AddAgent(new AiPlayer(new AiView(state, _data, id, command => session.SendAs(id, command))));
+            }
+        }
+
         var screen = GameScene.Instantiate<GameScreen>();
-        screen.Init(new LocalGameSession(state, _data, LocalPlayerId), devOptions.RivalAttackSeconds);
+        screen.Init(session, devOptions.RivalAttackSeconds);
         screen.ExitRequested += ShowStartScreen;
         SwitchTo(screen);
     }

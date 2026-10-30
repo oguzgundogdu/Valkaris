@@ -48,6 +48,8 @@ public partial class GameScreen : Control
 
     public event Action? ExitRequested;
 
+    public void ExitToStart() => ExitRequested?.Invoke();
+
     public void Init(IGameSession session, double? devRivalAttackSeconds = null)
     {
         Session = session;

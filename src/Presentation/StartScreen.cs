@@ -5,12 +5,15 @@ using Valkaris.Core.Model;
 
 namespace Valkaris.Presentation;
 
+/// <summary>What the start screen asks for.</summary>
+public sealed record MatchSetup(GameSettings Settings, int Opponents, AiDifficulty Difficulty);
+
 /// <summary>Match settings. The options come from data/game.json.</summary>
 public partial class StartScreen : CenterContainer
 {
     private GameData _data = null!;
 
-    public event Action<GameSettings>? StartRequested;
+    public event Action<MatchSetup>? StartRequested;
 
     public void Init(GameData data) => _data = data;
 
@@ -32,11 +35,22 @@ public partial class StartScreen : CenterContainer
             mapSize.AddItem($"{size} ({definition.Width} × {definition.Height})");
         }
 
+        var opponents = GetNode<OptionButton>("%Opponents");
+        for (var count = _data.Game.MinPlayers - 1; count <= _data.Game.MaxPlayers - 1; count++)
+            opponents.AddItem(count.ToString());
+
+        var difficulties = Enum.GetValues<AiDifficulty>();
+        var difficulty = GetNode<OptionButton>("%Difficulty");
+        foreach (var level in difficulties)
+            difficulty.AddItem(level.ToString());
+        difficulty.Select(Array.IndexOf(difficulties, AiDifficulty.Normal));
+
         GetNode<Button>("%Start").Pressed += () =>
         {
             var minutes = _data.Game.MatchDurationsMinutes[duration.Selected];
             var multiplier = _data.Game.SpeedMultipliers[speed.Selected];
-            StartRequested?.Invoke(new GameSettings(minutes * 60, multiplier, mapSizes[mapSize.Selected]));
+            var settings = new GameSettings(minutes * 60, multiplier, mapSizes[mapSize.Selected]);
+            StartRequested?.Invoke(new MatchSetup(settings, _data.Game.MinPlayers - 1 + opponents.Selected, difficulties[difficulty.Selected]));
         };
     }
 }

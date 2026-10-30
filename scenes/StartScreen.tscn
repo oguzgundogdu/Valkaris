@@ -75,6 +75,32 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 
+[node name="OpponentsRow" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/OpponentsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "AI opponents"
+
+[node name="Opponents" type="OptionButton" parent="Card/Box/OpponentsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+
+[node name="DifficultyRow" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/DifficultyRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "AI difficulty"
+
+[node name="Difficulty" type="OptionButton" parent="Card/Box/DifficultyRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+
 [node name="Spacer2" type="Control" parent="Card/Box"]
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
