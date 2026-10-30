@@ -73,7 +73,7 @@ public class GameState
     public Dictionary<int, Village> Villages;
     public List<Movement> Movements;       // troops on the way
     public List<BattleReport> Reports;     // immutable; both sides see the same report
-    public GameMap Map;                    // Width, Height, flat row-major list of MapTile
+    public GameMap Map;                    // Width, Height, flat row-major list of MapTile (VillageId, Terrain)
     public ulong RngState;                 // seeded SplitMix64, saved so a restored snapshot continues identically
 }
 
@@ -90,7 +90,10 @@ public class Player
 public class Village
 {
     public int Id;
+    public string Name;
     public int OwnerId;                    // -1 for barbarian villages
+    public int? BarbarianTier;             // index into the tiers in data/map.json
+    public double? NextTroopRegenTime;     // barbarians only: when the next troop returns
     public TileCoord Position;             // Core's own struct; Vector2I would need a Godot reference
     public Resources Resources;            // wood, stone, food (double)
     public Dictionary<BuildingType, int> Buildings;   // type -> level
@@ -126,7 +129,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 - Number of players: 2–4 (human or AI slots; limits in `data/game.json`). A single slot is not allowed, since a player with no opponents would win instantly.
 - Match duration: configurable (e.g. 20 / 30 / 45 / 60 minutes)
 - Game speed multiplier (optional). Scales production, build, training and travel speed and loyalty regeneration. It does not scale match duration: a 30-minute match lasts 30 real minutes.
-- Map size (small / medium)
+- Map size (small / medium), set on the start screen until the lobby exists
 
 **Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
 
@@ -206,8 +209,21 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 ## 9. Map and Views
 
 - Small tile grid. Each player starts with one village (their capital).
-- Neutral barbarian villages are scattered across the map and can be captured. They have a static garrison and resources from data, start at loyalty 100 and do not produce.
-- Travel time = distance / slowest unit speed in the group.
+- Travel time = distance / slowest unit speed in the group. Troops travel in straight lines across any terrain, since there is no pathfinding.
+
+**Generation (`data/map.json`, all from the match seed):**
+- Each tile has a terrain: Grass, Forest, Hills or Water, from seeded noise with thresholds in data. Terrain has no gameplay effect in v1 except that villages are never placed on water.
+- Players start one per quadrant with a small capped jitter, on land.
+- Barbarian villages are placed with a minimum spacing, which relaxes only if a seed cannot fit them all, so the count per map size is always met.
+- Village names come from lists in data.
+
+**Barbarian villages:**
+- Neutral villages that can be attacked, raided and hit by catapults under the normal rules, and captured from the Villages milestone. They start at loyalty 100.
+- Tiers in data (Camp, Stronghold) set the garrison, resources and buildings, chosen by seeded weight.
+- They have no production buildings, training or attacks. Instead, resources and garrison slowly regenerate back up to their tier's starting values, at separate rates in data, so a looted camp is worth raiding again after a few minutes. Game speed scales both. Buildings damaged by catapults do not recover.
+- Resources regenerate continuously. Troops return one at a time as scheduled simulation events, so results are exact at any tick rate; at the same moment, regeneration runs before an arriving attack.
+
+**Hidden information:** other villages' garrisons are not shown on the map. The map shows name, owner, tier and distance; reports carry troop numbers. Only your own movements and those heading for your villages are shown.
 
 **Two views:**
 1. **World map (bird's-eye):** all villages, movements in progress, sending troops, selecting villages.
@@ -217,9 +233,17 @@ Players must be able to manage their villages from both views.
 
 **Village view layout:** a top bar (resources with cap and rate, hostile arrival warning, pause, match clock), the village ground with one clickable tile per building, and a side column of tabs: **Village** (selected building's details, build queue), **Troops** (garrison, training, training queue), **Send** (target, mission, troops, what is on the way) and **Reports** (with an unread count; a report opens in a modal). A disabled upgrade button always states why, including when a cost is above warehouse capacity and saving up alone can never pay it.
 
-**Temporary until the world map:** the Send tab picks its target from a simple list. Only that list is replaced by picking a village on the map; the mission and troop form stays.
+**World map layout:** the same top bar and side tabs, with the map in place of the village ground.
+- Terrain is painted as a soft blended image with irregular shorelines, so it reads as a map rather than a grid. The grid only shows as a highlight on the hovered tile.
+- Drag to pan, wheel or pinch to zoom towards the cursor, limited to the map's edges. It opens fitted to the whole map. Markers keep a constant size on screen.
+- Clicking a village opens a popup: Send troops for other villages, Enter village for your own. Double-clicking your own village also enters it.
+- Movements are dashed routes with moving markers, coloured for your own, hostile and returning troops, with mission and time left on hover.
 
-**Scenes:** `Main` (screen switching), `StartScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `BuildingPanel`, `QueuePanel`, `TroopsPanel`, `SendPanel`, `ReportsPanel`, `ReportDialog`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
+**Switching views:** a `Village | World` toggle in the top bar and the `M` key, with a short fade. Both views stay alive, so the camera, selection and a half-filled Send form survive. The hostile arrival warning jumps to the map, centred on the village under attack.
+
+**Sending troops:** the Send tab's target comes from the map, through a village's popup. The form has a target line and a button to the map.
+
+**Scenes:** `Main` (screen switching), `StartScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `WorldMapView` + `VillagePopup`, `BuildingPanel`, `QueuePanel`, `TroopsPanel`, `SendPanel`, `ReportsPanel`, `ReportDialog`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
 
 ---
 
