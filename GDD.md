@@ -55,14 +55,14 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
 
 ### 3.2 Rules
 - Every player-initiated state change happens through a command (`BuildCommand`, `TrainCommand`, `SendTroopsCommand`, `SetCapitalCommand`, ...).
-- Only three other things write to `GameState`, all inside Core: `Simulation` (time-based changes), `GameFactory` (initial state) and `SnapshotMapper` (a client restoring host state).
+- Only three other things write to `GameState`, all inside Core: `Simulation` (time-based changes), `GameFactory` (initial state) and `SnapshotMapper` (a client restoring host state). Debug builds add a fourth, `DevScenario`, which is compiled out of `ExportRelease` (see section 4).
 - Model classes have public getters, internal setters and read-only collection views, so code outside Core cannot mutate state.
 - No balance values hard-coded in logic. Read them from `data/*.json`.
 - Single player = local host + AI players. No separate code path.
 
 ### 3.3 Core Model (draft)
 
-Shown as properties without accessors for brevity; see the rules in 3.2. Fields are added in the milestone that first uses them (`Loyalty` is not in the code yet).
+Shown as properties without accessors for brevity; see the rules in 3.2. Fields are added in the milestone that first uses them.
 
 ```csharp
 public class GameState
@@ -75,6 +75,7 @@ public class GameState
     public List<BattleReport> Reports;     // immutable; both sides see the same report
     public GameMap Map;                    // Width, Height, flat row-major list of MapTile (VillageId, Terrain)
     public ulong RngState;                 // seeded SplitMix64, saved so a restored snapshot continues identically
+    public MatchOutcome Outcome;           // null until the match ends; IsMatchOver reads it
 }
 
 public class Player
@@ -84,7 +85,9 @@ public class Player
     public Nation Nation;
     public bool IsAi;
     public bool IsEliminated;
-    public int CapitalVillageId;
+    public int? CapitalVillageId;          // null during a new capital choice and after elimination
+    public double? CapitalChoiceDeadline;  // real time; set only during the choice
+    public IReadOnlyCollection<int> CapturedVillageIds;   // each village counts once for the score
 }
 
 public class Village
@@ -108,8 +111,10 @@ public record Movement                     // immutable
     public int Id;
     public int OwnerId;
     public int FromVillageId;
-    public int ToVillageId;                // or target tile for settlers
-    public MovementType Type;              // Attack, Raid, Reinforce, Settle (M5), Return
+    public int? ToVillageId;               // null for settlers, who use TargetTile
+    public TileCoord? TargetTile;
+    public TileCoord? FromTile;            // a settler walking home starts from a tile
+    public MovementType Type;              // Attack, Raid, Reinforce, Settle, Return
     public Dictionary<UnitType, int> Troops;
     public Resources Loot;
     public double DepartureTime;
@@ -133,7 +138,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 **Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
 
-**Dev overrides:** `--dev-speed=`, `--dev-duration=` and `--dev-rival-attack=` command-line arguments apply in debug builds only. Dev values never go in `data/`. The rival attack exists because the rival is idle until the AI milestone; it goes through `LocalGameSession.SendAs`, the path the AI will use. `SendAs` is not on `IGameSession`, so the UI can never act as another player.
+**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-rival-attack=` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `DevScenario` sets up states the idle rival cannot reach (`villages`, `founding`, `endgame`, `laststand`, `empire`), for play and for the UI test. The rival attack exists because the rival is idle until the AI milestone; it goes through `LocalGameSession.SendAs`, the path the AI will use. `SendAs` is not on `IGameSession`, so the UI can never act as another player.
 
 ---
 
@@ -181,9 +186,9 @@ Each unit has: class (infantry or cavalry), attack, defence vs infantry, defence
 
 **Rock-paper-scissors:** Spearman is strong against Cavalry, Swordsman is the best infantry attacker, and Cavalry is fast and good against infantry-light defence such as Swordsmen. Catapults count as infantry. Food is the largest cost of every unit.
 
-**Training:** paid in full when queued, one batch at a time per village, FIFO, with a queue length from data and no cancel. A batch arrives all at once when it finishes. Barracks upgrades shorten training and unlock units; an upgrade finishing mid-batch does not change that batch. Settler and Lord are added with the Villages milestone, since until then they would do nothing.
+**Training:** paid in full when queued, one batch at a time per village, FIFO, with a queue length from data and no cancel. A batch arrives all at once when it finishes. Barracks upgrades shorten training and unlock units; an upgrade finishing mid-batch does not change that batch. Settler and Lord are trained like other units (Barracks level 3 and 5).
 
-**Movements:** troops leave the garrison at once and do not defend while away. Travel time uses Euclidean tile distance; the return trip uses the slowest survivor. Catapults cannot go on a Raid.
+**Movements:** troops leave the garrison at once and do not defend while away. Travel time uses Euclidean tile distance; the return trip uses the slowest survivor. Catapults and Lords cannot go on a Raid. Settlers cannot go on an Attack or Raid. Settlers and Lords can Reinforce.
 
 ---
 
@@ -223,7 +228,7 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 - They have no production buildings, training or attacks. Instead, resources and garrison slowly regenerate back up to their tier's starting values, at separate rates in data, so a looted camp is worth raiding again after a few minutes. Game speed scales both. Buildings damaged by catapults do not recover.
 - Resources regenerate continuously. Troops return one at a time as scheduled simulation events, so results are exact at any tick rate; at the same moment, regeneration runs before an arriving attack.
 
-**Hidden information:** other villages' garrisons are not shown on the map. The map shows name, owner, tier and distance; reports carry troop numbers. Only your own movements and those heading for your villages are shown.
+**Hidden information:** other villages' garrisons and loyalty are not shown on the map. The map shows name, owner, tier, capital and distance; reports carry troop numbers and loyalty. Only your own movements and those heading for your villages are shown.
 
 **Two views:**
 1. **World map (bird's-eye):** all villages, movements in progress, sending troops, selecting villages.
@@ -236,14 +241,19 @@ Players must be able to manage their villages from both views.
 **World map layout:** the same top bar and side tabs, with the map in place of the village ground.
 - Terrain is painted as a soft blended image with irregular shorelines, so it reads as a map rather than a grid. The grid only shows as a highlight on the hovered tile.
 - Drag to pan, wheel or pinch to zoom towards the cursor, limited to the map's edges. It opens fitted to the whole map. Markers keep a constant size on screen.
-- Clicking a village opens a popup: Send troops for other villages, Enter village for your own. Double-clicking your own village also enters it.
+- Clicking a village opens a popup: Send troops for other villages, Enter village and Reinforce for your own. Double-clicking your own village also enters it.
+- When the current village has a Settler, clicking empty land opens a popup with the travel time and Send settler, or the reason it can't be settled. Otherwise, clicking empty land only closes the popup.
 - Movements are dashed routes with moving markers, coloured for your own, hostile and returning troops, with mission and time left on hover.
 
 **Switching views:** a `Village | World` toggle in the top bar and the `M` key, with a short fade. Both views stay alive, so the camera, selection and a half-filled Send form survive. The hostile arrival warning jumps to the map, centred on the village under attack.
 
-**Sending troops:** the Send tab's target comes from the map, through a village's popup. The form has a target line and a button to the map.
+**Sending troops:** the Send tab's target comes from the map, through a village's popup. The form has a "From" line, a target line and a button to the map.
 
-**Scenes:** `Main` (screen switching), `StartScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `WorldMapView` + `VillagePopup`, `BuildingPanel`, `QueuePanel`, `TroopsPanel`, `SendPanel`, `ReportsPanel`, `ReportDialog`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
+**Switching villages:** a strip of village chips above the main view, in both views, shows the capital's star and warns of threats. It is hidden with one village. `Q` and `E` cycle. Switching keeps the view, tab and Send target and clears the troop amounts; on the map the camera centres on the village, which has its own ring. If the current village is lost, the view moves to the capital or another village.
+
+**Dialogs:** the new capital dialog lists your villages with a countdown and the penalty. It can be set aside: a countdown warning stays in the top bar and reopens it, and the timeout is unchanged. A player eliminated while others play on can keep watching, with only the map and Reports, or leave. The match end screen shows Victory, Defeat or Draw, the reason, and a ranked table of villages, population, captures and score.
+
+**Scenes:** `Main` (screen switching), `StartScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `WorldMapView` + `VillagePopup`, `VillageStrip`, `BuildingPanel`, `QueuePanel`, `TroopsPanel`, `SendPanel`, `ReportsPanel`, `ReportDialog`, `CapitalDialog`, `MatchEndScreen`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
 
 ---
 
@@ -264,6 +274,7 @@ Players must be able to manage their villages from both views.
 - Catapults that survive a won Attack reduce a building by `max(1, floor(survivors / catapults per level of damage))` levels, down to 0. The attacker selects the target building when sending; if none is selected, it is random among standing buildings (seeded). Targeting an unbuilt building does nothing.
 - A damaged building's queued upgrades have their target levels lowered by the same amount. A reduced Main Building does not lower buildings already above its limit. A reduced Warehouse caps resources from the next production step.
 - Survivors return home (Return movement).
+- **Movements around a change of owner:** troops returning to a lost village reroute to the owner's nearest village (lowest id on a tie) with their loot. Reinforcements heading for a lost village turn back the same way. An attack or raid reaching a village its owner now holds merges into the garrison with no battle.
 - A battle report is generated for both sides. Both see the same full report, since v1 has no fog of war. Read state is kept in the UI, not in game state.
 - Reinforcements can only be sent to the player's own villages in v1. They merge into the village's garrison.
 
@@ -272,28 +283,30 @@ Players must be able to manage their villages from both views.
 ## 11. Founding and Capturing Villages
 
 ### 11.1 Founding
-- Send a Settler to an empty tile. On arrival, a new village is created and the Settler is consumed.
-- If the tile was taken while the Settler was travelling, the Settler returns home.
-- Founded villages use their own starting values in data.
-- Max village count is limited by the capital's Main Building level. The limit applies to founding only: captured villages, and villages already owned when the limit drops, are kept.
+- Send one Settler to an empty land tile at least a data-defined distance from every existing village (`minFoundingDistance` in `map.json`). On arrival, a new village is created and the Settler is consumed.
+- The tile and limit are checked again on arrival. If they no longer allow it, the Settler returns home. That includes while the player has no capital.
+- Founded villages use their own starting values in data, and names from a list in data, numbered if the list runs out.
+- Max village count is limited by the capital's Main Building level (`maxVillagesByCapitalMainLevel` in `buildings.json`). Owned villages plus Settlers in flight must be below the limit. The limit applies to founding only: captured villages, and villages already owned when the limit drops, are kept.
 
 ### 11.2 Loyalty
 - Every village has Loyalty (0–100).
-- If an attack is won and at least one Lord survives, loyalty drops by 20–30.
-- At 0 loyalty the village changes owner. Its loyalty resets to a data-defined value, its queues are cleared and the surviving attackers return home.
-- Loyalty regenerates over time; a higher Main Building level means faster regeneration.
+- If an attack is won and at least one Lord survives, loyalty drops once by a seeded 20–30, however many Lords survive. Lords are not consumed. Values are in `data/villages.json`.
+- Catapults land first, so one wave can lower a capital's Main Building to the threshold and then its loyalty.
+- At 0 loyalty the village changes owner. Its loyalty resets to a data-defined value, its queues are cleared with no refund and the surviving attackers return home. Stored resources and buildings stay.
+- A captured barbarian village becomes a normal village: recovery stops, and it has no production until those buildings are built.
+- Loyalty regenerates over time, on every village; a higher Main Building level means faster regeneration, and game speed scales it.
 
 ### 11.3 Capital Rule
 - A capital cannot lose loyalty while its Main Building is above a threshold level.
   Attackers must first reduce the Main Building with Catapults, then send Lords.
-- If a player's capital is captured, they choose one of their remaining villages as the new capital,
-  with a penalty (e.g. Main Building reset). If they do not choose within a data-defined time, the village with the highest Main Building level is picked automatically. AI players choose immediately.
-- A player with no villages left is eliminated.
+- If a player's capital is captured, they choose one of their remaining villages as the new capital through `SetCapitalCommand`, which is valid only during this choice. The penalty lowers its Main Building to a data-defined level, and queued upgrades with it. If they do not choose within a data-defined time (real seconds, not scaled by game speed), the village with the highest Main Building level is picked automatically, then the lowest id. AI players choose immediately.
+- A player with no villages left is eliminated at once, and all their movements are removed, so an attack still travelling can never give them a village back.
 
 ### 11.4 Win Conditions
-- Last player standing wins.
-- If time runs out: highest score wins (villages + population + captured villages), with weights in JSON. A tie is a draw between the tied leaders.
+- Last player standing wins, and the match ends at that moment. Barbarians don't count.
+- If time runs out: highest score among surviving players wins (villages + population + captured villages), with weights in `data/scoring.json`. A tie is a draw between the tied leaders.
 - Population is the sum of a village's building levels, weighted by data.
+- A village counts as a capture at most once per player, so trading a village back and forth can't farm score. Barbarian villages count, and captures are kept if the village is lost again.
 
 ---
 
@@ -319,4 +332,4 @@ Players must be able to manage their villages from both views.
 6. **AI:** simple rule-based AI (build economy → train → attack weakest neighbour).
 7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
 8. **Nations:** passive bonuses.
-9. **Polish:** visuals, animations, sounds, UI.
+9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).
