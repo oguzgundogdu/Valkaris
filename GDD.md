@@ -62,7 +62,7 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
 
 ### 3.3 Core Model (draft)
 
-Shown as properties without accessors for brevity; see the rules in 3.2. Fields are added in the milestone that first uses them (`Movements`, `Troops`, `TrainingQueue` and `Loyalty` are not in the code yet).
+Shown as properties without accessors for brevity; see the rules in 3.2. Fields are added in the milestone that first uses them (`Loyalty` is not in the code yet).
 
 ```csharp
 public class GameState
@@ -72,7 +72,9 @@ public class GameState
     public Dictionary<int, Player> Players;
     public Dictionary<int, Village> Villages;
     public List<Movement> Movements;       // troops on the way
+    public List<BattleReport> Reports;     // immutable; both sides see the same report
     public GameMap Map;                    // Width, Height, flat row-major list of MapTile
+    public ulong RngState;                 // seeded SplitMix64, saved so a restored snapshot continues identically
 }
 
 public class Player
@@ -98,21 +100,24 @@ public class Village
     public double Loyalty = 100;
 }
 
-public class Movement
+public record Movement                     // immutable
 {
+    public int Id;
     public int OwnerId;
     public int FromVillageId;
     public int ToVillageId;                // or target tile for settlers
-    public MovementType Type;              // Attack, Raid, Reinforce, Settle, Return
+    public MovementType Type;              // Attack, Raid, Reinforce, Settle (M5), Return
     public Dictionary<UnitType, int> Troops;
     public Resources Loot;
+    public double DepartureTime;
     public double ArrivalTime;
+    public BuildingType? CatapultTarget;
 }
 ```
 
 ### 3.4 State Serialization
 
-The model is never serialized directly. `SnapshotMapper` converts `GameState` to plain snapshot records (`GameStateSnapshot`, `VillageSnapshot`, ...) for `System.Text.Json`, and rebuilds a `GameState` from them. Immutable value records (`Resources`, `TileCoord`, `GameSettings`, `BuildQueueItem`) are used directly in snapshots. Every model class needs a matching `<Name>Snapshot`; a guard test fails if a class or property is not covered.
+The model is never serialized directly. `SnapshotMapper` converts `GameState` to plain snapshot records (`GameStateSnapshot`, `VillageSnapshot`, ...) for `System.Text.Json`, and rebuilds a `GameState` from them. Immutable records (`Resources`, `TileCoord`, `GameSettings`, queue items, `Movement`, `BattleReport`) are used directly in snapshots. Every model class needs a matching `<Name>Snapshot`; a guard test fails if a class or property is not covered.
 
 ---
 
@@ -125,7 +130,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 **Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
 
-**Dev overrides:** `--dev-speed=` and `--dev-duration=` command-line arguments override match settings in debug builds only. Dev values never go in `data/`.
+**Dev overrides:** `--dev-speed=`, `--dev-duration=` and `--dev-rival-attack=` command-line arguments apply in debug builds only. Dev values never go in `data/`. The rival attack exists because the rival is idle until the AI milestone; it goes through `LocalGameSession.SendAs`, the path the AI will use. `SendAs` is not on `IGameSession`, so the UI can never act as another player.
 
 ---
 
@@ -169,7 +174,13 @@ Each building has levels with increasing cost and build time (defined in JSON).
 | Settler | Founds a new village on an empty tile |
 | Lord | Reduces loyalty of the target village |
 
-Each unit has: attack, defence, speed, loot capacity, cost, training time.
+Each unit has: class (infantry or cavalry), attack, defence vs infantry, defence vs cavalry, speed, loot capacity, cost, training time, required Barracks level (`data/units.json`).
+
+**Rock-paper-scissors:** Spearman is strong against Cavalry, Swordsman is the best infantry attacker, and Cavalry is fast and good against infantry-light defence such as Swordsmen. Catapults count as infantry. Food is the largest cost of every unit.
+
+**Training:** paid in full when queued, one batch at a time per village, FIFO, with a queue length from data and no cancel. A batch arrives all at once when it finishes. Barracks upgrades shorten training and unlock units; an upgrade finishing mid-batch does not change that batch. Settler and Lord are added with the Villages milestone, since until then they would do nothing.
+
+**Movements:** troops leave the garrison at once and do not defend while away. Travel time uses Euclidean tile distance; the return trip uses the slowest survivor. Catapults cannot go on a Raid.
 
 ---
 
@@ -204,23 +215,32 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 
 Players must be able to manage their villages from both views.
 
-**Village view layout:** a top bar (resources with cap and rate, pause, match clock), the village ground with one clickable tile per building, and a side column with the selected building's details and the build queue. A disabled upgrade button always states why, including when a cost is above warehouse capacity and saving up alone can never pay it.
+**Village view layout:** a top bar (resources with cap and rate, hostile arrival warning, pause, match clock), the village ground with one clickable tile per building, and a side column of tabs: **Village** (selected building's details, build queue), **Troops** (garrison, training, training queue), **Send** (target, mission, troops, what is on the way) and **Reports** (with an unread count; a report opens in a modal). A disabled upgrade button always states why, including when a cost is above warehouse capacity and saving up alone can never pay it.
 
-**Scenes:** `Main` (screen switching), `StartScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `BuildingPanel`, `QueuePanel`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
+**Temporary until the world map:** the Send tab picks its target from a simple list. Only that list is replaced by picking a village on the map; the mission and troop form stays.
+
+**Scenes:** `Main` (screen switching), `StartScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `BuildingPanel`, `QueuePanel`, `TroopsPanel`, `SendPanel`, `ReportsPanel`, `ReportDialog`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
 
 ---
 
 ## 10. Combat
 
-- Resolved instantly on arrival with a single calculation:
-  total attack power vs. total defence power (+ wall bonus, + nation bonus).
-- Both sides lose troops proportionally to the outcome, using a Travian-style ratio formula with parameters in `combat.json`.
-- If the attacker wins a raid/attack, it loots resources up to its loot capacity.
+- Resolved instantly on arrival with a single calculation (`CombatResolver`, pure and deterministic), with parameters in `combat.json`:
+  - `Ainf`, `Acav`: attack from infantry and from cavalry; `A = Ainf + Acav`.
+  - `Dinf`, `Dcav`: the defenders' total defence against each class.
+  - `D = (Dinf × Ainf / A + Dcav × Acav / A) × (1 + wall bonus per level × wall level)`, plus a nation bonus in the Nations milestone.
+  - The attacker wins only if `A > D`; a tie goes to the defender.
+- Defence is weighted by the attacker's composition, so the same total attack with a different mix can give a different result.
+- Both sides lose troops according to `x = (loser power / winner power) ^ casualty exponent`:
+  - **Attack:** the winner loses `x` of each unit; the loser loses everything.
+  - **Raid:** the winner loses `x / (1 + x)`; the loser loses `1 / (1 + x)`.
+- If the attacker wins a raid/attack, it loots resources up to its surviving troops' loot capacity. Loot is split in proportion to what is lootable, travels on the Return movement and is added on arrival, capped by the home warehouse.
 - Defenders keep a protected share of each resource that cannot be looted: a percentage of warehouse capacity, defined in `combat.json` (start: 20%).
 - **Raid:** lower casualties, loot only, no Catapult or Lord effects. **Attack:** full effects.
-- Catapults that survive reduce a building's level. The attacker selects the target building when sending; if none is selected, it is random.
+- Catapults that survive a won Attack reduce a building by `max(1, floor(survivors / catapults per level of damage))` levels, down to 0. The attacker selects the target building when sending; if none is selected, it is random among standing buildings (seeded). Targeting an unbuilt building does nothing.
+- A damaged building's queued upgrades have their target levels lowered by the same amount. A reduced Main Building does not lower buildings already above its limit. A reduced Warehouse caps resources from the next production step.
 - Survivors return home (Return movement).
-- A battle report is generated for both sides.
+- A battle report is generated for both sides. Both see the same full report, since v1 has no fog of war. Read state is kept in the UI, not in game state.
 - Reinforcements can only be sent to the player's own villages in v1. They merge into the village's garrison.
 
 ---
