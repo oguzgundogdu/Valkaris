@@ -178,6 +178,7 @@ public partial class UiTest : Control
         await TestPause();
         TestDevOptions();
         await TestViewSwitching();
+        await TestCamera();
         await TestLeaveMatch();
         await TestMatchEnd();
     }
@@ -229,6 +230,66 @@ public partial class UiTest : Control
         await Frames();
         Expect(game.CurrentView == GameScreen.MainView.Village, "M does nothing while typing in a number field");
         line.ReleaseFocus();
+    }
+
+    private async Task TestCamera()
+    {
+        var game = Find<GameScreen>();
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var mapSize = new Vector2(game.Session.State.Map.Width, game.Session.State.Map.Height) * WorldMapView.TileSize;
+        var fit = world.Zoom;
+
+        Expect(mapSize.X * fit <= world.Size.X + 0.5f && mapSize.Y * fit <= world.Size.Y + 0.5f, "The map opens fitted to the view");
+
+        void Wheel(MouseButton button, Vector2 at) =>
+            world._GuiInput(new InputEventMouseButton { ButtonIndex = button, Pressed = true, Position = at });
+
+        // Once the map is larger than the view, zooming keeps the point under the cursor fixed.
+        var cursor = world.Size / 2 + new Vector2(30, -20);
+        Wheel(MouseButton.WheelUp, cursor);
+        Wheel(MouseButton.WheelUp, cursor);
+        Wheel(MouseButton.WheelUp, cursor);
+        Expect(world.Zoom > fit, "The wheel zooms in");
+        var under = world.ViewToWorld(cursor);
+        Wheel(MouseButton.WheelUp, cursor);
+        Expect(world.WorldToView(under).DistanceTo(cursor) < 1, "Zoom keeps the point under the cursor");
+
+        for (var i = 0; i < 40; i++)
+            Wheel(MouseButton.WheelUp, cursor);
+        Expect(world.Zoom <= 1.6f + 0.001f, "Zoom in stops at the limit");
+
+        // Dragging moves the map, but never off screen.
+        var before = world.CameraPosition;
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = new Vector2(100, 100) });
+        world._GuiInput(new InputEventMouseMotion { Position = new Vector2(160, 130), Relative = new Vector2(60, 30) });
+        Expect(world.CameraPosition != before, "Dragging pans the map");
+        world._GuiInput(new InputEventMouseMotion { Position = new Vector2(9000, 9000), Relative = new Vector2(9000, 9000) });
+        Expect(world.CameraPosition.X <= 0.01f && world.CameraPosition.Y <= 0.01f, "The map's corner can't leave the view");
+        world._GuiInput(new InputEventMouseMotion { Position = new Vector2(-9000, -9000), Relative = new Vector2(-18000, -18000) });
+        var far = world.WorldToView(mapSize);
+        Expect(far.X >= world.Size.X - 0.01f && far.Y >= world.Size.Y - 0.01f, "The far corner can't leave the view");
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = new Vector2(-9000, -9000) });
+        await Shot("map-zoomed");
+
+        // Switching views keeps the camera.
+        var position = world.CameraPosition;
+        var zoom = world.Zoom;
+        game.ShowView(GameScreen.MainView.Village);
+        await Frames();
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        Expect(world.CameraPosition == position && world.Zoom == zoom, "The camera survives switching views");
+
+        for (var i = 0; i < 40; i++)
+            Wheel(MouseButton.WheelDown, cursor);
+        Expect(Mathf.IsEqualApprox(world.Zoom, fit), "Zoom out stops at the fit");
+        Expect(mapSize.X * world.Zoom <= world.Size.X + 0.5f, "Fully zoomed out shows the whole map");
+
+        world.FitToView();
+        game.ShowView(GameScreen.MainView.Village);
+        await Frames();
     }
 
     private async Task TestLeaveMatch()
