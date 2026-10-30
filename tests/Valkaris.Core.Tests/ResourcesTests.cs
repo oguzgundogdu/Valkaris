@@ -45,4 +45,18 @@ public class ResourcesTests
         Assert.Equal(new Resources(0, 5, 0), Resources.Of(ResourceType.Stone, 5));
         Assert.Equal(new Resources(0, 0, 5), Resources.Of(ResourceType.Food, 5));
     }
+
+    [Theory]
+    [InlineData(4.9999999999, 5)]
+    [InlineData(5.0000000001, 5)]
+    [InlineData(5.4, 5)]
+    public void WholeDownIgnoresRoundingNoise(double value, int expected) =>
+        Assert.Equal(expected, Valkaris.Core.Systems.Whole.Down(value));
+
+    [Theory]
+    [InlineData(5.0000000001, 5)]
+    [InlineData(4.9999999999, 5)]
+    [InlineData(4.6, 5)]
+    public void WholeUpIgnoresRoundingNoise(double value, int expected) =>
+        Assert.Equal(expected, Valkaris.Core.Systems.Whole.Up(value));
 }

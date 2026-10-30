@@ -1,5 +1,6 @@
 using Valkaris.Core.Commands;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Ai;
 
@@ -51,7 +52,7 @@ public sealed class TransferPlanner
             return false;
 
         var keep = _view.CapacityOf(donor) * _view.Config.DonorKeepShare;
-        int Give(double wanted, double stock) => (int)Math.Ceiling(Math.Min(wanted, Math.Max(0, Math.Floor(stock - keep))));
+        int Give(double wanted, double stock) => Whole.Up(Math.Min(wanted, Math.Max(0, Whole.Down(stock - keep))));
 
         var wood = Give(shortfall.Wood, donor.Resources.Wood);
         var stone = Give(shortfall.Stone, donor.Resources.Stone);
@@ -75,9 +76,9 @@ public sealed class TransferPlanner
         {
             command = command with
             {
-                Wood = Math.Max(0, wood - (int)Math.Ceiling(option.ExpectedLoss.Wood)),
-                Stone = Math.Max(0, stone - (int)Math.Ceiling(option.ExpectedLoss.Stone)),
-                Food = Math.Max(0, food - (int)Math.Ceiling(option.ExpectedLoss.Food)),
+                Wood = Math.Max(0, wood - Whole.Up(option.ExpectedLoss.Wood)),
+                Stone = Math.Max(0, stone - Whole.Up(option.ExpectedLoss.Stone)),
+                Food = Math.Max(0, food - Whole.Up(option.ExpectedLoss.Food)),
             };
             option = _view.PreviewSendResources(command);
         }

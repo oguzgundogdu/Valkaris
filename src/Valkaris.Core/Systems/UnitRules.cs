@@ -21,7 +21,7 @@ public static class UnitRules
         foreach (var resource in Enum.GetValues<ResourceType>())
         {
             if (cost.Get(resource) > 0)
-                max = Math.Min(max, (int)Math.Floor(available.Get(resource) / cost.Get(resource)));
+                max = Math.Min(max, Whole.Down(available.Get(resource) / cost.Get(resource)));
         }
         return max;
     }

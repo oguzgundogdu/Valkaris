@@ -25,13 +25,18 @@ public class AiMatchTests
     }
 
     [Theory]
-    [InlineData(600)]
-    [InlineData(1)]
-    [InlineData(0.25)]
-    public void TheStepSizeDoesNotChangeTheMatch(double step)
+    [InlineData(600, 1)]
+    [InlineData(1, 1)]
+    [InlineData(0.25, 1)]
+    [InlineData(1, 2)]
+    [InlineData(1, 3)]
+    [InlineData(1, 4)]
+    [InlineData(1, 5)]
+    [InlineData(0.25, 3)]
+    public void TheStepSizeDoesNotChangeTheMatch(double step, ulong seed)
     {
-        var expected = Played(5);
-        var actual = Played(step);
+        var expected = Played(5, seed: seed);
+        var actual = Played(step, seed: seed);
 
         Assert.Equal(expected.State.Reports.Count, actual.State.Reports.Count);
         Assert.Equal(expected.State.Villages.Count, actual.State.Villages.Count);

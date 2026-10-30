@@ -1,5 +1,6 @@
 using Valkaris.Core.Commands;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Ai;
 
@@ -147,7 +148,7 @@ public sealed class TrainingPlanner
         foreach (var resource in Enum.GetValues<ResourceType>())
         {
             if (cost.Get(resource) > 0)
-                count = Math.Min(count, (int)(available.Get(resource) / cost.Get(resource)));
+                count = Math.Min(count, Whole.Down(available.Get(resource) / cost.Get(resource)));
         }
         return count;
     }

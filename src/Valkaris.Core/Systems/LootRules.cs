@@ -23,6 +23,6 @@ public static class LootRules
             return Resources.Zero;
 
         var share = Math.Min(1, carry / total);
-        return new Resources(Math.Floor(wood * share), Math.Floor(stone * share), Math.Floor(food * share));
+        return new Resources(Whole.Down(wood * share), Whole.Down(stone * share), Whole.Down(food * share));
     }
 }
