@@ -60,6 +60,7 @@ public partial class UiTest : Control
         await Shot("start");
 
         // The longest match, so the steps below can use plenty of game time.
+        Expect(start.GetNode<OptionButton>("%MapSize").ItemCount == Enum.GetValues<MapSize>().Length, "Every map size is offered");
         var durations = start.GetNode<OptionButton>("%Duration");
         durations.Select(durations.ItemCount - 1);
         start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
@@ -68,6 +69,7 @@ public partial class UiTest : Control
         var game = Find<GameScreen>();
         var session = game.Session;
         var village = session.State.Villages[1];
+        Expect(session.State.Settings.MapSize == MapSize.Small, "The default map size is small");
 
         var dev = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
         Expect(session.State.Settings.MatchDurationSeconds == (dev.DurationSeconds ?? session.Data.Game.MatchDurationsMinutes[^1] * 60), "Match duration follows the start screen or dev argument");
@@ -209,10 +211,13 @@ public partial class UiTest : Control
         var start = Find<StartScreen>();
         Expect(FindAll<GameScreen>(_main).FirstOrDefault() is null, "Leaving closes the match");
 
+        start.GetNode<OptionButton>("%MapSize").Select((int)MapSize.Medium);
         start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
         var fresh = Find<GameScreen>().Session;
         Expect(!ReferenceEquals(fresh, session) && !fresh.IsPaused && fresh.State.ElapsedTime < 1, "A new match starts fresh after leaving");
+        var medium = fresh.Data.Game.MapSizes[MapSize.Medium];
+        Expect(fresh.State.Settings.MapSize == MapSize.Medium && fresh.State.Map.Width == medium.Width && fresh.State.Map.Height == medium.Height, "The chosen map size is used");
     }
 
     private async Task TestTroops()

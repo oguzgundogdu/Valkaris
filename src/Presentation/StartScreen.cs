@@ -24,11 +24,19 @@ public partial class StartScreen : CenterContainer
         foreach (var multiplier in _data.Game.SpeedMultipliers)
             speed.AddItem($"{multiplier:0.##}x");
 
+        var mapSizes = Enum.GetValues<MapSize>();
+        var mapSize = GetNode<OptionButton>("%MapSize");
+        foreach (var size in mapSizes)
+        {
+            var definition = _data.Game.MapSizes[size];
+            mapSize.AddItem($"{size} ({definition.Width} × {definition.Height})");
+        }
+
         GetNode<Button>("%Start").Pressed += () =>
         {
             var minutes = _data.Game.MatchDurationsMinutes[duration.Selected];
             var multiplier = _data.Game.SpeedMultipliers[speed.Selected];
-            StartRequested?.Invoke(new GameSettings(minutes * 60, multiplier, MapSize.Small));
+            StartRequested?.Invoke(new GameSettings(minutes * 60, multiplier, mapSizes[mapSize.Selected]));
         };
     }
 }

@@ -62,6 +62,19 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 
+[node name="MapRow" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/MapRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Map size"
+
+[node name="MapSize" type="OptionButton" parent="Card/Box/MapRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+
 [node name="Spacer2" type="Control" parent="Card/Box"]
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
