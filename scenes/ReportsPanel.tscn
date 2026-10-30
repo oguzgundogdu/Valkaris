@@ -13,7 +13,7 @@ theme_override_constants/separation = 10
 [node name="Title" type="Label" parent="Box"]
 layout_mode = 2
 theme_type_variation = &"HeadingLabel"
-text = "Battle reports"
+text = "Reports"
 
 [node name="None" type="Label" parent="Box"]
 unique_name_in_owner = true
