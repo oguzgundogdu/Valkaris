@@ -87,6 +87,10 @@ horizontal_alignment = 1
 unique_name_in_owner = true
 layout_mode = 1
 
+[node name="LeaveOverlay" parent="." instance=ExtResource("7")]
+unique_name_in_owner = true
+layout_mode = 1
+
 [node name="MatchOverOverlay" parent="." instance=ExtResource("7")]
 unique_name_in_owner = true
 layout_mode = 1

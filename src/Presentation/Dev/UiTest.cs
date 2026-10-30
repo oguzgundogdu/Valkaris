@@ -159,7 +159,44 @@ public partial class UiTest : Control
         await TestFeedback();
         await TestPause();
         TestDevOptions();
+        await TestLeaveMatch();
         await TestMatchEnd();
+    }
+
+    private async Task TestLeaveMatch()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var pause = game.GetNode<Overlay>("%PauseOverlay");
+        var leave = game.GetNode<Overlay>("%LeaveOverlay");
+
+        game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
+        await Frames();
+        pause.GetNode<Button>("%Secondary").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(leave.Visible && !pause.Visible, "Leave match asks for confirmation");
+        Expect(session.IsPaused, "The match stays paused while confirming");
+        await Shot("leave-confirm");
+
+        game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
+        await Frames();
+        Expect(session.IsPaused && leave.Visible, "P does nothing while confirming");
+
+        leave.GetNode<Button>("%Secondary").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(pause.Visible && !leave.Visible && session.IsPaused, "Keep playing returns to the paused overlay");
+
+        pause.GetNode<Button>("%Secondary").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        leave.GetNode<Button>("%Action").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        var start = Find<StartScreen>();
+        Expect(FindAll<GameScreen>(_main).FirstOrDefault() is null, "Leaving closes the match");
+
+        start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        var fresh = Find<GameScreen>().Session;
+        Expect(!ReferenceEquals(fresh, session) && !fresh.IsPaused && fresh.State.ElapsedTime < 1, "A new match starts fresh after leaving");
     }
 
     private async Task TestFeedback()

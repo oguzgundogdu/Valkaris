@@ -16,7 +16,9 @@ public partial class GameScreen : Control
     private QueuePanel _queuePanel = null!;
     private Toast _toast = null!;
     private Overlay _pauseOverlay = null!;
+    private Overlay _leaveOverlay = null!;
     private Overlay _matchOverOverlay = null!;
+    private bool _confirmingLeave;
     private BuildingType _selected = BuildingType.MainBuilding;
 
     public IGameSession Session { get; private set; } = null!;
@@ -33,13 +35,19 @@ public partial class GameScreen : Control
         _queuePanel = GetNode<QueuePanel>("%QueuePanel");
         _toast = GetNode<Toast>("%Toast");
         _pauseOverlay = GetNode<Overlay>("%PauseOverlay");
+        _leaveOverlay = GetNode<Overlay>("%LeaveOverlay");
         _matchOverOverlay = GetNode<Overlay>("%MatchOverOverlay");
 
         _villageView.BuildingSelected += building => _selected = building;
         _resourceBar.PauseRequested += TogglePause;
 
-        _pauseOverlay.Configure("Paused", "The match is on hold. Press P to resume.", "Resume");
+        _pauseOverlay.Configure("Paused", "The match is on hold. Press P to resume.", "Resume", "Leave match");
         _pauseOverlay.ActionPressed += TogglePause;
+        _pauseOverlay.SecondaryPressed += () => _confirmingLeave = true;
+
+        _leaveOverlay.Configure("Leave match?", "Your progress in this match will be lost.", "Leave match", "Keep playing");
+        _leaveOverlay.ActionPressed += () => ExitRequested?.Invoke();
+        _leaveOverlay.SecondaryPressed += () => _confirmingLeave = false;
 
         _matchOverOverlay.Configure("Time's up", "The match has ended.", "Back to start");
         _matchOverOverlay.ActionPressed += () => ExitRequested?.Invoke();
@@ -58,7 +66,8 @@ public partial class GameScreen : Control
         _buildingPanel.Refresh(Session, village, _selected);
         _queuePanel.Refresh(Session, village);
 
-        _pauseOverlay.Visible = Session.IsPaused;
+        _pauseOverlay.Visible = Session.IsPaused && !_confirmingLeave;
+        _leaveOverlay.Visible = _confirmingLeave;
         _matchOverOverlay.Visible = Session.State.IsMatchOver;
     }
 
@@ -70,7 +79,7 @@ public partial class GameScreen : Control
 
     private void TogglePause()
     {
-        if (Session.CanPause && !Session.State.IsMatchOver)
+        if (Session.CanPause && !Session.State.IsMatchOver && !_confirmingLeave)
             Session.SetPaused(!Session.IsPaused);
     }
 
