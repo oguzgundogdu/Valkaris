@@ -30,6 +30,9 @@ public sealed record FoundVillageCommand(int FromVillageId, TileCoord Tile) : IC
 /// <summary>Picks a new capital after the old one was captured. Not valid at any other time.</summary>
 public sealed record SetCapitalCommand(int VillageId) : ICommand;
 
+/// <summary>Sends resources by carrier to another of the player's villages.</summary>
+public sealed record SendResourcesCommand(int FromVillageId, int ToVillageId, int Wood, int Stone, int Food) : ICommand;
+
 public enum CommandRejection
 {
     UnknownCommand,
@@ -57,6 +60,11 @@ public enum CommandRejection
     VillageLimitReached,
     NoCapital,
     NoCapitalChoicePending,
+    TargetNotYours,
+    SameVillage,
+    NoResourcesSelected,
+    NoMarketplace,
+    NotEnoughCarriers,
 }
 
 public sealed record CommandResult(CommandRejection? Rejection)

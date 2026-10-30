@@ -73,6 +73,16 @@ internal static class GameDataValidator
         if (config.Buildings.TryGetValue(BuildingType.Warehouse, out var warehouse) && warehouse.Capacity is null)
             Error($"buildings.{BuildingType.Warehouse}.capacity", "is missing.");
 
+        if (config.Buildings.TryGetValue(BuildingType.Marketplace, out var marketplace))
+        {
+            var carriers = config.CarriersByMarketplaceLevel;
+            if (carriers.Count != marketplace.MaxLevel + 1)
+                Error("carriersByMarketplaceLevel",
+                    $"must have {marketplace.MaxLevel + 1} entries (Marketplace levels 0 to {marketplace.MaxLevel}), found {carriers.Count}.");
+            if (carriers.Any(count => count < 0))
+                Error("carriersByMarketplaceLevel", "must not contain negative counts.");
+        }
+
         if (config.Buildings.TryGetValue(BuildingType.MainBuilding, out var main))
         {
             var caps = config.MaxOtherBuildingLevelByMainLevel;
@@ -317,6 +327,11 @@ internal static class GameDataValidator
             Error("loyalty.regenPerSecond", "must not be negative.");
         if (loyalty.RegenPerSecondPerMainLevel < 0)
             Error("loyalty.regenPerSecondPerMainLevel", "must not be negative.");
+
+        if (config.Carriers.Capacity < 1)
+            Error("carriers.capacity", "must be at least 1.");
+        if (config.Carriers.Speed <= 0)
+            Error("carriers.speed", "must be positive.");
 
         var mainMax = buildings.Buildings.TryGetValue(BuildingType.MainBuilding, out var main) ? main.MaxLevel : int.MaxValue;
         var capital = config.Capital;

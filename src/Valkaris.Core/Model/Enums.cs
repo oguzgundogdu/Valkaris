@@ -9,6 +9,7 @@ public enum BuildingType
     Warehouse,
     Barracks,
     Wall,
+    Marketplace,
 }
 
 public enum UnitType
@@ -34,6 +35,8 @@ public enum MovementType
     Reinforce,
     Settle,
     Return,
+    Transfer,
+    CarrierReturn,
 }
 
 public enum ResourceType

@@ -28,6 +28,7 @@ public sealed class CommandHandler
             SendTroopsCommand send => HandleSend(issuerId, send),
             FoundVillageCommand found => HandleFound(issuerId, found),
             SetCapitalCommand capital => HandleSetCapital(issuerId, capital),
+            SendResourcesCommand transfer => HandleSendResources(issuerId, transfer),
             _ => CommandResult.Rejected(CommandRejection.UnknownCommand),
         };
     }
@@ -88,6 +89,30 @@ public sealed class CommandHandler
             _state.ElapsedTime,
             option.ArrivalTime,
             command.CatapultTarget));
+
+        return CommandResult.Ok;
+    }
+
+    private CommandResult HandleSendResources(int issuerId, SendResourcesCommand command)
+    {
+        var option = SendResourcesPreview.Evaluate(_state, _data, issuerId, command);
+        if (option.Rejection is { } rejection)
+            return CommandResult.Rejected(rejection);
+
+        var load = new Resources(command.Wood, command.Stone, command.Food);
+        _state.Villages[command.FromVillageId].Resources -= load;
+        _state.AddMovement(new Movement(
+            _state.NextMovementId++,
+            issuerId,
+            command.FromVillageId,
+            command.ToVillageId,
+            MovementType.Transfer,
+            new Dictionary<UnitType, int>(),
+            load,
+            _state.ElapsedTime,
+            option.ArrivalTime,
+            null,
+            Carriers: option.CarriersUsed));
 
         return CommandResult.Ok;
     }

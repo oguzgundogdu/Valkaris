@@ -135,6 +135,10 @@ public sealed class Simulation
                 return CompleteReinforce(movement);
             case MovementType.Settle:
                 return CompleteSettle(movement);
+            case MovementType.Transfer:
+                return CompleteTransfer(movement);
+            case MovementType.CarrierReturn:
+                return CompleteCarrierReturn(movement);
             default:
                 // The attackers' side may have taken the village while they were on the way.
                 return _state.Villages[movement.ToVillageId!.Value].OwnerId == movement.OwnerId
@@ -155,6 +159,70 @@ public sealed class Simulation
 
         AddTroops(target, movement.Troops);
         return new ReinforcementsArrived(movement.ArrivalTime, target.Id);
+    }
+
+    /// <summary>A lost target sends the carriers back with the load. Otherwise they deliver and walk home empty.</summary>
+    private ResourcesDelivered? CompleteTransfer(Movement movement)
+    {
+        var target = _state.Villages[movement.ToVillageId!.Value];
+        if (target.OwnerId != movement.OwnerId)
+        {
+            StartCarrierReturn(movement, target, movement.Loot);
+            return null;
+        }
+
+        var delivered = Deposit(target, movement.Loot);
+        StartCarrierReturn(movement, target, Resources.Zero);
+        return new ResourcesDelivered(movement.ArrivalTime, target.Id, delivered, movement.Loot - delivered);
+    }
+
+    private CarriersReturned? CompleteCarrierReturn(Movement movement)
+    {
+        var home = _state.Villages[movement.ToVillageId!.Value];
+        if (home.OwnerId != movement.OwnerId)
+        {
+            StartCarrierReturn(movement, home, movement.Loot);
+            return null;
+        }
+
+        var delivered = Deposit(home, movement.Loot);
+        return new CarriersReturned(movement.ArrivalTime, home.Id, delivered, movement.Loot - delivered);
+    }
+
+    /// <summary>Adds what the warehouse can hold and returns that amount. The rest is lost.</summary>
+    private Resources Deposit(Village village, Resources load)
+    {
+        var before = village.Resources;
+        village.Resources = (before + load).CappedAt(BuildingRules.VillageCapacity(_data, village));
+        return new Resources(
+            Math.Max(0, village.Resources.Wood - before.Wood),
+            Math.Max(0, village.Resources.Stone - before.Stone),
+            Math.Max(0, village.Resources.Food - before.Food));
+    }
+
+    /// <summary>
+    /// Carriers belong to the Marketplace of the village they left. With that village lost, a load still goes to the
+    /// owner's nearest village, and empty carriers simply stop existing.
+    /// </summary>
+    private void StartCarrierReturn(Movement movement, Village from, Resources load)
+    {
+        var homeId = movement.Type == MovementType.Transfer ? movement.FromVillageId : movement.ToVillageId!.Value;
+        if (load == Resources.Zero && _state.Villages[homeId].OwnerId != movement.OwnerId)
+            return;
+
+        var home = HomeFor(movement.OwnerId, homeId);
+        _state.AddMovement(new Movement(
+            _state.NextMovementId++,
+            movement.OwnerId,
+            from.Id,
+            home.Id,
+            MovementType.CarrierReturn,
+            movement.Troops,
+            load,
+            movement.ArrivalTime,
+            movement.ArrivalTime + CarrierRules.TravelSeconds(_data, _state, from.Position, home.Position),
+            null,
+            Carriers: movement.Carriers));
     }
 
     private GameEvent CompleteSettle(Movement movement)

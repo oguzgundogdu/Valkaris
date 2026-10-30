@@ -41,6 +41,9 @@ public sealed record BuildingsConfig
     /// <summary>The founding limit, indexed by the capital's Main Building level, starting at level 0.</summary>
     public required IReadOnlyList<int> MaxVillagesByCapitalMainLevel { get; init; }
 
+    /// <summary>Indexed by Marketplace level, starting at level 0.</summary>
+    public required IReadOnlyList<int> CarriersByMarketplaceLevel { get; init; }
+
     public required IReadOnlyDictionary<BuildingType, BuildingDefinition> Buildings { get; init; }
 }
 
@@ -178,6 +181,16 @@ public sealed record VillagesConfig
 {
     public required LoyaltyConfig Loyalty { get; init; }
     public required CapitalConfig Capital { get; init; }
+    public required CarriersConfig Carriers { get; init; }
+}
+
+public sealed record CarriersConfig
+{
+    /// <summary>Resources one carrier can hold, across all types.</summary>
+    public required int Capacity { get; init; }
+
+    /// <summary>Tiles per second at game speed 1.</summary>
+    public required double Speed { get; init; }
 }
 
 public sealed record LoyaltyConfig

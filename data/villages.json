@@ -6,6 +6,10 @@
     "regenPerSecond": 0.05,
     "regenPerSecondPerMainLevel": 0.02
   },
+  "carriers": {
+    "capacity": 200,
+    "speed": 0.2
+  },
   "capital": {
     "lockedAboveMainLevel": 3,
     "choiceSeconds": 60,

@@ -15,6 +15,7 @@ public static class DevScenario
     public const string Endgame = "endgame";
     public const string LastStand = "laststand";
     public const string Empire = "empire";
+    public const string StrayReturn = "strayreturn";
 
     private const int Local = 1;
     private const int Rival = 2;
@@ -36,6 +37,9 @@ public static class DevScenario
             case LastStand:
                 ApplyLastStand(state);
                 return true;
+            case StrayReturn:
+                ApplyStrayReturn(state);
+                return true;
             case Empire:
                 while (state.Villages.Values.Any(v => v.IsBarbarian))
                     Take(state, data, Local, 2);
@@ -53,10 +57,12 @@ public static class DevScenario
         capital.SetBuildingLevel(BuildingType.MainBuilding, 1);
         capital.SetBuildingLevel(BuildingType.Barracks, 5);
         capital.Loyalty = 1;
+        capital.SetBuildingLevel(BuildingType.Marketplace, 3);
         SetTroops(capital, (UnitType.Spearman, 5));
 
         var army = Take(state, data, Local, 4);
         SetTroops(army, (UnitType.Swordsman, 150), (UnitType.Cavalry, 40), (UnitType.Catapult, 20), (UnitType.Lord, 3), (UnitType.Settler, 2));
+        army.SetBuildingLevel(BuildingType.Marketplace, 3);
         var reserve = Take(state, data, Local, 2);
         SetTroops(reserve, (UnitType.Spearman, 30));
 
@@ -64,6 +70,7 @@ public static class DevScenario
         rivalCapital.SetBuildingLevel(BuildingType.MainBuilding, data.Villages.Capital.LockedAboveMainLevel + 2);
         SetTroops(rivalCapital, (UnitType.Spearman, 10));
         var strikeForce = Take(state, data, Rival, 2);
+        strikeForce.SetBuildingLevel(BuildingType.Marketplace, 1);
         SetTroops(strikeForce, (UnitType.Swordsman, 200), (UnitType.Lord, 2));
     }
 
@@ -89,6 +96,13 @@ public static class DevScenario
         SetTroops(state.Villages[Local]);
         state.Villages[Local].Loyalty = 1;
         SetTroops(state.Villages[Rival], (UnitType.Swordsman, 100), (UnitType.Lord, 1));
+    }
+
+    /// <summary>The rival's troops walking home to a village that is yours by now. Only a battle after a capture can cause this.</summary>
+    private static void ApplyStrayReturn(GameState state)
+    {
+        var troops = new Dictionary<UnitType, int> { [UnitType.Swordsman] = 5 };
+        state.AddMovement(new Movement(state.NextMovementId++, Rival, Rival, Local, MovementType.Return, troops, Resources.Zero, 0, 600, null));
     }
 
     /// <summary>Hands the barbarian village nearest the player's capital to them, as a normal village.</summary>

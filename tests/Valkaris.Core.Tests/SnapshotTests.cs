@@ -62,10 +62,11 @@ public class SnapshotTests
         state.AddMovement(new Movement(4, 1, 1, 2, MovementType.Attack, troops, Resources.Zero, 100, 150.5, BuildingType.Wall));
         state.AddMovement(new Movement(5, 1, 2, 1, MovementType.Return, troops, new Resources(1, 2, 3), 100, 151, null));
         state.AddMovement(new Movement(6, 1, 1, null, MovementType.Settle, troops, Resources.Zero, 100, 152, null, new TileCoord(3, 4)));
+        state.AddMovement(new Movement(7, 1, 1, 2, MovementType.Transfer, new Dictionary<UnitType, int>(), new Resources(100, 0, 50), 100, 153, null, Carriers: 2));
         state.AddReport(new BattleReport(
             2, 90.5, MovementType.Raid, 1, 2, 1, 2, troops, troops, troops, troops, 3, 120.5, 80.25, true,
             new Resources(10, 20, 30), new CatapultDamage(BuildingType.Wall, 3, 2), new LoyaltyChange(30, 0, true), CapitalProtected: true));
-        state.NextMovementId = 7;
+        state.NextMovementId = 8;
         state.NextReportId = 3;
         state.NextRandom();
         return state;
@@ -102,7 +103,9 @@ public class SnapshotTests
         Assert.Equal(1, village.BarbarianTier);
         Assert.Equal(77.5, village.NextTroopRegenTime);
         Assert.Equal(Terrain.Water, restored.Map.Tiles[5].Terrain);
-        Assert.Equal(3, restored.Movements.Count);
+        Assert.Equal(4, restored.Movements.Count);
+        Assert.Equal(2, restored.Movements[3].Carriers);
+        Assert.Equal(new Resources(100, 0, 50), restored.Movements[3].Loot);
         Assert.Null(restored.Players[1].CapitalVillageId);
         Assert.Equal(300.5, restored.Players[1].CapitalChoiceDeadline);
         Assert.Equal(new[] { 7 }, restored.Players[1].CapturedVillageIds);
@@ -116,7 +119,7 @@ public class SnapshotTests
         Assert.Equal(BuildingType.Wall, restored.Movements[0].CatapultTarget);
         Assert.Equal(3, restored.Movements[1].Troops[UnitType.Cavalry]);
         Assert.Equal(new CatapultDamage(BuildingType.Wall, 3, 2), restored.Reports[0].CatapultDamage);
-        Assert.Equal(7, restored.NextMovementId);
+        Assert.Equal(8, restored.NextMovementId);
         Assert.Equal(3, restored.NextReportId);
         Assert.Equal(original.RngState, restored.RngState);
         Assert.Equal(village.Id, restored.Map.TileAt(village.Position).VillageId);

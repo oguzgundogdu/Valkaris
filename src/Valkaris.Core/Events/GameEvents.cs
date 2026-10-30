@@ -27,6 +27,11 @@ public sealed record PlayerEliminated(double Time, int PlayerId) : GameEvent(Tim
 
 public sealed record MatchEnded(double Time) : GameEvent(Time);
 
+public sealed record ResourcesDelivered(double Time, int VillageId, Resources Delivered, Resources Lost) : GameEvent(Time);
+
+/// <summary>Carriers back home. They hold a load only if their target was lost on the way.</summary>
+public sealed record CarriersReturned(double Time, int VillageId, Resources Delivered, Resources Lost) : GameEvent(Time);
+
 public sealed record VillageFounded(double Time, int VillageId) : GameEvent(Time);
 
 /// <summary>The tile or the limit no longer allowed it, so the Settler is walking home.</summary>

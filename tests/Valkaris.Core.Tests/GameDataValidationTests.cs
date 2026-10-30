@@ -237,6 +237,22 @@ public class GameDataValidationTests
         AssertInvalid(GameData.ScoringFile, mutate, expectedField);
 
     [Fact]
+    public void ShortCarrierTable() =>
+        AssertBuildingsInvalid(r => r["carriersByMarketplaceLevel"] = new JsonArray(0, 2), "carriersByMarketplaceLevel");
+
+    [Fact]
+    public void NegativeCarrierCount() =>
+        AssertBuildingsInvalid(r => r["carriersByMarketplaceLevel"]![1] = -1, "carriersByMarketplaceLevel");
+
+    [Fact]
+    public void CarrierCapacityBelowOne() =>
+        AssertVillagesInvalid(r => r["carriers"]!["capacity"] = 0, "carriers.capacity");
+
+    [Fact]
+    public void CarrierSpeedNotPositive() =>
+        AssertVillagesInvalid(r => r["carriers"]!["speed"] = 0, "carriers.speed");
+
+    [Fact]
     public void ShortVillageLimitTable() =>
         AssertBuildingsInvalid(r => r["maxVillagesByCapitalMainLevel"] = new JsonArray(1, 2), "maxVillagesByCapitalMainLevel");
 

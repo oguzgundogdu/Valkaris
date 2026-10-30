@@ -44,6 +44,7 @@ public sealed record BuildQueueItem(BuildingType Building, int TargetLevel, doub
 
 public sealed record TrainingQueueItem(UnitType Unit, int Count, double StartTime, double FinishTime);
 
+/// <summary>Troops or carriers on the way. Loot is what they hold: plunder, or a transfer's load.</summary>
 public sealed record Movement(
     int Id,
     int OwnerId,
@@ -56,7 +57,8 @@ public sealed record Movement(
     double ArrivalTime,
     BuildingType? CatapultTarget,
     TileCoord? TargetTile = null,
-    TileCoord? FromTile = null);
+    TileCoord? FromTile = null,
+    int Carriers = 0);
 
 public sealed record LoyaltyChange(double From, double To, bool Captured);
 

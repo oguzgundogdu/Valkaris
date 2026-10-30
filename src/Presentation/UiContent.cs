@@ -28,6 +28,7 @@ public static class UiContent
         [BuildingType.Warehouse] = new("Warehouse", "Sets how much of each resource the village can hold.", "res://assets/icons/warehouse.svg"),
         [BuildingType.Barracks] = new("Barracks", "Trains troops. Higher levels train faster and unlock stronger units.", "res://assets/icons/barracks.svg"),
         [BuildingType.Wall] = new("Wall", "Raises the defence of everyone stationed in the village.", "res://assets/icons/wall.svg"),
+        [BuildingType.Marketplace] = new("Marketplace", "Its carriers move resources to your other villages. Only the sending village needs one.", "res://assets/icons/marketplace.svg"),
     };
 
     public static readonly IReadOnlyDictionary<UnitType, UnitInfo> Units = new Dictionary<UnitType, UnitInfo>
