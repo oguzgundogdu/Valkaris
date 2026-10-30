@@ -21,11 +21,12 @@ public partial class MatchEndScreen : ColorRect
         GetNode<Label>("%Title").Text = !localWon ? "Defeat" : outcome.WinnerIds.Count > 1 ? "Draw" : "Victory";
 
         var names = string.Join(" and ", outcome.WinnerIds.Select(id => UiContent.OwnerName(session, id)));
+        var soleWinnerIsYou = localWon && outcome.WinnerIds.Count == 1;
         GetNode<Label>("%Reason").Text = outcome.Reason == MatchEndReason.LastPlayerStanding
-            ? $"{names} is the last player standing."
+            ? (soleWinnerIsYou ? "You are the last player standing." : $"{names} is the last player standing.")
             : outcome.WinnerIds.Count > 1
                 ? $"Time ran out with {names} tied for the highest score."
-                : $"Time ran out. {names} has the highest score.";
+                : soleWinnerIsYou ? "Time ran out. You have the highest score." : $"Time ran out. {names} has the highest score.";
 
         var table = GetNode<GridContainer>("%Table");
         foreach (var child in table.GetChildren())

@@ -14,6 +14,7 @@ public static class DevScenario
     public const string Founding = "founding";
     public const string Endgame = "endgame";
     public const string LastStand = "laststand";
+    public const string Empire = "empire";
 
     private const int Local = 1;
     private const int Rival = 2;
@@ -34,6 +35,10 @@ public static class DevScenario
                 return true;
             case LastStand:
                 ApplyLastStand(state);
+                return true;
+            case Empire:
+                while (state.Villages.Values.Any(v => v.IsBarbarian))
+                    Take(state, data, Local, 2);
                 return true;
             default:
                 return false;

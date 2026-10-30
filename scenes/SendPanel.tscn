@@ -6,115 +6,120 @@
 theme_override_constants/separation = 12
 script = ExtResource("1")
 
-[node name="Form" type="PanelContainer" parent="."]
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="Form" type="PanelContainer" parent="Scroll/Content"]
 layout_mode = 2
 theme_type_variation = &"CardPanel"
 
-[node name="Box" type="VBoxContainer" parent="Form"]
+[node name="Box" type="VBoxContainer" parent="Scroll/Content/Form"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="FromLine" type="Label" parent="Form/Box"]
+[node name="FromLine" type="Label" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 
-[node name="TargetLabel" type="Label" parent="Form/Box"]
+[node name="TargetLabel" type="Label" parent="Scroll/Content/Form/Box"]
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 text = "Target"
 
-[node name="TargetLine" type="Label" parent="Form/Box"]
+[node name="TargetLine" type="Label" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"StrongLabel"
 autowrap_mode = 2
 
-[node name="PickTarget" type="Button" parent="Form/Box"]
+[node name="PickTarget" type="Button" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 theme_type_variation = &"SecondaryButton"
 
-[node name="MissionRow" type="HBoxContainer" parent="Form/Box"]
+[node name="MissionRow" type="HBoxContainer" parent="Scroll/Content/Form/Box"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Form/Box/MissionRow"]
+[node name="Label" type="Label" parent="Scroll/Content/Form/Box/MissionRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Mission"
 
-[node name="Mission" type="OptionButton" parent="Form/Box/MissionRow"]
+[node name="Mission" type="OptionButton" parent="Scroll/Content/Form/Box/MissionRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(170, 0)
 layout_mode = 2
 
-[node name="Units" type="VBoxContainer" parent="Form/Box"]
+[node name="Units" type="VBoxContainer" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="CatapultRow" type="HBoxContainer" parent="Form/Box"]
+[node name="CatapultRow" type="HBoxContainer" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 
-[node name="Label" type="Label" parent="Form/Box/CatapultRow"]
+[node name="Label" type="Label" parent="Scroll/Content/Form/Box/CatapultRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Catapults aim at"
 
-[node name="CatapultTarget" type="OptionButton" parent="Form/Box/CatapultRow"]
+[node name="CatapultTarget" type="OptionButton" parent="Scroll/Content/Form/Box/CatapultRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(170, 0)
 layout_mode = 2
 
-[node name="Arrival" type="Label" parent="Form/Box"]
+[node name="Arrival" type="Label" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"StrongLabel"
 horizontal_alignment = 1
 
-[node name="Send" type="Button" parent="Form/Box"]
+[node name="Send" type="Button" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 focus_mode = 0
 text = "Send troops"
 
-[node name="Reason" type="Label" parent="Form/Box"]
+[node name="Reason" type="Label" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 autowrap_mode = 2
 horizontal_alignment = 1
 
-[node name="Moving" type="PanelContainer" parent="."]
+[node name="Moving" type="PanelContainer" parent="Scroll/Content"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_type_variation = &"CardPanel"
 
-[node name="Box" type="VBoxContainer" parent="Moving"]
+[node name="Box" type="VBoxContainer" parent="Scroll/Content/Moving"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Title" type="Label" parent="Moving/Box"]
+[node name="Title" type="Label" parent="Scroll/Content/Moving/Box"]
 layout_mode = 2
 theme_type_variation = &"HeadingLabel"
 text = "On the way"
 
-[node name="Scroll" type="ScrollContainer" parent="Moving/Box"]
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="Rows" type="VBoxContainer" parent="Moving/Box/Scroll"]
+[node name="Rows" type="VBoxContainer" parent="Scroll/Content/Moving/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="None" type="Label" parent="Moving/Box/Scroll/Rows"]
+[node name="None" type="Label" parent="Scroll/Content/Moving/Box/Rows"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"

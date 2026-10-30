@@ -23,6 +23,7 @@ public class DevScenarioTests
     [InlineData(DevScenario.Founding)]
     [InlineData(DevScenario.Endgame)]
     [InlineData(DevScenario.LastStand)]
+    [InlineData(DevScenario.Empire)]
     public void EveryScenarioGivesAValidState(string name)
     {
         var state = TestMatch.Create();

@@ -1052,6 +1052,7 @@ public partial class UiTest : Control
         await TestBeingAttacked(data);
         await TestCrowdedMediumMap(data);
         await TestSwitchingVillages(data);
+        await TestManyVillages(data);
         await TestReinforce(data);
         await TestReportsOfLoyalty(data);
         await TestFounding(data);
@@ -1166,6 +1167,52 @@ public partial class UiTest : Control
         Expect(new Rect2(Vector2.Zero, world.Size).HasPoint(centred), "Switching on the map brings the village into view");
         Expect(game.CurrentView == GameScreen.MainView.World, "Switching keeps the map open");
         await Shot("villages-map");
+    }
+
+    /// <summary>The strip wraps rather than overflowing, and nothing is pushed off the window at any size.</summary>
+    private async Task TestManyVillages(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Empire);
+        await Frames();
+        var strip = game.GetNode<VillageStrip>("%VillageStrip");
+        Expect(strip.GetChildren().OfType<Button>().Count() == UiContent.OwnVillages(session).Count, "A chip for every village");
+        foreach (var tab in Enum.GetValues<GameScreen.SideTab>())
+        {
+            game.ShowTab(tab);
+            await Frames();
+            Expect(game.GetNode<Control>("Layout").Position.Y >= 0 && game.GetNode<Control>("Layout").Size.Y <= GetViewportRect().Size.Y + 0.5f, $"The {tab} tab fits the window");
+        }
+
+        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+        Expect(game.GetNode<SendPanel>("%Send").GetNode<Label>("%None").Size.Y > 0, "The empty list of movements is readable");
+        game.ShowTab(GameScreen.SideTab.Village);
+        await Frames();
+        Expect(game.GetNode<BuildingPanel>("%BuildingPanel").Position.Y >= game.GetNode<Label>("%VillageInfo").GetRect().End.Y, "The Village tab stacks its panels");
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+        if (_shotsDir is not null && DisplayServer.GetName() != "headless")
+        {
+            await Shot("empire-1280");
+            foreach (var (size, name) in new[] { (new Vector2I(1024, 640), "empire-1024"), (new Vector2I(1920, 800), "empire-wide") })
+            {
+                DisplayServer.WindowSetSize(size);
+                await Frames(10);
+                Expect(game.GetNode<Control>("Layout").Size.Y <= GetViewportRect().Size.Y + 0.5f, $"The layout fits at {name}");
+                await Shot(name);
+                game.ShowTab(GameScreen.SideTab.Village);
+                game.ShowView(GameScreen.MainView.Village);
+                await Frames();
+                Expect(game.GetNode<Control>("Layout").Size.Y <= GetViewportRect().Size.Y + 0.5f, $"The Village tab fits at {name}");
+                await Shot($"{name}-village");
+                game.ShowTab(GameScreen.SideTab.Send);
+                game.ShowView(GameScreen.MainView.World);
+                await Frames();
+            }
+            DisplayServer.WindowSetSize(new Vector2I(1280, 720));
+            await Frames(10);
+        }
     }
 
     private async Task TestReinforce(GameData data)
@@ -1431,7 +1478,7 @@ public partial class UiTest : Control
         await Frames();
         var end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
         Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Victory", "Taking the last village wins");
-        Expect(end.GetNode<Label>("%Reason").Text.Contains("last player standing"), "The reason is stated");
+        Expect(end.GetNode<Label>("%Reason").Text == "You are the last player standing.", "The reason is stated");
         var cells = end.GetNode<GridContainer>("%Table").GetChildren().OfType<Label>().Select(l => l.Text).ToList();
         var top = session.State.Outcome!.Scores[0];
         Expect(cells.Count == 18, $"A header and one row per player, got {cells.Count} cells");
@@ -1461,7 +1508,7 @@ public partial class UiTest : Control
         await Frames();
         end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
         Expect(end.GetNode<Label>("%Title").Text == "Victory", "The higher score wins at time-out");
-        Expect(end.GetNode<Label>("%Reason").Text.Contains("highest score"), "The time-out win is explained");
+        Expect(end.GetNode<Label>("%Reason").Text == "Time ran out. You have the highest score.", "The time-out win is explained");
 
         foreach (var child in GetChildren().OfType<GameScreen>())
             child.QueueFree();

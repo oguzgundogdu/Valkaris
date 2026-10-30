@@ -90,21 +90,26 @@ custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 current_tab = 0
 
-[node name="Village" type="VBoxContainer" parent="Layout/Margin/Columns/Side"]
+[node name="Village" type="ScrollContainer" parent="Layout/Margin/Columns/Side"]
 layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Box" type="VBoxContainer" parent="Layout/Margin/Columns/Side/Village"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
-[node name="VillageInfo" type="Label" parent="Layout/Margin/Columns/Side/Village"]
+[node name="VillageInfo" type="Label" parent="Layout/Margin/Columns/Side/Village/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 autowrap_mode = 2
 
-[node name="BuildingPanel" parent="Layout/Margin/Columns/Side/Village" instance=ExtResource("3")]
+[node name="BuildingPanel" parent="Layout/Margin/Columns/Side/Village/Box" instance=ExtResource("3")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="QueuePanel" parent="Layout/Margin/Columns/Side/Village" instance=ExtResource("4")]
+[node name="QueuePanel" parent="Layout/Margin/Columns/Side/Village/Box" instance=ExtResource("4")]
 unique_name_in_owner = true
 layout_mode = 2
 
