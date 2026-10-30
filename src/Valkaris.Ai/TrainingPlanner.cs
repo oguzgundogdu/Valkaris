@@ -64,12 +64,27 @@ public sealed class TrainingPlanner
             && CountEverywhere(UnitType.Lord) < _view.Config.LordsWanted)
             return UnitType.Lord;
 
+        if (WantsSettler(barracks))
+            return UnitType.Settler;
+
         if (_memory.SawProtectedCapital
             && barracks >= _view.Units.Units[UnitType.Catapult].RequiredBarracksLevel
             && CountEverywhere(UnitType.Catapult) < _view.Config.CatapultsWanted)
             return UnitType.Catapult;
 
         return null;
+    }
+
+    private bool WantsSettler(int barracks)
+    {
+        if (_view.Now * _view.GameSpeed < _view.Profile.ExpansionDelaySeconds
+            || barracks < _view.Units.Units[UnitType.Settler].RequiredBarracksLevel
+            || _view.CapitalVillageId is not { } capital)
+            return false;
+
+        var limit = _view.Buildings.MaxVillagesByCapitalMainLevel[_view.OwnVillages.First(v => v.Id == capital).BuildingLevel(BuildingType.MainBuilding)];
+        var settling = CountEverywhere(UnitType.Settler);
+        return _view.OwnVillages.Count + settling < Math.Min(limit, _view.Profile.WantedVillages);
     }
 
     private int CountEverywhere(UnitType unit) =>

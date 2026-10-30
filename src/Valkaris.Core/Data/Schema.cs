@@ -246,6 +246,9 @@ public sealed record AiConfig
     public required double RaidMinLoot { get; init; }
 
     /// <summary>How many Lords the AI keeps in training or alive once it has capture targets.</summary>
+    /// <summary>When choosing a new capital: tiles from the nearest enemy that one Main Building level, lost to the penalty, is worth.</summary>
+    public required double CapitalMainLevelWeight { get; init; }
+
     public required int LordsWanted { get; init; }
 
     /// <summary>A Lord never leaves with less attack than this, however weak the target seems. Casualties round against small groups.</summary>

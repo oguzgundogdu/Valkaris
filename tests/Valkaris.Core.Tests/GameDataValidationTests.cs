@@ -256,6 +256,7 @@ public class GameDataValidationTests
 
     [Theory]
     [InlineData("lordsWanted")]
+    [InlineData("capitalMainLevelWeight")]
     [InlineData("lordMinAttack")]
     [InlineData("catapultsWanted")]
     [InlineData("fightersBeforeSaving")]

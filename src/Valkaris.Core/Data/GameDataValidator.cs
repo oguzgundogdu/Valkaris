@@ -380,6 +380,8 @@ internal static class GameDataValidator
             Error("reinforceShare", "must be above 0 and at most 1.");
         if (config.LordMinAttack < 0)
             Error("lordMinAttack", "must not be negative.");
+        if (config.CapitalMainLevelWeight < 0)
+            Error("capitalMainLevelWeight", "must not be negative.");
         if (config.LordsWanted < 0)
             Error("lordsWanted", "must not be negative.");
         if (config.CatapultsWanted < 0)
