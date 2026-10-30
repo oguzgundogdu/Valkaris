@@ -1,0 +1,121 @@
+using System.Reflection;
+using Valkaris.Core.Model;
+using Valkaris.Core.Snapshots;
+
+namespace Valkaris.Core.Tests;
+
+internal static class SnapshotAssert
+{
+    /// <summary>State -> snapshot -> JSON -> snapshot -> restored state must lose nothing.</summary>
+    public static GameState RoundTrips(GameState state)
+    {
+        var json = SnapshotMapper.ToJson(SnapshotMapper.ToSnapshot(state));
+        var restored = SnapshotMapper.Restore(SnapshotMapper.FromJson(json));
+
+        Assert.Equal(json, SnapshotMapper.ToJson(SnapshotMapper.ToSnapshot(restored)));
+        return restored;
+    }
+}
+
+public class SnapshotTests
+{
+    // Computed from other state, so deliberately absent from snapshots.
+    private static readonly HashSet<string> DerivedProperties = new() { $"{nameof(GameState)}.{nameof(GameState.IsMatchOver)}" };
+
+    private static bool IsRecord(Type type) =>
+        type.GetProperty("EqualityContract", BindingFlags.NonPublic | BindingFlags.Instance) is not null;
+
+    private static IEnumerable<string> PropertiesMissingFromSnapshot(Type model, Type snapshot)
+    {
+        var snapshotProperties = snapshot.GetProperties().Select(p => p.Name).ToHashSet();
+        return model.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Select(p => p.Name)
+            .Where(name => !snapshotProperties.Contains(name) && !DerivedProperties.Contains($"{model.Name}.{name}"));
+    }
+
+    private static GameState BusyState()
+    {
+        var state = TestMatch.Create(players: 3);
+        state.ElapsedTime = 123.456;
+        state.Players[2].IsEliminated = true;
+        state.Players[3].CapitalVillageId = 2;
+
+        var village = state.Villages[1];
+        village.OwnerId = 3;
+        village.Resources = new Resources(1.5, 2.25, 1.0 / 3.0);
+        village.SetBuildingLevel(BuildingType.Wall, 4);
+        village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 2, 200.5));
+        village.EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 3, 300.75));
+        return state;
+    }
+
+    [Fact]
+    public void NewMatchRoundTrips() => SnapshotAssert.RoundTrips(TestMatch.Create(players: 4));
+
+    [Fact]
+    public void BusyStateRoundTrips() => SnapshotAssert.RoundTrips(BusyState());
+
+    [Fact]
+    public void RestoredStateHasTheOriginalValues()
+    {
+        var original = BusyState();
+
+        var restored = SnapshotAssert.RoundTrips(original);
+
+        Assert.Equal(original.Settings, restored.Settings);
+        Assert.Equal(123.456, restored.ElapsedTime);
+        Assert.True(restored.Players[2].IsEliminated);
+        Assert.Equal(2, restored.Players[3].CapitalVillageId);
+        Assert.Equal("Player 1", restored.Players[1].Name);
+
+        var village = restored.Villages[1];
+        Assert.Equal(3, village.OwnerId);
+        Assert.Equal(original.Villages[1].Position, village.Position);
+        Assert.Equal(original.Villages[1].Resources, village.Resources);
+        Assert.Equal(4, village.BuildingLevel(BuildingType.Wall));
+        Assert.Equal(original.Villages[1].BuildQueue, village.BuildQueue);
+        Assert.Equal(village.Id, restored.Map.TileAt(village.Position).VillageId);
+    }
+
+    [Fact]
+    public void TileCountMismatchIsRejected()
+    {
+        var snapshot = SnapshotMapper.ToSnapshot(TestMatch.Create());
+        var broken = snapshot with { Map = snapshot.Map with { Tiles = new List<MapTileSnapshot>() } };
+
+        Assert.Throws<ArgumentException>(() => SnapshotMapper.Restore(broken));
+    }
+
+    [Fact]
+    public void EveryModelClassHasASnapshotCoveringItsProperties()
+    {
+        var core = typeof(GameState).Assembly;
+        var modelClasses = core.GetTypes()
+            .Where(t => t.Namespace == typeof(GameState).Namespace && t.IsClass && t.IsPublic && !IsRecord(t))
+            .ToList();
+        Assert.NotEmpty(modelClasses);
+
+        foreach (var model in modelClasses)
+        {
+            var snapshot = core.GetType($"{typeof(GameStateSnapshot).Namespace}.{model.Name}Snapshot");
+            Assert.True(snapshot is not null, $"{model.Name} has no {model.Name}Snapshot.");
+
+            var missing = PropertiesMissingFromSnapshot(model, snapshot!).ToList();
+            Assert.True(missing.Count == 0, $"{model.Name}Snapshot is missing: {string.Join(", ", missing)}");
+        }
+    }
+
+    private sealed class ModelWithExtraProperty
+    {
+        public int Id { get; set; }
+        public int NewField { get; set; }
+    }
+
+    private sealed record SnapshotWithoutIt(int Id);
+
+    [Fact]
+    public void GuardDetectsAMissingProperty() =>
+        Assert.Equal(
+            new[] { nameof(ModelWithExtraProperty.NewField) },
+            PropertiesMissingFromSnapshot(typeof(ModelWithExtraProperty), typeof(SnapshotWithoutIt)));
+}

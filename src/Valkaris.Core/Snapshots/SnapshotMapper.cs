@@ -1,0 +1,81 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Valkaris.Core.Model;
+
+namespace Valkaris.Core.Snapshots;
+
+/// <summary>Converts between the encapsulated model and its wire format. The model is never serialized directly.</summary>
+public static class SnapshotMapper
+{
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter(allowIntegerValues: false) },
+    };
+
+    public static string ToJson(GameStateSnapshot snapshot) => JsonSerializer.Serialize(snapshot, JsonOptions);
+
+    public static GameStateSnapshot FromJson(string json) =>
+        JsonSerializer.Deserialize<GameStateSnapshot>(json, JsonOptions)
+        ?? throw new JsonException("Snapshot is empty or null.");
+
+    public static GameStateSnapshot ToSnapshot(GameState state) => new(
+        state.Settings,
+        state.ElapsedTime,
+        state.Players.Values.OrderBy(p => p.Id).Select(ToSnapshot).ToList(),
+        state.Villages.Values.OrderBy(v => v.Id).Select(ToSnapshot).ToList(),
+        new GameMapSnapshot(
+            state.Map.Width,
+            state.Map.Height,
+            state.Map.Tiles.Select(t => new MapTileSnapshot(t.VillageId)).ToList()));
+
+    private static PlayerSnapshot ToSnapshot(Player player) => new(
+        player.Id,
+        player.Name,
+        player.Nation,
+        player.IsAi,
+        player.IsEliminated,
+        player.CapitalVillageId);
+
+    private static VillageSnapshot ToSnapshot(Village village) => new(
+        village.Id,
+        village.OwnerId,
+        village.Position,
+        village.Resources,
+        village.Buildings.OrderBy(b => b.Key).ToDictionary(b => b.Key, b => b.Value),
+        village.BuildQueue.ToList());
+
+    public static GameState Restore(GameStateSnapshot snapshot)
+    {
+        var map = new GameMap(snapshot.Map.Width, snapshot.Map.Height);
+        if (snapshot.Map.Tiles.Count != map.Tiles.Count)
+            throw new ArgumentException(
+                $"Snapshot has {snapshot.Map.Tiles.Count} tiles for a {map.Width}x{map.Height} map.",
+                nameof(snapshot));
+        for (var i = 0; i < map.Tiles.Count; i++)
+            map.Tiles[i].VillageId = snapshot.Map.Tiles[i].VillageId;
+
+        var state = new GameState(snapshot.Settings, map) { ElapsedTime = snapshot.ElapsedTime };
+
+        foreach (var p in snapshot.Players)
+        {
+            state.AddPlayer(new Player(p.Id, p.Name, p.Nation, p.IsAi)
+            {
+                IsEliminated = p.IsEliminated,
+                CapitalVillageId = p.CapitalVillageId,
+            });
+        }
+
+        foreach (var v in snapshot.Villages)
+        {
+            var village = new Village(v.Id, v.OwnerId, v.Position) { Resources = v.Resources };
+            foreach (var (type, level) in v.Buildings)
+                village.SetBuildingLevel(type, level);
+            foreach (var item in v.BuildQueue)
+                village.EnqueueBuild(item);
+            state.AddVillage(village);
+        }
+
+        return state;
+    }
+}
