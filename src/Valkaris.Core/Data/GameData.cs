@@ -43,6 +43,11 @@ public sealed class GameData
     {
         var game = Parse<GameConfig>(source, GameFile);
         var buildings = Parse<BuildingsConfig>(source, BuildingsFile);
+
+        var errors = GameDataValidator.Validate(game, buildings);
+        if (errors.Count > 0)
+            throw new GameDataException("Invalid game data:\n" + string.Join("\n", errors));
+
         return new GameData(game, buildings);
     }
 

@@ -66,4 +66,7 @@ public sealed record CapacityDefinition
     public required double AtLevelZero { get; init; }
     public required double Base { get; init; }
     public required double Growth { get; init; }
+
+    public double ValueAt(int level) =>
+        level <= 0 ? AtLevelZero : Math.Round(Base * Math.Pow(Growth, level - 1), MidpointRounding.AwayFromZero);
 }
