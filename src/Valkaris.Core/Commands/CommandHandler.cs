@@ -27,6 +27,7 @@ public sealed class CommandHandler
             TrainCommand train => HandleTrain(issuerId, train),
             SendTroopsCommand send => HandleSend(issuerId, send),
             FoundVillageCommand found => HandleFound(issuerId, found),
+            SetCapitalCommand capital => HandleSetCapital(issuerId, capital),
             _ => CommandResult.Rejected(CommandRejection.UnknownCommand),
         };
     }
@@ -88,6 +89,20 @@ public sealed class CommandHandler
             option.ArrivalTime,
             command.CatapultTarget));
 
+        return CommandResult.Ok;
+    }
+
+    private CommandResult HandleSetCapital(int issuerId, SetCapitalCommand command)
+    {
+        var player = _state.Players[issuerId];
+        if (player.CapitalChoiceDeadline is null)
+            return CommandResult.Rejected(CommandRejection.NoCapitalChoicePending);
+        if (!_state.Villages.TryGetValue(command.VillageId, out var village))
+            return CommandResult.Rejected(CommandRejection.VillageNotFound);
+        if (village.OwnerId != issuerId)
+            return CommandResult.Rejected(CommandRejection.NotOwner);
+
+        CapitalRules.Assign(_data, player, village);
         return CommandResult.Ok;
     }
 

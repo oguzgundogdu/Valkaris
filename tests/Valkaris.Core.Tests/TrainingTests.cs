@@ -83,7 +83,7 @@ public class TrainingTests
         Assert.Equal(Spearman.TrainingSeconds * 3, _village.TrainingQueue[1].FinishTime);
 
         var events = _simulation.Advance(TestMatch.OneHour);
-        Assert.Equal(new[] { 1, 2 }, events.Cast<TroopsTrained>().Select(e => e.Count));
+        Assert.Equal(new[] { 1, 2 }, events.OfType<TroopsTrained>().Select(e => e.Count));
     }
 
     [Fact]
@@ -147,7 +147,7 @@ public class TrainingTests
     [Fact]
     public void RejectsWhenMatchIsOver()
     {
-        _state.ElapsedTime = _state.Settings.MatchDurationSeconds;
+        _simulation.Advance(_state.Settings.MatchDurationSeconds);
         AssertRejected(CommandRejection.MatchOver, Train());
     }
 

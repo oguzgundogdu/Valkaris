@@ -27,10 +27,13 @@ public sealed class Simulation
         if (deltaSeconds < 0)
             throw new ArgumentOutOfRangeException(nameof(deltaSeconds), deltaSeconds, "Time cannot go backwards.");
 
-        var end = Math.Min(_state.ElapsedTime + deltaSeconds, _state.Settings.MatchDurationSeconds);
         var events = new List<GameEvent>();
+        if (_state.IsMatchOver)
+            return events;
 
-        while (NextEvent(end) is { } next)
+        var end = Math.Min(_state.ElapsedTime + deltaSeconds, _state.Settings.MatchDurationSeconds);
+
+        while (!_state.IsMatchOver && NextEvent(end) is { } next)
         {
             MoveTimeTo(next.Time);
             if (Apply(next) is { } gameEvent)
@@ -39,7 +42,16 @@ public sealed class Simulation
             _followUps.Clear();
         }
 
+        if (_state.IsMatchOver)
+            return events;
+
         MoveTimeTo(end);
+        if (_state.ElapsedTime >= _state.Settings.MatchDurationSeconds)
+        {
+            EndMatch(MatchEndReason.TimeUp, end);
+            events.AddRange(_followUps);
+            _followUps.Clear();
+        }
         return events;
     }
 
@@ -49,6 +61,7 @@ public sealed class Simulation
         Training,
         TroopRegen,
         Arrival,
+        CapitalChoice,
     }
 
     /// <summary>Events at the same moment run in this kind order, then by id, so results are deterministic.</summary>
@@ -82,6 +95,12 @@ public sealed class Simulation
         foreach (var movement in _state.Movements)
             Consider(new PendingEvent(movement.ArrivalTime, EventKind.Arrival, movement.Id));
 
+        foreach (var player in _state.Players.Values)
+        {
+            if (player.CapitalChoiceDeadline is { } deadline)
+                Consider(new PendingEvent(deadline, EventKind.CapitalChoice, player.Id));
+        }
+
         return next;
     }
 
@@ -91,6 +110,7 @@ public sealed class Simulation
         EventKind.Build => CompleteBuild(_state.Villages[pending.Id]),
         EventKind.Training => CompleteTraining(_state.Villages[pending.Id]),
         EventKind.Arrival => CompleteMovement(_state.Movements.First(m => m.Id == pending.Id)),
+        EventKind.CapitalChoice => PickCapitalAutomatically(_state.Players[pending.Id], pending.Time),
         _ => throw new ArgumentOutOfRangeException(nameof(pending), pending.Kind, null),
     };
 
@@ -271,6 +291,62 @@ public sealed class Simulation
         _state.Players[newOwnerId].RecordCapture(village.Id);
 
         _followUps.Add(new VillageCaptured(now, village.Id, previousOwnerId, newOwnerId));
+        if (previousOwnerId != Village.BarbarianOwnerId)
+            HandleLostVillage(_state.Players[previousOwnerId], village.Id, now);
+    }
+
+    private void HandleLostVillage(Player player, int villageId, double now)
+    {
+        if (_state.Villages.Values.All(v => v.OwnerId != player.Id))
+        {
+            Eliminate(player, now);
+            return;
+        }
+
+        if (player.CapitalVillageId != villageId)
+            return;
+
+        player.CapitalVillageId = null;
+        if (player.IsAi)
+        {
+            _followUps.Add(PickCapitalAutomatically(player, now));
+            return;
+        }
+
+        player.CapitalChoiceDeadline = now + _data.Villages.Capital.ChoiceSeconds;
+        _followUps.Add(new CapitalChoiceRequired(now, player.Id, player.CapitalChoiceDeadline.Value));
+    }
+
+    /// <summary>Their movements go too, so an eliminated player can never regain a village from an attack still travelling.</summary>
+    private void Eliminate(Player player, double now)
+    {
+        player.IsEliminated = true;
+        player.CapitalVillageId = null;
+        player.CapitalChoiceDeadline = null;
+        foreach (var movement in _state.Movements.Where(m => m.OwnerId == player.Id).ToList())
+            _state.RemoveMovement(movement);
+
+        _followUps.Add(new PlayerEliminated(now, player.Id));
+        if (_state.Players.Values.Count(p => !p.IsEliminated) == 1)
+            EndMatch(MatchEndReason.LastPlayerStanding, now);
+    }
+
+    private void EndMatch(MatchEndReason reason, double now)
+    {
+        var scores = ScoreRules.Ranked(_state, _data);
+        var alive = scores.Where(s => !_state.Players[s.PlayerId].IsEliminated).ToList();
+        var best = alive.Max(s => s.Score);
+        var winners = alive.Where(s => s.Score == best).Select(s => s.PlayerId).OrderBy(id => id).ToList();
+
+        _state.Outcome = new MatchOutcome(reason, now, winners, scores);
+        _followUps.Add(new MatchEnded(now));
+    }
+
+    private CapitalChanged PickCapitalAutomatically(Player player, double now)
+    {
+        var village = CapitalRules.AutomaticChoice(_state, player.Id);
+        CapitalRules.Assign(_data, player, village);
+        return new CapitalChanged(now, player.Id, village.Id);
     }
 
     private BarbarianTierConfig TierOf(Village village) => _data.Map.Barbarians.Tiers[village.BarbarianTier!.Value];

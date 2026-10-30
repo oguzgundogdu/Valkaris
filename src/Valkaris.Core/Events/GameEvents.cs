@@ -18,6 +18,15 @@ public sealed record BattleResolved(double Time, int ReportId) : GameEvent(Time)
 
 public sealed record VillageCaptured(double Time, int VillageId, int PreviousOwnerId, int NewOwnerId) : GameEvent(Time);
 
+public sealed record CapitalChoiceRequired(double Time, int PlayerId, double Deadline) : GameEvent(Time);
+
+/// <summary>A capital picked automatically. A player's own choice takes effect at once, through a command.</summary>
+public sealed record CapitalChanged(double Time, int PlayerId, int VillageId) : GameEvent(Time);
+
+public sealed record PlayerEliminated(double Time, int PlayerId) : GameEvent(Time);
+
+public sealed record MatchEnded(double Time) : GameEvent(Time);
+
 public sealed record VillageFounded(double Time, int VillageId) : GameEvent(Time);
 
 /// <summary>The tile or the limit no longer allowed it, so the Settler is walking home.</summary>

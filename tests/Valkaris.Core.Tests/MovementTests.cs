@@ -141,14 +141,14 @@ public class MovementTests
 
         var events = new Simulation(shortMatch, Data).Advance(TestMatch.OneHour);
 
-        Assert.Empty(events);
+        Assert.IsType<MatchEnded>(Assert.Single(events));
         Assert.Single(shortMatch.Movements);
     }
 
     [Fact]
     public void RejectsWhenMatchIsOver()
     {
-        _state.ElapsedTime = _state.Settings.MatchDurationSeconds;
+        new Simulation(_state, Data).Advance(_state.Settings.MatchDurationSeconds);
         AssertRejected(CommandRejection.MatchOver, Attack());
     }
 

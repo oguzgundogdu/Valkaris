@@ -27,6 +27,9 @@ public sealed record SendTroopsCommand(
 /// <summary>Sends one Settler to found a village on an empty tile.</summary>
 public sealed record FoundVillageCommand(int FromVillageId, TileCoord Tile) : ICommand;
 
+/// <summary>Picks a new capital after the old one was captured. Not valid at any other time.</summary>
+public sealed record SetCapitalCommand(int VillageId) : ICommand;
+
 public enum CommandRejection
 {
     UnknownCommand,
@@ -53,6 +56,7 @@ public enum CommandRejection
     TooCloseToVillage,
     VillageLimitReached,
     NoCapital,
+    NoCapitalChoicePending,
 }
 
 public sealed record CommandResult(CommandRejection? Rejection)

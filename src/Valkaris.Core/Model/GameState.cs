@@ -43,7 +43,7 @@ public sealed class GameState
     /// <summary>The seeded generator's state, kept here so a restored snapshot continues identically.</summary>
     public ulong RngState { get; internal set; }
 
-    public bool IsMatchOver => ElapsedTime >= Settings.MatchDurationSeconds;
+    public bool IsMatchOver => Outcome is not null;
 
     internal void AddPlayer(Player player) => _players.Add(player.Id, player);
 

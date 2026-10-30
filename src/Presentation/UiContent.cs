@@ -111,6 +111,7 @@ public static class UiContent
         CommandRejection.TileTaken => "A village already stands here.",
         CommandRejection.TooCloseToVillage => "Too close to another village.",
         CommandRejection.VillageLimitReached => "Upgrade your capital's Main Building to found more villages.",
+        CommandRejection.NoCapitalChoicePending => "There's no capital to choose right now.",
         CommandRejection.NoCapital => "Choose a new capital first.",
         CommandRejection.InsufficientResources => "Not enough resources yet.",
         CommandRejection.QueueFull => "The queue is full.",

@@ -134,7 +134,7 @@ public class CommandHandlerTests
     [Fact]
     public void RejectsWhenMatchIsOver()
     {
-        _state.ElapsedTime = _state.Settings.MatchDurationSeconds;
+        new Simulation(_state, Data).Advance(_state.Settings.MatchDurationSeconds);
 
         AssertRejected(CommandRejection.MatchOver, Build(BuildingType.Woodcutter));
     }

@@ -94,7 +94,7 @@ public class SimulationBuildQueueTests
         var events = _simulation.Advance(TestMatch.OneHour);
 
         Assert.Equal(3, _village.BuildingLevel(BuildingType.Woodcutter));
-        Assert.Equal(new[] { 2, 3 }, events.Cast<BuildingCompleted>().Select(e => e.NewLevel));
+        Assert.Equal(new[] { 2, 3 }, events.OfType<BuildingCompleted>().Select(e => e.NewLevel));
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class SimulationBuildQueueTests
 
         var events = _simulation.Advance(TestMatch.OneHour);
 
-        Assert.Equal(new[] { first, second }, events.Select(e => e.Time));
+        Assert.Equal(new[] { first, second }, events.OfType<BuildingCompleted>().Select(e => e.Time));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class SimulationBuildQueueTests
         Build(BuildingType.Barracks);                                // Slow, in village 1.
         Build(BuildingType.Woodcutter, owner: 2, villageId: 2);      // Fast, in village 2.
 
-        var events = _simulation.Advance(TestMatch.OneHour).Cast<BuildingCompleted>().ToList();
+        var events = _simulation.Advance(TestMatch.OneHour).OfType<BuildingCompleted>().ToList();
 
         Assert.Equal(new[] { 2, 1 }, events.Select(e => e.VillageId));
     }
@@ -140,7 +140,7 @@ public class SimulationBuildQueueTests
 
         var events = new Simulation(shortMatch, Data).Advance(TestMatch.OneHour);
 
-        Assert.Empty(events);
+        Assert.IsType<MatchEnded>(Assert.Single(events));
         Assert.Equal(1, shortMatch.Villages[1].BuildingLevel(BuildingType.Woodcutter));
     }
 

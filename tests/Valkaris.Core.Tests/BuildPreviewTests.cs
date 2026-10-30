@@ -70,7 +70,7 @@ public class BuildPreviewTests
     [Fact]
     public void MatchOver()
     {
-        _state.ElapsedTime = _state.Settings.MatchDurationSeconds;
+        new Simulation(_state, TestData.Shipped).Advance(_state.Settings.MatchDurationSeconds);
 
         Assert.Equal(CommandRejection.MatchOver, Evaluate(BuildingType.Farm).Rejection);
     }
