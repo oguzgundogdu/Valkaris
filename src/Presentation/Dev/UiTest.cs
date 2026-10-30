@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
+using Valkaris.Core.Commands;
 using Valkaris.Core.Model;
 using Valkaris.Core.Systems;
 
@@ -149,6 +150,100 @@ public partial class UiTest : Control
         await Frames();
         Expect(wall.GetNode<ProgressBar>("%Progress").Visible, "Tile under construction shows progress");
         await Shot("village");
+
+        await TestFeedback();
+        await TestPause();
+        TestDevOptions();
+        await TestMatchEnd();
+    }
+
+    private async Task TestFeedback()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var toast = game.GetNode<Toast>("%Toast");
+
+        session.Tick(120);
+        await Frames();
+        Expect(toast.Visible, "Completing a build shows a toast");
+        Expect(toast.GetNode<Label>("Label").Text == "Wall reached level 1", "Toast names the building and level");
+
+        session.Send(new BuildCommand(2, BuildingType.Wall));
+        await Frames();
+        Expect(toast.GetNode<Label>("Label").Text == UiContent.RejectionText(CommandRejection.NotOwner), "A rejection shows a toast");
+
+        session.Tick(600);
+        await Frames();
+        var amount = Find<ResourceBar>().GetNode<Label>("Box/Chips/Stone/Amount");
+        Expect(amount.GetThemeColor("font_color") == UiContent.Warning, "A resource at its cap turns amber");
+        await Shot("at-cap");
+    }
+
+    private async Task TestPause()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var overlay = game.GetNode<Overlay>("%PauseOverlay");
+        var pause = Find<ResourceBar>().GetNode<Button>("%Pause");
+
+        Expect(pause.Visible, "The local session shows the pause button");
+        pause.EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(session.IsPaused && overlay.Visible, "The button pauses and shows the overlay");
+        await Shot("paused");
+
+        var time = session.State.ElapsedTime;
+        await Frames(5);
+        Expect(session.State.ElapsedTime == time, "Time stands still while paused");
+
+        overlay.GetNode<Button>("%Action").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Expect(!session.IsPaused && !overlay.Visible, "Resume hides the overlay");
+        Expect(session.State.ElapsedTime > time, "Time runs again after resuming");
+
+        var pressP = new InputEventKey { Pressed = true, Keycode = Key.P };
+        game._UnhandledKeyInput(pressP);
+        Expect(session.IsPaused, "P pauses");
+        game._UnhandledKeyInput(pressP);
+        Expect(!session.IsPaused, "P resumes");
+    }
+
+    private void TestDevOptions()
+    {
+        var arguments = new[] { "--dev-speed=20", "--dev-duration=60" };
+        var settings = new GameSettings(1200, 1, MapSize.Small);
+
+        var debug = DevOptions.Parse(arguments, isDebugBuild: true).Apply(settings);
+        Expect(debug.SpeedMultiplier == 20 && debug.MatchDurationSeconds == 60, "Dev arguments apply in debug builds");
+
+        var release = DevOptions.Parse(arguments, isDebugBuild: false).Apply(settings);
+        Expect(release == settings, "Dev arguments are ignored in release builds");
+
+        var invalid = DevOptions.Parse(new[] { "--dev-speed=abc", "--dev-duration=-5" }, isDebugBuild: true).Apply(settings);
+        Expect(invalid == settings, "Invalid dev arguments are ignored");
+    }
+
+    private async Task TestMatchEnd()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+
+        session.Tick(session.State.Settings.MatchDurationSeconds);
+        await Frames();
+        var overlay = game.GetNode<Overlay>("%MatchOverOverlay");
+        Expect(overlay.Visible, "Match end shows the overlay");
+        await Shot("match-over");
+
+        game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
+        Expect(!session.IsPaused, "A finished match cannot be paused");
+
+        overlay.GetNode<Button>("%Action").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        Find<StartScreen>().GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        var fresh = Find<GameScreen>().Session;
+        Expect(!ReferenceEquals(fresh, session), "Starting again creates a new session");
+        Expect(fresh.State.ElapsedTime < 1 && !fresh.State.IsMatchOver, "The new match starts fresh");
     }
 
     private void SelectTile(BuildingType building) =>

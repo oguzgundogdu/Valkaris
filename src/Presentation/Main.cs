@@ -57,10 +57,12 @@ public partial class Main : Control
             new PlayerSlot("You", Nation.Valdren, IsAi: false),
             new PlayerSlot("Rival", Nation.Karuk, IsAi: true),
         };
-        var state = GameFactory.CreateMatch(settings, slots, _data);
+        var devOptions = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
+        var state = GameFactory.CreateMatch(devOptions.Apply(settings), slots, _data);
 
         var screen = GameScene.Instantiate<GameScreen>();
         screen.Init(new LocalGameSession(state, _data, LocalPlayerId));
+        screen.ExitRequested += ShowStartScreen;
         SwitchTo(screen);
     }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Godot;
+using Valkaris.Core.Commands;
 using Valkaris.Core.Model;
 
 namespace Valkaris.Presentation;
@@ -23,6 +24,17 @@ public static class UiContent
         [BuildingType.Warehouse] = new("Warehouse", "Sets how much of each resource the village can hold.", "res://assets/icons/warehouse.svg"),
         [BuildingType.Barracks] = new("Barracks", "Will train troops. Training arrives in a later milestone.", "res://assets/icons/barracks.svg"),
         [BuildingType.Wall] = new("Wall", "Will strengthen the village's defence. Combat arrives in a later milestone.", "res://assets/icons/wall.svg"),
+    };
+
+    public static string RejectionText(CommandRejection rejection) => rejection switch
+    {
+        CommandRejection.InsufficientResources => "Not enough resources yet.",
+        CommandRejection.QueueFull => "The build queue is full.",
+        CommandRejection.MainBuildingLevelTooLow => "Upgrade the Main Building to go higher.",
+        CommandRejection.MaxLevelReached => "Maximum level reached.",
+        CommandRejection.MatchOver => "The match is over.",
+        CommandRejection.GamePaused => "The match is paused.",
+        _ => "This can't be done right now.",
     };
 
     public static string ResourceIconPath(ResourceType type) => type switch

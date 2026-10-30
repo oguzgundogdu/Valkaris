@@ -14,10 +14,15 @@ public partial class ResourceBar : PanelContainer
 
     private readonly Dictionary<ResourceType, Chip> _chips = new();
     private Label _clock = null!;
+    private Button _pause = null!;
+
+    public event Action? PauseRequested;
 
     public override void _Ready()
     {
         _clock = GetNode<Label>("%Clock");
+        _pause = GetNode<Button>("%Pause");
+        _pause.Pressed += () => PauseRequested?.Invoke();
 
         var chips = GetNode<HBoxContainer>("%Chips");
         foreach (var type in Enum.GetValues<ResourceType>())
@@ -56,12 +61,15 @@ public partial class ResourceBar : PanelContainer
 
         foreach (var (type, chip) in _chips)
         {
-            chip.Amount.Text = Format.Amount(village.Resources.Get(type));
+            var amount = village.Resources.Get(type);
+            chip.Amount.Text = Format.Amount(amount);
+            chip.Amount.AddThemeColorOverride("font_color", amount >= capacity ? UiContent.Warning : UiContent.Text);
             chip.Capacity.Text = $"/ {Format.Amount(capacity)}";
             chip.Rate.Text = Format.Rate(production.Get(type));
         }
 
         var remaining = session.State.Settings.MatchDurationSeconds - session.State.ElapsedTime;
         _clock.Text = Format.Time(remaining);
+        _pause.Visible = session.CanPause;
     }
 }

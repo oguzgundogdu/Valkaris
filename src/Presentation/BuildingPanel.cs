@@ -126,10 +126,6 @@ public partial class BuildingPanel : PanelContainer
         null or CommandRejection.MaxLevelReached => "",
         CommandRejection.InsufficientResources when option.CostExceedsCapacity =>
             "This costs more than your Warehouse can hold. Upgrade the Warehouse first.",
-        CommandRejection.InsufficientResources => "Not enough resources yet.",
-        CommandRejection.QueueFull => "The build queue is full.",
-        CommandRejection.MainBuildingLevelTooLow => "Upgrade the Main Building to go higher.",
-        CommandRejection.MatchOver => "The match is over.",
-        _ => "This can't be built right now.",
+        { } rejection => UiContent.RejectionText(rejection),
     };
 }

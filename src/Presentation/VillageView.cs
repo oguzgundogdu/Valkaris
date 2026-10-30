@@ -51,6 +51,8 @@ public partial class VillageView : Control
             tile.Refresh(village, now, building == selected);
     }
 
+    public void Pulse(BuildingType building) => _tiles[building].Pulse();
+
     private void PlaceTiles()
     {
         foreach (var (building, tile) in _tiles)

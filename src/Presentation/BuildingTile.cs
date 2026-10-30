@@ -56,6 +56,15 @@ public partial class BuildingTile : Button
             _progress.Value = (now - item!.StartTime) / (item.FinishTime - item.StartTime);
     }
 
+    /// <summary>A brief grow-and-settle when construction finishes.</summary>
+    public void Pulse()
+    {
+        PivotOffset = Size / 2;
+        var tween = CreateTween();
+        tween.TweenProperty(this, "scale", new Vector2(1.08f, 1.08f), 0.12);
+        tween.TweenProperty(this, "scale", Vector2.One, 0.18);
+    }
+
     private BuildQueueItem? FindQueued(Village village)
     {
         foreach (var item in village.BuildQueue)
