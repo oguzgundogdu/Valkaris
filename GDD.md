@@ -205,6 +205,7 @@ Players must be able to manage their villages from both views.
   total attack power vs. total defence power (+ wall bonus, + nation bonus).
 - Both sides lose troops proportionally to the outcome, using a Travian-style ratio formula with parameters in `combat.json`.
 - If the attacker wins a raid/attack, it loots resources up to its loot capacity.
+- Defenders keep a protected share of each resource that cannot be looted: a percentage of warehouse capacity, defined in `combat.json` (start: 20%).
 - **Raid:** lower casualties, loot only, no Catapult or Lord effects. **Attack:** full effects.
 - Catapults that survive reduce a building's level. The attacker selects the target building when sending; if none is selected, it is random.
 - Survivors return home (Return movement).
