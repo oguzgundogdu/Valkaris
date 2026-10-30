@@ -145,7 +145,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 **Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
 
-**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `--dev-idle-ai` makes opponents stand still, for scripted tests and scenarios. `DevScenario` sets up late-game states for play and for the UI test (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`).
+**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `--dev-idle-ai` makes opponents stand still, for scripted tests and scenarios. `DevScenario` sets up late-game states for play and for the UI test (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`, `scouting`).
 
 ---
 

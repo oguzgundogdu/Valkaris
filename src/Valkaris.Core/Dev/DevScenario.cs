@@ -16,6 +16,7 @@ public static class DevScenario
     public const string LastStand = "laststand";
     public const string Empire = "empire";
     public const string StrayReturn = "strayreturn";
+    public const string Scouting = "scouting";
 
     private const int Local = 1;
     private const int Rival = 2;
@@ -40,12 +41,33 @@ public static class DevScenario
             case StrayReturn:
                 ApplyStrayReturn(state);
                 return true;
+            case Scouting:
+                ApplyScouting(state, data);
+                return true;
             case Empire:
                 while (state.Villages.Values.Any(v => v.IsBarbarian))
                     Take(state, data, Local, 2);
                 return true;
             default:
                 return false;
+        }
+    }
+
+    /// <summary>A rival's garrison exactly at the limit for one scout, with both sides able to train more and scout each other.</summary>
+    private static void ApplyScouting(GameState state, GameData data)
+    {
+        var rival = state.Villages[Rival];
+        SetTroops(rival, (UnitType.Spearman, data.Combat.TroopsPerScout - 2), (UnitType.Cavalry, 2));
+        rival.SetBuildingLevel(BuildingType.Wall, 2);
+
+        var home = state.Villages[Local];
+        SetTroops(home, (UnitType.Spearman, 4));
+
+        foreach (var village in new[] { rival, home })
+        {
+            village.SetBuildingLevel(BuildingType.Barracks, 3);
+            village.SetBuildingLevel(BuildingType.Warehouse, 8);
+            village.Resources = new Resources(5000, 5000, 5000);
         }
     }
 

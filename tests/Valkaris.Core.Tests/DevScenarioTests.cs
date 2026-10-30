@@ -25,6 +25,7 @@ public class DevScenarioTests
     [InlineData(DevScenario.LastStand)]
     [InlineData(DevScenario.Empire)]
     [InlineData(DevScenario.StrayReturn)]
+    [InlineData(DevScenario.Scouting)]
     public void EveryScenarioGivesAValidState(string name)
     {
         var state = TestMatch.Create();

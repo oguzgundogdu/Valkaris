@@ -1506,9 +1506,17 @@ public partial class UiTest : Control
     private static void SelectGameTile(GameScreen game, BuildingType building) =>
         game.GetNode<VillageView>("%VillageView").GetNode<BuildingTile>(building.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
 
+    private async Task TrainAndWait(LocalGameSession session, int player, int spearmen)
+    {
+        Expect(session.SendAs(player, new TrainCommand(player, UnitType.Spearman, spearmen)).Success, "More Spearmen are ordered");
+        var village = session.State.Villages[player];
+        session.Tick(village.TrainingQueue[^1].FinishTime - session.State.ElapsedTime + 0.001);
+        await Frames();
+    }
+
     private async Task TestScouting(GameData data)
     {
-        var (game, session) = await StartMatch(data, null);
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Scouting, duration: 36000);
         var state = session.State;
         var send = game.GetNode<SendPanel>("%Send");
         var mission = send.GetNode<OptionButton>("%Mission");
@@ -1520,14 +1528,6 @@ public partial class UiTest : Control
         var home = state.Villages[1];
         var rival = state.Villages[2];
         var spearmen = send.GetNode<VBoxContainer>("%Units").GetNode(nameof(UnitType.Spearman));
-
-        foreach (var (unit, count) in rival.Troops.ToList())
-            rival.RemoveTroops(unit, count);
-        rival.AddTroops(UnitType.Spearman, data.Combat.TroopsPerScout);
-        rival.SetBuildingLevel(BuildingType.Wall, 2);
-        foreach (var (unit, count) in home.Troops.ToList())
-            home.RemoveTroops(unit, count);
-        home.AddTroops(UnitType.Spearman, 4);
 
         game.ShowTab(GameScreen.SideTab.Send);
         send.SetTarget(2);
@@ -1567,8 +1567,8 @@ public partial class UiTest : Control
         Press(dialog.GetNode<Button>("%Close"));
 
         // Scouts that are caught, seen from the side that sent them.
-        rival.AddTroops(UnitType.Spearman, 50);
-        Expect(session.Send(new SendTroopsCommand(1, 2, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 })).Success, "A second scout goes out");
+        await TrainAndWait(session, 2, 10);
+        Expect(session.SendAs(1, new SendTroopsCommand(1, 2, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 })).Success, "A second scout goes out");
         await RunUntilArrived(session);
         Expect(!state.ScoutReports[^1].Succeeded, "A large garrison catches the scouts");
         game.ShowTab(GameScreen.SideTab.Send);
@@ -1577,23 +1577,18 @@ public partial class UiTest : Control
         Expect(intel.Text.StartsWith("Scouts caught"), $"The form shows the failure, got '{intel.Text}'");
 
         // Both directions, seen from the side being scouted.
-        var theirs = state.Villages[2];
-        var ownBefore = home.TroopCount(UnitType.Spearman);
-        foreach (var (unit, count) in home.Troops.ToList())
-            home.RemoveTroops(unit, count);
-        theirs.AddTroops(UnitType.Cavalry, 2);
         Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 })).Success, "The rival sends a scout");
         await Frames();
         var incoming = state.Movements.Single(m => m.OwnerId == 2);
         Expect(!UiContent.IsVisibleMovement(session, incoming), "Incoming scouts are hidden");
-        Expect(!game.GetNode<Button>("%Incoming").Visible, "Incoming scouts raise no warning");
+        Expect(!FindAll<ResourceBar>(game).First().GetNode<Button>("%Incoming").Visible, "Incoming scouts raise no warning");
         Expect(world.GetNode<MovementLayer>("World/Movements").Entries.All(e => e.MovementId != incoming.Id), "Incoming scouts have no marker");
         var known = game.GetNode<ReportsPanel>("%Reports").UnreadCount(session);
         await RunUntilArrived(session);
-        Expect(state.ScoutReports[^1].Succeeded, "An empty village is scouted");
+        Expect(state.ScoutReports[^1].Succeeded, "A small garrison is scouted");
         Expect(reports.UnreadCount(session) == known, "A successful scout tells the defender nothing");
 
-        home.AddTroops(UnitType.Spearman, 50 + ownBefore);
+        await TrainAndWait(session, 1, 10);
         Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 })).Success, "The rival tries again");
         await RunUntilArrived(session);
         Expect(!state.ScoutReports[^1].Succeeded, "The garrison catches the rival's scout");
