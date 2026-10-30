@@ -60,6 +60,6 @@ public sealed class RaidPlanner
     }
 
     private bool RaidedRecently(KnownVillage village) =>
-        _memory.SightingOf(village.Id) is { } sighting
-        && (_view.Now - sighting.Time) * _view.GameSpeed < _view.Profile.RaidCooldownSeconds;
+        _memory.SightingOf(village.Id) is { LastBattleTime: { } fought }
+        && (_view.Now - fought) * _view.GameSpeed < _view.Profile.RaidCooldownSeconds;
 }

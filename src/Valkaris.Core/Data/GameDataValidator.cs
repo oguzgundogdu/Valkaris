@@ -419,6 +419,8 @@ internal static class GameDataValidator
             Error("beliefs.playerPowerAtStart", "must not be negative.");
         if (beliefs.PlayerPowerPerMinute < 0)
             Error("beliefs.playerPowerPerMinute", "must not be negative.");
+        if (beliefs.PowerPerTroop <= 0)
+            Error("beliefs.powerPerTroop", "must be positive.");
         if (beliefs.GrowthAfterSightingPerMinute < 0)
             Error("beliefs.growthAfterSightingPerMinute", "must not be negative.");
         if (beliefs.BarbarianLootRecoveryPerMinute < 0)

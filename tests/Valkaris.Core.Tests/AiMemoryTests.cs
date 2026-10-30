@@ -176,4 +176,135 @@ public class AiMemoryTests
 
         Assert.Same(first, _memory.SightingOf(Enemy));
     }
+
+    // Scout reports.
+
+    private void Scouted(int sender, int defender, int villageId, int? garrison, int wall = 0, double stock = 0, int scouts = 1)
+    {
+        var sent = new Dictionary<UnitType, int> { [UnitType.Cavalry] = scouts };
+        _state.AddScoutReport(new ScoutReport(
+            _reportId++,
+            _state.ElapsedTime,
+            sender,
+            defender,
+            2,
+            villageId,
+            sent,
+            garrison is not null,
+            garrison is { } count ? new Dictionary<UnitType, int> { [UnitType.Spearman] = count } : null,
+            garrison is null ? null : wall,
+            garrison is null ? null : new Resources(stock, 0, 0)));
+    }
+
+    [Fact]
+    public void AScoutReportSetsTheEstimate()
+    {
+        Scouted(Self, Enemy, Enemy, 10, wall: 2);
+        _memory.Update();
+
+        var expected = 10 * SpearDefence * (1 + TestData.Shipped.Combat.WallBonusPerLevel * 2);
+        Assert.Equal(expected, _memory.EstimateDefence(Known(Enemy)), 6);
+    }
+
+    [Fact]
+    public void ScoutingIsNotRememberedAsABattle()
+    {
+        Scouted(Self, Enemy, Enemy, 10);
+        _memory.Update();
+
+        Assert.Null(_memory.SightingOf(Enemy)!.LastBattleTime);
+    }
+
+    [Fact]
+    public void ScoutingKeepsWhatBattlesLearned()
+    {
+        Report(Self, Enemy, Enemy, 10, loyalty: new LoyaltyChange(100, 75, false));
+        _memory.Update();
+        var fought = _memory.SightingOf(Enemy)!.LastBattleTime;
+        _state.ElapsedTime += 60;
+
+        Scouted(Self, Enemy, Enemy, 4);
+        _memory.Update();
+
+        var sighting = _memory.SightingOf(Enemy)!;
+        Assert.Equal(75, sighting.Loyalty);
+        Assert.Equal(fought, sighting.LastBattleTime);
+        Assert.Equal(4, sighting.Remaining[UnitType.Spearman]);
+    }
+
+    [Fact]
+    public void AScoutedCampIsExpectedToRegrowToItsPeak()
+    {
+        var camp = _view.KnownVillages.First(v => v.IsBarbarian);
+        Report(Self, Village.BarbarianOwnerId, camp.Id, 20, killed: 15);
+        Scouted(Self, Village.BarbarianOwnerId, camp.Id, 5);
+        _memory.Update();
+
+        Assert.Equal(20 * SpearDefence, _memory.SightingOf(camp.Id)!.PeakDefence, 6);
+    }
+
+    [Fact]
+    public void ScoutedStockReplacesTheLootBelief()
+    {
+        var camp = _view.KnownVillages.First(v => v.IsBarbarian);
+        Scouted(Self, Village.BarbarianOwnerId, camp.Id, 5, stock: 40);
+        _memory.Update();
+
+        Assert.Equal(40, _memory.ExpectedBarbarianLoot(camp), 6);
+
+        _state.ElapsedTime += 60;
+        Assert.Equal(40 + TestData.Shipped.Ai.Beliefs.BarbarianLootRecoveryPerMinute, _memory.ExpectedBarbarianLoot(camp), 6);
+    }
+
+    [Fact]
+    public void ABattleMakesScoutedStockOutOfDate()
+    {
+        var camp = _view.KnownVillages.First(v => v.IsBarbarian);
+        Scouted(Self, Village.BarbarianOwnerId, camp.Id, 5, stock: 40);
+        Report(Self, Village.BarbarianOwnerId, camp.Id, 5, killed: 5, won: true);
+        _memory.Update();
+
+        Assert.Null(_memory.SightingOf(camp.Id)!.Stock);
+    }
+
+    [Fact]
+    public void CaughtScoutsSetAMinimumOnTheEstimate()
+    {
+        Scouted(Self, Enemy, Enemy, null, scouts: 100);
+        _memory.Update();
+
+        var beliefs = TestData.Shipped.Ai.Beliefs;
+        Assert.Equal(100 * TestData.Shipped.Combat.TroopsPerScout * beliefs.PowerPerTroop, _memory.EstimateDefence(Known(Enemy)), 6);
+    }
+
+    [Fact]
+    public void ASuccessfulScoutReplacesTheMinimum()
+    {
+        Scouted(Self, Enemy, Enemy, null, scouts: 100);
+        Scouted(Self, Enemy, Enemy, 2);
+        _memory.Update();
+
+        Assert.Null(_memory.CaughtAt(Known(Enemy)));
+        Assert.Equal(2 * SpearDefence, _memory.EstimateDefence(Known(Enemy)), 6);
+    }
+
+    [Fact]
+    public void TheMinimumEndsWhenTheVillageChangesHands()
+    {
+        Scouted(Self, Enemy, Enemy, null, scouts: 100);
+        _memory.Update();
+        _state.Villages[Enemy].OwnerId = 3;
+
+        Assert.Null(_memory.CaughtAt(Known(Enemy)));
+    }
+
+    [Fact]
+    public void ScoutsCaughtByThisPlayerTeachItNothing()
+    {
+        Scouted(Enemy, Self, Self, null);
+        _memory.Update();
+
+        Assert.Null(_memory.SightingOf(Self));
+        Assert.Null(_memory.CaughtAt(Known(Self)));
+    }
 }

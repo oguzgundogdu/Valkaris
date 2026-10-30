@@ -12,7 +12,17 @@ public sealed record Sighting(
     double? Loyalty,
     bool CapitalProtected,
     bool AttackWon,
-    double LootTaken);
+    double LootTaken)
+{
+    /// <summary>When it was last fought over. Scouting updates the sighting but is not a raid.</summary>
+    public double? LastBattleTime { get; init; }
+
+    /// <summary>The resources scouts counted, at the sighting's time. A battle makes this out of date.</summary>
+    public Resources? Stock { get; init; }
+}
+
+/// <summary>Scouts died here, so the garrison was larger than this. The defender's owner is kept, since a new owner changes everything.</summary>
+public sealed record CaughtScouts(int OwnerId, double Time, int Scouts, int MoreThanTroops);
 
 /// <summary>
 /// Everything the AI believes about other villages. It starts from beliefs in data, which stand for a player's
@@ -22,27 +32,75 @@ public sealed class AiMemory
 {
     private readonly AiView _view;
     private readonly Dictionary<int, Sighting> _sightings = new();
+    private readonly Dictionary<int, CaughtScouts> _caught = new();
     private int _lastReportId;
 
     public AiMemory(AiView view) => _view = view;
 
     public Sighting? SightingOf(int villageId) => _sightings.GetValueOrDefault(villageId);
 
+    /// <summary>The latest failure to scout this village under its current owner, unless something newer replaced it.</summary>
+    public CaughtScouts? CaughtAt(KnownVillage village) =>
+        _caught.TryGetValue(village.Id, out var caught) && caught.OwnerId == village.OwnerId ? caught : null;
+
     /// <summary>True once any report on a village still held by that owner said its capital was protected.</summary>
     public bool SawProtectedCapital => _sightings.Values.Any(s => s.CapitalProtected);
 
+    /// <summary>Report ids run in time order across both kinds, so the newest news is what stays.</summary>
     public void Update()
     {
-        foreach (var report in _view.ReportsSince(_lastReportId).ToList())
+        var reports = _view.ReportsSince(_lastReportId)
+            .Select(r => (r.Id, Learn: (Action)(() => Remember(r))))
+            .Concat(_view.ScoutReportsSince(_lastReportId).Select(r => (r.Id, Learn: (Action)(() => Remember(r)))))
+            .OrderBy(r => r.Id)
+            .ToList();
+
+        foreach (var report in reports)
         {
             _lastReportId = report.Id;
-            if (report.AttackerId == _view.PlayerId)
-                Remember(report);
+            report.Learn();
         }
+    }
+
+    private void Remember(ScoutReport report)
+    {
+        if (report.SenderId != _view.PlayerId)
+            return;
+
+        if (!report.Succeeded)
+        {
+            var scouts = report.Sent.Values.Sum();
+            _caught[report.TargetVillageId] = new CaughtScouts(report.DefenderId, report.Time, scouts, scouts * _view.Combat.TroopsPerScout);
+            return;
+        }
+
+        // Scouts see no loyalty or capital protection, and fight nothing, so what was known of those still stands.
+        var earlier = _sightings.GetValueOrDefault(report.TargetVillageId);
+        var known = earlier?.OwnerId == report.DefenderId ? earlier : null;
+        var defence = DefenceOf(report.Garrison!, report.WallLevel!.Value);
+
+        _caught.Remove(report.TargetVillageId);
+        _sightings[report.TargetVillageId] = new Sighting(
+            report.DefenderId,
+            report.Time,
+            report.Garrison!,
+            Math.Max(defence, known?.PeakDefence ?? 0),
+            report.WallLevel.Value,
+            known?.Loyalty,
+            known?.CapitalProtected ?? false,
+            known?.AttackWon ?? false,
+            known?.LootTaken ?? 0)
+        {
+            LastBattleTime = known?.LastBattleTime,
+            Stock = report.Stock,
+        };
     }
 
     private void Remember(BattleReport report)
     {
+        if (report.AttackerId != _view.PlayerId)
+            return;
+
         var remaining = report.DefenderPresent.ToDictionary(t => t.Key, t => t.Value - report.DefenderLost.GetValueOrDefault(t.Key));
 
         // A battle without a Lord says nothing about loyalty, so what was known still stands.
@@ -51,6 +109,7 @@ public sealed class AiMemory
         var loyalty = report.Loyalty?.To ?? (sameOwner ? earlier!.Loyalty : null);
         var isProtected = report.Loyalty is null && (report.CapitalProtected || (sameOwner && earlier!.CapitalProtected));
 
+        _caught.Remove(report.DefenderVillageId);
         _sightings[report.DefenderVillageId] = new Sighting(
             report.DefenderId,
             report.Time,
@@ -60,7 +119,10 @@ public sealed class AiMemory
             loyalty,
             isProtected,
             report.AttackerWon,
-            report.Loot.Wood + report.Loot.Stone + report.Loot.Food);
+            report.Loot.Wood + report.Loot.Stone + report.Loot.Food)
+        {
+            LastBattleTime = report.Time,
+        };
     }
 
     /// <summary>Defence power, taking the middle of defence against infantry and cavalry since the attacker's mix isn't known yet.</summary>
@@ -72,6 +134,12 @@ public sealed class AiMemory
 
     /// <summary>The defence the AI expects there now. Unwatched villages are assumed to keep growing.</summary>
     public double EstimateDefence(KnownVillage village)
+    {
+        var floor = CaughtAt(village) is { } caught ? caught.MoreThanTroops * _view.Config.Beliefs.PowerPerTroop : 0;
+        return Math.Max(floor, EstimateFromSightings(village));
+    }
+
+    private double EstimateFromSightings(KnownVillage village)
     {
         var beliefs = _view.Config.Beliefs;
         var elapsedMinutes = _view.Now * _view.GameSpeed / 60;
@@ -98,10 +166,13 @@ public sealed class AiMemory
     {
         var beliefs = _view.Config.Beliefs;
         var full = beliefs.BarbarianLootByTier[village.BarbarianTier!];
-        if (!_sightings.TryGetValue(village.Id, out var sighting) || !sighting.AttackWon)
+        if (!_sightings.TryGetValue(village.Id, out var sighting))
             return full;
 
         var minutes = (_view.Now - sighting.Time) * _view.GameSpeed / 60;
-        return Math.Min(full, beliefs.BarbarianLootRecoveryPerMinute * minutes);
+        if (sighting.Stock is { } stock)
+            return Math.Min(full, stock.Wood + stock.Stone + stock.Food + beliefs.BarbarianLootRecoveryPerMinute * minutes);
+
+        return sighting.AttackWon ? Math.Min(full, beliefs.BarbarianLootRecoveryPerMinute * minutes) : full;
     }
 }

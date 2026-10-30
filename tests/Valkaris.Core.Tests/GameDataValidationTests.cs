@@ -294,6 +294,9 @@ public class GameDataValidationTests
     public void NegativeBelief(string field) => AssertAiInvalid(r => r["beliefs"]![field] = -1, $"beliefs.{field}");
 
     [Fact]
+    public void PowerPerTroopNotPositive() => AssertAiInvalid(r => r["beliefs"]!["powerPerTroop"] = 0, "beliefs.powerPerTroop");
+
+    [Fact]
     public void MissingDifficulty() => AssertAiInvalid(r => r["difficulties"]!.AsObject().Remove("Hard"), "difficulties.Hard");
 
     [Theory]

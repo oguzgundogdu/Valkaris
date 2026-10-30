@@ -288,6 +288,9 @@ public sealed record AiBeliefs
     public required double PlayerPowerAtStart { get; init; }
     public required double PlayerPowerPerMinute { get; init; }
 
+    /// <summary>Defence one troop is assumed to bring, to turn power into a head count and back when scouting.</summary>
+    public required double PowerPerTroop { get; init; }
+
     /// <summary>How fast a sighted barbarian garrison is assumed to come back, as a share per minute. Players grow by PlayerPowerPerMinute.</summary>
     public required double GrowthAfterSightingPerMinute { get; init; }
 

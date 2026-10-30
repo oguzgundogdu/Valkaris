@@ -173,6 +173,7 @@
     },
     "playerPowerAtStart": 200,
     "playerPowerPerMinute": 15,
+    "powerPerTroop": 20,
     "growthAfterSightingPerMinute": 0.25,
     "barbarianLootRecoveryPerMinute": 60
   },

@@ -223,4 +223,40 @@ public class AiViewTests
         Assert.Equal(CommandRejection.NotOwner, _view.PreviewFound(1, new TileCoord(0, 0)).Rejection);
         Assert.Equal(CommandRejection.NotOwner, _view.PreviewSendResources(new SendResourcesCommand(1, 2, 1, 0, 0)).Rejection);
     }
+
+    private static ScoutReport Scouted(int id, int sender, int defender, bool succeeded)
+    {
+        var none = new Dictionary<UnitType, int>();
+        return new ScoutReport(id, 0, sender, defender, sender, defender, none, succeeded, succeeded ? none : null, succeeded ? 0 : null, succeeded ? Resources.Zero : null);
+    }
+
+    [Fact]
+    public void AnotherPlayersSuccessfulScoutingStaysHidden()
+    {
+        _state.AddScoutReport(Scouted(1, Other, Self, succeeded: true));
+        _state.AddScoutReport(Scouted(2, Other, 3, succeeded: true));
+        _state.AddScoutReport(Scouted(3, Other, 3, succeeded: false));
+
+        Assert.DoesNotContain(_view.ScoutReportsSince(0), _ => true);
+    }
+
+    [Fact]
+    public void OwnScoutingAndCaughtScoutsAreVisible()
+    {
+        _state.AddScoutReport(Scouted(1, Self, Other, succeeded: true));
+        _state.AddScoutReport(Scouted(2, Self, Other, succeeded: false));
+        _state.AddScoutReport(Scouted(3, Other, Self, succeeded: false));
+
+        Assert.Equal(new[] { 1, 2, 3 }, _view.ScoutReportsSince(0).Select(r => r.Id));
+        Assert.Equal(new[] { 3 }, _view.ScoutReportsSince(2).Select(r => r.Id));
+    }
+
+    [Fact]
+    public void IncomingScoutsAreNotListedAsIncoming()
+    {
+        _state.Villages[Other].AddTroops(UnitType.Cavalry, 1);
+        Assert.True(new CommandHandler(_state, TestData.Shipped).Handle(Other, new SendTroopsCommand(Other, Self, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 })).Success);
+
+        Assert.Empty(_view.Incoming);
+    }
 }
