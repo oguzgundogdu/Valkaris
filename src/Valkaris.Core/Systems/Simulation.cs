@@ -9,6 +9,7 @@ public sealed class Simulation
 {
     private readonly GameState _state;
     private readonly GameData _data;
+    private readonly List<GameEvent> _followUps = new();
 
     public Simulation(GameState state, GameData data)
     {
@@ -34,6 +35,8 @@ public sealed class Simulation
             MoveTimeTo(next.Time);
             if (Apply(next) is { } gameEvent)
                 events.Add(gameEvent);
+            events.AddRange(_followUps);
+            _followUps.Clear();
         }
 
         MoveTimeTo(end);
@@ -178,6 +181,8 @@ public sealed class Simulation
 
         var loot = Resources.Zero;
         CatapultDamage? damage = null;
+        LoyaltyChange? loyalty = null;
+        var capitalProtected = false;
         if (result.AttackerWon)
         {
             loot = LootRules.Calculate(_data, target, survivors);
@@ -185,6 +190,14 @@ public sealed class Simulation
 
             if (movement.Type == MovementType.Attack)
                 damage = ApplyCatapults(target, survivors.GetValueOrDefault(UnitType.Catapult), movement.CatapultTarget);
+
+            // After the catapults, so one wave can knock a capital's Main Building down to the threshold and use it.
+            if (movement.Type == MovementType.Attack && survivors.GetValueOrDefault(UnitType.Lord) > 0)
+            {
+                capitalProtected = LoyaltyRules.IsLocked(_state, _data, target);
+                if (!capitalProtected)
+                    loyalty = LowerLoyalty(target);
+            }
         }
 
         var report = new BattleReport(
@@ -204,16 +217,44 @@ public sealed class Simulation
             result.DefencePower,
             result.AttackerWon,
             loot,
-            damage);
+            damage,
+            loyalty,
+            capitalProtected);
         _state.AddReport(report);
 
         if (target.IsBarbarian)
             ScheduleTroopRegen(target, movement.ArrivalTime);
 
+        if (loyalty is { Captured: true })
+            Capture(target, movement.OwnerId, movement.ArrivalTime);
+
         var returning = survivors.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
         if (returning.Count > 0)
             StartReturn(movement.OwnerId, target.Id, null, movement.FromVillageId, returning, loot, movement.ArrivalTime);
         return new BattleResolved(movement.ArrivalTime, report.Id);
+    }
+
+    private LoyaltyChange LowerLoyalty(Village village)
+    {
+        var config = _data.Villages.Loyalty;
+        var drop = config.DropMin + _state.NextRandom(config.DropMax - config.DropMin + 1);
+        var from = village.Loyalty;
+        village.Loyalty = Math.Max(0, from - drop);
+        return new LoyaltyChange(from, village.Loyalty, village.Loyalty <= 0);
+    }
+
+    /// <summary>The garrison is already gone: only a won attack gets here. Stored resources and buildings stay.</summary>
+    private void Capture(Village village, int newOwnerId, double now)
+    {
+        var previousOwnerId = village.OwnerId;
+        village.OwnerId = newOwnerId;
+        village.Loyalty = _data.Villages.Loyalty.AfterCapture;
+        village.ClearQueues();
+        village.BarbarianTier = null;
+        village.NextTroopRegenTime = null;
+        _state.Players[newOwnerId].RecordCapture(village.Id);
+
+        _followUps.Add(new VillageCaptured(now, village.Id, previousOwnerId, newOwnerId));
     }
 
     private BarbarianTierConfig TierOf(Village village) => _data.Map.Barbarians.Tiers[village.BarbarianTier!.Value];
@@ -343,6 +384,8 @@ public sealed class Simulation
         var gameSeconds = seconds * _state.Settings.SpeedMultiplier;
         foreach (var village in _state.Villages.Values)
         {
+            village.Loyalty = Math.Min(Village.MaxLoyalty, village.Loyalty + LoyaltyRules.RegenPerSecond(_data, village) * gameSeconds);
+
             if (village.IsBarbarian)
             {
                 RegenerateResources(village, gameSeconds);
