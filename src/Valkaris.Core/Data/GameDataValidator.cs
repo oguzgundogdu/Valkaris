@@ -372,6 +372,12 @@ internal static class GameDataValidator
             Error("names", $"must have at least {game.MaxPlayers - 1} names.");
         if (config.WarehouseFullShare is <= 0 or > 1)
             Error("warehouseFullShare", "must be above 0 and at most 1.");
+        if (config.TrainingBatchMax < 1)
+            Error("trainingBatchMax", "must be at least 1.");
+        if (config.CavalryPerSwordsman < 0)
+            Error("cavalryPerSwordsman", "must not be negative.");
+        if (config.ReinforceShare is <= 0 or > 1)
+            Error("reinforceShare", "must be above 0 and at most 1.");
         if (config.BuildOrder.Count == 0)
             Error("buildOrder", "must not be empty.");
 

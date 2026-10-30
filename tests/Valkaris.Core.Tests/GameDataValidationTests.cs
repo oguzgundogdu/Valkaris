@@ -246,6 +246,15 @@ public class GameDataValidationTests
     public void WarehouseFullShareOutOfRange() => AssertAiInvalid(r => r["warehouseFullShare"] = 1.5, "warehouseFullShare");
 
     [Fact]
+    public void TrainingBatchBelowOne() => AssertAiInvalid(r => r["trainingBatchMax"] = 0, "trainingBatchMax");
+
+    [Fact]
+    public void NegativeCavalryRatio() => AssertAiInvalid(r => r["cavalryPerSwordsman"] = -1, "cavalryPerSwordsman");
+
+    [Fact]
+    public void ReinforceShareOutOfRange() => AssertAiInvalid(r => r["reinforceShare"] = 0, "reinforceShare");
+
+    [Fact]
     public void EmptyBuildOrder() => AssertAiInvalid(r => r["buildOrder"] = new JsonArray(), "buildOrder");
 
     [Fact]

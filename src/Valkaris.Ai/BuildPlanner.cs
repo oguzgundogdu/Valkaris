@@ -12,9 +12,9 @@ public sealed class BuildPlanner
     public BuildPlanner(AiView view) => _view = view;
 
     /// <summary>Queues what it can. Returns what is next wanted, so training can leave that much in stock.</summary>
-    public Resources Plan(Village village)
+    public Resources Plan(Village village, bool threatened = false)
     {
-        var wanted = Wanted(village).ToList();
+        var wanted = Wanted(village, threatened).ToList();
         foreach (var building in wanted)
         {
             var option = _view.PreviewBuild(village.Id, building);
@@ -33,8 +33,11 @@ public sealed class BuildPlanner
     }
 
     /// <summary>Most urgent first.</summary>
-    private IEnumerable<BuildingType> Wanted(Village village)
+    private IEnumerable<BuildingType> Wanted(Village village, bool threatened)
     {
+        if (threatened)
+            yield return BuildingType.Wall;
+
         var capacity = _view.CapacityOf(village);
         var full = capacity * _view.Config.WarehouseFullShare;
         if (village.Resources.Wood >= full || village.Resources.Stone >= full || village.Resources.Food >= full)

@@ -1,0 +1,191 @@
+using Valkaris.Core.Commands;
+using Valkaris.Core.Model;
+
+namespace Valkaris.Core.Tests;
+
+public class AiDefenceTests
+{
+    private const int Ai = 1;
+    private const int Attacker = 2;
+
+    private static AiMatch Match(AiDifficulty difficulty) =>
+        new(new[] { difficulty, AiDifficulty.Normal }, idle: new[] { Attacker });
+
+    private static void SendAttack(AiMatch match, int count = 5)
+    {
+        var enemy = match.State.Villages[Attacker];
+        enemy.AddTroops(UnitType.Swordsman, count);
+        var result = match.Session.SendAs(Attacker, new SendTroopsCommand(Attacker, Ai, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = count }));
+        Assert.True(result.Success);
+    }
+
+    private static Village Second(AiMatch match)
+    {
+        var camp = match.State.Villages.Values.Where(v => v.IsBarbarian).OrderBy(v => v.Id).First();
+        camp.OwnerId = Ai;
+        camp.BarbarianTier = null;
+        camp.NextTroopRegenTime = null;
+        foreach (var (unit, count) in camp.Troops.ToList())
+            camp.RemoveTroops(unit, count);
+        return camp;
+    }
+
+    private static int Trained(Village village, UnitType unit) =>
+        village.TroopCount(unit) + village.TrainingQueue.Where(q => q.Unit == unit).Sum(q => q.Count);
+
+    [Fact]
+    public void AnAiTrainsTroopsOnceItHasABarracks()
+    {
+        var match = Match(AiDifficulty.Normal);
+
+        match.Run(1200);
+
+        var village = match.State.Villages[Ai];
+        Assert.True(Trained(village, UnitType.Swordsman) + Trained(village, UnitType.Spearman) > 10);
+        Assert.Equal(0, match.RejectedCommands);
+    }
+
+    [Theory]
+    [InlineData(AiDifficulty.Easy)]
+    [InlineData(AiDifficulty.Normal)]
+    [InlineData(AiDifficulty.Hard)]
+    public void TheGarrisonShareFollowsTheProfile(AiDifficulty difficulty)
+    {
+        var match = Match(difficulty);
+        var village = match.State.Villages[Ai];
+        village.SetBuildingLevel(BuildingType.Barracks, 3);
+        village.SetBuildingLevel(BuildingType.Warehouse, 8);
+        foreach (var producer in new[] { BuildingType.Woodcutter, BuildingType.Quarry, BuildingType.Farm })
+            village.SetBuildingLevel(producer, 8);
+        match.Run(1800);
+
+        var spears = Trained(village, UnitType.Spearman);
+        var fighters = spears + Trained(village, UnitType.Swordsman) + Trained(village, UnitType.Cavalry);
+        var share = (double)spears / fighters;
+
+        Assert.InRange(share, match.Data.Ai.Difficulties[difficulty].GarrisonShare - 0.1, match.Data.Ai.Difficulties[difficulty].GarrisonShare + 0.15);
+    }
+
+    [Fact]
+    public void CavalryFollowsItsRatioOnceUnlocked()
+    {
+        var match = Match(AiDifficulty.Hard);
+        var village = match.State.Villages[Ai];
+        village.SetBuildingLevel(BuildingType.Barracks, 3);
+        village.SetBuildingLevel(BuildingType.Warehouse, 8);
+
+        match.Run(1800);
+
+        Assert.True(Trained(village, UnitType.Cavalry) > 0);
+    }
+
+    [Fact]
+    public void AnAttackMakesItTrainDefenders()
+    {
+        var match = Match(AiDifficulty.Normal);
+        var village = match.State.Villages[Ai];
+        village.SetBuildingLevel(BuildingType.Barracks, 3);
+        village.AddTroops(UnitType.Spearman, 200);
+        village.AddTroops(UnitType.Swordsman, 1);
+        village.Resources = new Resources(900, 900, 900);
+        SendAttack(match);
+
+        match.Session.Tick(20);
+
+        Assert.Contains(village.TrainingQueue, q => q.Unit == UnitType.Spearman);
+    }
+
+    [Fact]
+    public void AnAttackPutsTheWallFirst()
+    {
+        var match = Match(AiDifficulty.Normal);
+        var village = match.State.Villages[Ai];
+        village.Resources = new Resources(900, 900, 900);
+        SendAttack(match);
+
+        match.Session.Tick(20);
+
+        Assert.Equal(BuildingType.Wall, village.BuildQueue[0].Building);
+    }
+
+    [Fact]
+    public void TheNextBuildIsLeftAffordableWhenSafe()
+    {
+        var match = Match(AiDifficulty.Normal);
+        var village = match.State.Villages[Ai];
+        village.SetBuildingLevel(BuildingType.Barracks, 3);
+        village.SetBuildingLevel(BuildingType.Woodcutter, 9);
+        village.Resources = new Resources(10, 10, 10);
+
+        match.Session.Tick(20);
+
+        Assert.Empty(village.TrainingQueue);
+    }
+
+    [Fact]
+    public void AProfileThatReinforcesSendsHelpInTime()
+    {
+        var match = Match(AiDifficulty.Hard);
+        var second = Second(match);
+        second.AddTroops(UnitType.Cavalry, 40);
+        SendAttack(match);
+        var arrival = match.State.Movements.Single().ArrivalTime;
+
+        match.Session.Tick(20);
+
+        var help = match.State.Movements.Single(m => m.Type == MovementType.Reinforce);
+        Assert.Equal(Ai, help.ToVillageId);
+        Assert.Equal(20, help.Troops[UnitType.Cavalry]);
+        Assert.True(help.ArrivalTime < arrival);
+    }
+
+    [Fact]
+    public void AProfileThatDoesNotReinforceKeepsItsTroops()
+    {
+        var match = Match(AiDifficulty.Easy);
+        var second = Second(match);
+        second.AddTroops(UnitType.Cavalry, 40);
+        SendAttack(match);
+
+        match.Session.Tick(60);
+
+        Assert.DoesNotContain(match.State.Movements, m => m.Type == MovementType.Reinforce);
+    }
+
+    [Fact]
+    public void HelpThatWouldArriveTooLateStaysHome()
+    {
+        var match = Match(AiDifficulty.Hard);
+        var second = match.State.Villages.Values.Where(v => v.IsBarbarian)
+            .MaxBy(v => Valkaris.Core.Systems.UnitRules.Distance(v.Position, match.State.Villages[Ai].Position))!;
+        second.OwnerId = Ai;
+        second.BarbarianTier = null;
+        second.NextTroopRegenTime = null;
+        foreach (var (unit, count) in second.Troops.ToList())
+            second.RemoveTroops(unit, count);
+        second.AddTroops(UnitType.Spearman, 40);
+
+        // The attack is seconds away, so slow Spearmen can't beat it.
+        var cavalry = new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 };
+        match.State.Villages[Attacker].AddTroops(UnitType.Cavalry, 1);
+        var near = match.State.Villages.Values.Where(v => v.OwnerId == Attacker).First();
+        Assert.True(match.Session.SendAs(Attacker, new SendTroopsCommand(near.Id, Ai, MovementType.Attack, cavalry)).Success);
+
+        match.Session.Tick(20);
+
+        Assert.DoesNotContain(match.State.Movements, m => m.Type == MovementType.Reinforce);
+    }
+
+    [Fact]
+    public void OneAttackIsAnsweredOnce()
+    {
+        var match = Match(AiDifficulty.Hard);
+        var second = Second(match);
+        second.AddTroops(UnitType.Cavalry, 40);
+        SendAttack(match);
+
+        match.Session.Tick(60);
+
+        Assert.Equal(20, second.TroopCount(UnitType.Cavalry));
+    }
+}

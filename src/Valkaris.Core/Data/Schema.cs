@@ -234,6 +234,14 @@ public sealed record AiConfig
     /// <summary>Stock above this share of capacity makes the Warehouse the next build.</summary>
     public required double WarehouseFullShare { get; init; }
 
+    /// <summary>The largest batch trained at once, so one unit type doesn't take everything.</summary>
+    public required int TrainingBatchMax { get; init; }
+
+    public required double CavalryPerSwordsman { get; init; }
+
+    /// <summary>Share of a safe village's garrison sent to help another under attack.</summary>
+    public required double ReinforceShare { get; init; }
+
     public required IReadOnlyList<AiBuildStep> BuildOrder { get; init; }
     public required AiBeliefs Beliefs { get; init; }
     public required IReadOnlyDictionary<AiDifficulty, AiProfile> Difficulties { get; init; }

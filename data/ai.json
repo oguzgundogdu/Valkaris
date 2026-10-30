@@ -1,6 +1,9 @@
 {
   "names": ["Vargas", "Isolde", "Thane Orrik"],
   "warehouseFullShare": 0.85,
+  "trainingBatchMax": 10,
+  "cavalryPerSwordsman": 0.5,
+  "reinforceShare": 0.5,
   "buildOrder": [
     { "building": "Woodcutter", "level": 2 },
     { "building": "Quarry", "level": 2 },
