@@ -300,6 +300,9 @@ public class GameDataValidationTests
     public void ScoutRetryNegative() => AssertAiInvalid(r => r["scoutRetrySeconds"] = -1, "scoutRetrySeconds");
 
     [Fact]
+    public void ScoutedAllowanceBelowOne() => AssertAiInvalid(r => r["beliefs"]!["scoutedPlayerAllowance"] = 0.5, "beliefs.scoutedPlayerAllowance");
+
+    [Fact]
     public void PowerPerTroopNotPositive() => AssertAiInvalid(r => r["beliefs"]!["powerPerTroop"] = 0, "beliefs.powerPerTroop");
 
     [Fact]

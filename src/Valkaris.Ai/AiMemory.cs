@@ -150,6 +150,11 @@ public sealed class AiMemory
             var minutes = (_view.Now - sighting.Time) * _view.GameSpeed / 60;
             var remaining = DefenceOf(sighting.Remaining, sighting.WallLevel);
 
+            // Scouts count only who was home, and a player's army may be out.
+            if (!village.IsBarbarian && sighting.Stock is not null)
+                remaining *= beliefs.ScoutedPlayerAllowance;
+
+
             // A camp's garrison comes back to what it was. A player's grows with what they can train.
             return village.IsBarbarian
                 ? Math.Min(remaining + sighting.PeakDefence * beliefs.GrowthAfterSightingPerMinute * minutes, sighting.PeakDefence)

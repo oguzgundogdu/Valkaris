@@ -202,8 +202,18 @@ public class AiMemoryTests
         Scouted(Self, Enemy, Enemy, 10, wall: 2);
         _memory.Update();
 
-        var expected = 10 * SpearDefence * (1 + TestData.Shipped.Combat.WallBonusPerLevel * 2);
+        var expected = 10 * SpearDefence * (1 + TestData.Shipped.Combat.WallBonusPerLevel * 2) * TestData.Shipped.Ai.Beliefs.ScoutedPlayerAllowance;
         Assert.Equal(expected, _memory.EstimateDefence(Known(Enemy)), 6);
+    }
+
+    [Fact]
+    public void AScoutedCampGetsNoAllowanceForTroopsAway()
+    {
+        var camp = _view.KnownVillages.First(v => v.IsBarbarian);
+        Scouted(Self, Village.BarbarianOwnerId, camp.Id, 10);
+        _memory.Update();
+
+        Assert.Equal(10 * SpearDefence, _memory.EstimateDefence(camp), 6);
     }
 
     [Fact]
@@ -285,7 +295,7 @@ public class AiMemoryTests
         _memory.Update();
 
         Assert.Null(_memory.CaughtAt(Known(Enemy)));
-        Assert.Equal(2 * SpearDefence, _memory.EstimateDefence(Known(Enemy)), 6);
+        Assert.Equal(2 * SpearDefence * TestData.Shipped.Ai.Beliefs.ScoutedPlayerAllowance, _memory.EstimateDefence(Known(Enemy)), 6);
     }
 
     [Fact]

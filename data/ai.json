@@ -175,6 +175,7 @@
     "playerPowerAtStart": 200,
     "playerPowerPerMinute": 15,
     "powerPerTroop": 20,
+    "scoutedPlayerAllowance": 1.25,
     "growthAfterSightingPerMinute": 0.25,
     "barbarianLootRecoveryPerMinute": 60
   },

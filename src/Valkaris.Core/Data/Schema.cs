@@ -291,6 +291,9 @@ public sealed record AiBeliefs
     public required double PlayerPowerAtStart { get; init; }
     public required double PlayerPowerPerMinute { get; init; }
 
+    /// <summary>What a scouted player's defence is multiplied by, for troops that were away when the scouts came.</summary>
+    public required double ScoutedPlayerAllowance { get; init; }
+
     /// <summary>Defence one troop is assumed to bring, to turn power into a head count and back when scouting.</summary>
     public required double PowerPerTroop { get; init; }
 
