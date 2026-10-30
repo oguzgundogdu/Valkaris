@@ -11,6 +11,20 @@ public enum BuildingType
     Wall,
 }
 
+public enum UnitType
+{
+    Spearman,
+    Swordsman,
+    Cavalry,
+    Catapult,
+}
+
+public enum UnitClass
+{
+    Infantry,
+    Cavalry,
+}
+
 public enum ResourceType
 {
     Wood,

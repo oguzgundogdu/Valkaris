@@ -7,7 +7,9 @@ public sealed record GameConfig
 {
     public required Resources StartingResources { get; init; }
     public required IReadOnlyDictionary<BuildingType, int> StartingBuildings { get; init; }
+    public required IReadOnlyDictionary<UnitType, int> StartingTroops { get; init; }
     public required int MaxBuildQueueLength { get; init; }
+    public required int MaxTrainingQueueLength { get; init; }
     public required int MinPlayers { get; init; }
     public required int MaxPlayers { get; init; }
     public required IReadOnlyList<double> MatchDurationsMinutes { get; init; }
@@ -69,4 +71,41 @@ public sealed record CapacityDefinition
 
     public double ValueAt(int level) =>
         level <= 0 ? AtLevelZero : Math.Round(Base * Math.Pow(Growth, level - 1), MidpointRounding.AwayFromZero);
+}
+
+/// <summary>data/units.json</summary>
+public sealed record UnitsConfig
+{
+    /// <summary>Each Barracks level above 1 trains this much faster.</summary>
+    public required double TrainingSpeedBonusPerLevel { get; init; }
+
+    public required IReadOnlyDictionary<UnitType, UnitDefinition> Units { get; init; }
+}
+
+public sealed record UnitDefinition
+{
+    public required UnitClass Class { get; init; }
+    public required double Attack { get; init; }
+    public required double DefenceVsInfantry { get; init; }
+    public required double DefenceVsCavalry { get; init; }
+
+    /// <summary>Tiles per second at game speed 1.</summary>
+    public required double Speed { get; init; }
+
+    public required double LootCapacity { get; init; }
+    public required Resources Cost { get; init; }
+    public required double TrainingSeconds { get; init; }
+    public required int RequiredBarracksLevel { get; init; }
+}
+
+/// <summary>data/combat.json</summary>
+public sealed record CombatConfig
+{
+    public required double WallBonusPerLevel { get; init; }
+    public required double CasualtyExponent { get; init; }
+
+    /// <summary>Share of warehouse capacity, per resource, that cannot be looted.</summary>
+    public required double ProtectedResourceShare { get; init; }
+
+    public required int CatapultsPerLevelOfDamage { get; init; }
 }

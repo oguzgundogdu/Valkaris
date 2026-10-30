@@ -9,7 +9,9 @@
     "Barracks": 0,
     "Wall": 0
   },
+  "startingTroops": { "Spearman": 10 },
   "maxBuildQueueLength": 2,
+  "maxTrainingQueueLength": 2,
   "minPlayers": 2,
   "maxPlayers": 4,
   "matchDurationsMinutes": [20, 30, 45, 60],

@@ -5,11 +5,13 @@ namespace Valkaris.Core.Data;
 /// <summary>Checks values that parse correctly but would break the game. Reports every problem at once.</summary>
 internal static class GameDataValidator
 {
-    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings)
+    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat)
     {
         var errors = new List<string>();
         ValidateBuildings(buildings, errors);
         ValidateGame(game, buildings, errors);
+        ValidateUnits(units, buildings, errors);
+        ValidateCombat(combat, errors);
         return errors;
     }
 
@@ -117,8 +119,16 @@ internal static class GameDataValidator
                 Error("startingResources", $"must fit the starting warehouse capacity of {cap}.");
         }
 
+        foreach (var (type, count) in game.StartingTroops)
+        {
+            if (count < 0)
+                Error($"startingTroops.{type}", "must not be negative.");
+        }
+
         if (game.MaxBuildQueueLength < 1)
             Error("maxBuildQueueLength", "must be at least 1.");
+        if (game.MaxTrainingQueueLength < 1)
+            Error("maxTrainingQueueLength", "must be at least 1.");
 
         if (game.MinPlayers < 1)
             Error("minPlayers", "must be at least 1.");
@@ -137,5 +147,60 @@ internal static class GameDataValidator
             else if (definition.Width < 1 || definition.Height < 1)
                 Error($"mapSizes.{size}", "must have a positive width and height.");
         }
+    }
+
+    private static void ValidateUnits(UnitsConfig config, BuildingsConfig buildings, List<string> errors)
+    {
+        void Error(string field, string problem) => errors.Add($"{GameData.UnitsFile}: {field} {problem}");
+
+        if (config.TrainingSpeedBonusPerLevel < 0)
+            Error("trainingSpeedBonusPerLevel", "must not be negative.");
+
+        foreach (var type in Enum.GetValues<UnitType>())
+        {
+            if (!config.Units.ContainsKey(type))
+                Error($"units.{type}", "is missing.");
+        }
+
+        foreach (var (type, unit) in config.Units)
+        {
+            var path = $"units.{type}";
+
+            // Combat weighs defence by the attacker's composition, so attack must never total zero.
+            if (unit.Attack <= 0)
+                Error($"{path}.attack", "must be positive.");
+            if (unit.DefenceVsInfantry < 0)
+                Error($"{path}.defenceVsInfantry", "must not be negative.");
+            if (unit.DefenceVsCavalry < 0)
+                Error($"{path}.defenceVsCavalry", "must not be negative.");
+            if (unit.Speed <= 0)
+                Error($"{path}.speed", "must be positive.");
+            if (unit.LootCapacity < 0)
+                Error($"{path}.lootCapacity", "must not be negative.");
+            if (unit.Cost.Wood < 0 || unit.Cost.Stone < 0 || unit.Cost.Food < 0)
+                Error($"{path}.cost", "must not contain negative amounts.");
+            else if (unit.Cost.Wood + unit.Cost.Stone + unit.Cost.Food <= 0)
+                Error($"{path}.cost", "must be positive.");
+            if (unit.TrainingSeconds <= 0)
+                Error($"{path}.trainingSeconds", "must be positive.");
+
+            var barracksMax = buildings.Buildings.TryGetValue(BuildingType.Barracks, out var barracks) ? barracks.MaxLevel : int.MaxValue;
+            if (unit.RequiredBarracksLevel < 1 || unit.RequiredBarracksLevel > barracksMax)
+                Error($"{path}.requiredBarracksLevel", $"must be between 1 and {barracksMax}.");
+        }
+    }
+
+    private static void ValidateCombat(CombatConfig config, List<string> errors)
+    {
+        void Error(string field, string problem) => errors.Add($"{GameData.CombatFile}: {field} {problem}");
+
+        if (config.WallBonusPerLevel < 0)
+            Error("wallBonusPerLevel", "must not be negative.");
+        if (config.CasualtyExponent <= 0)
+            Error("casualtyExponent", "must be positive.");
+        if (config.ProtectedResourceShare is < 0 or > 1)
+            Error("protectedResourceShare", "must be between 0 and 1.");
+        if (config.CatapultsPerLevelOfDamage < 1)
+            Error("catapultsPerLevelOfDamage", "must be at least 1.");
     }
 }

@@ -69,4 +69,26 @@ public class GameDataLoadTests
 
         Assert.Contains(GameData.GameFile, ex.Message);
     }
+
+    [Fact]
+    public void LoadsUnitsAndCombat()
+    {
+        var spearman = TestData.Shipped.Units.Units[UnitType.Spearman];
+
+        Assert.Equal(UnitClass.Infantry, spearman.Class);
+        Assert.Equal(40, spearman.DefenceVsCavalry);
+        Assert.Equal(new Resources(30, 20, 60), spearman.Cost);
+        Assert.Equal(0.2, TestData.Shipped.Combat.ProtectedResourceShare);
+        Assert.Equal(10, TestData.Shipped.Game.StartingTroops[UnitType.Spearman]);
+    }
+
+    [Fact]
+    public void FoodIsTheLargestCostOfEveryUnit()
+    {
+        foreach (var (type, unit) in TestData.Shipped.Units.Units)
+        {
+            Assert.True(unit.Cost.Food > unit.Cost.Wood, $"{type} food vs wood");
+            Assert.True(unit.Cost.Food > unit.Cost.Stone, $"{type} food vs stone");
+        }
+    }
 }

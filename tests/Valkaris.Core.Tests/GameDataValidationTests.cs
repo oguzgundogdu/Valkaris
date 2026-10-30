@@ -108,6 +108,68 @@ public class GameDataValidationTests
     public void MissingMapSize() =>
         AssertGameInvalid(r => r["mapSizes"]!.AsObject().Remove("Medium"), "mapSizes.Medium");
 
+    private static void AssertUnitsInvalid(Action<JsonNode> mutate, string expectedField) =>
+        AssertInvalid(GameData.UnitsFile, mutate, expectedField);
+
+    private static void AssertCombatInvalid(Action<JsonNode> mutate, string expectedField) =>
+        AssertInvalid(GameData.CombatFile, mutate, expectedField);
+
+    [Fact]
+    public void NegativeStartingTroops() =>
+        AssertGameInvalid(r => r["startingTroops"]!["Spearman"] = -1, "startingTroops.Spearman");
+
+    [Fact]
+    public void TrainingQueueLengthBelowOne() =>
+        AssertGameInvalid(r => r["maxTrainingQueueLength"] = 0, "maxTrainingQueueLength");
+
+    [Fact]
+    public void NegativeTrainingBonus() =>
+        AssertUnitsInvalid(r => r["trainingSpeedBonusPerLevel"] = -0.1, "trainingSpeedBonusPerLevel");
+
+    [Fact]
+    public void MissingUnit() =>
+        AssertUnitsInvalid(r => r["units"]!.AsObject().Remove("Cavalry"), "units.Cavalry");
+
+    [Theory]
+    [InlineData("attack", 0)]
+    [InlineData("defenceVsInfantry", -1)]
+    [InlineData("defenceVsCavalry", -1)]
+    [InlineData("speed", 0)]
+    [InlineData("lootCapacity", -1)]
+    [InlineData("trainingSeconds", 0)]
+    [InlineData("requiredBarracksLevel", 0)]
+    [InlineData("requiredBarracksLevel", 99)]
+    public void InvalidUnitValue(string field, double value) =>
+        AssertUnitsInvalid(r => r["units"]!["Cavalry"]![field] = value, $"units.Cavalry.{field}");
+
+    [Fact]
+    public void NegativeUnitCost() =>
+        AssertUnitsInvalid(r => r["units"]!["Cavalry"]!["cost"]!["food"] = -1, "units.Cavalry.cost");
+
+    [Fact]
+    public void ZeroUnitCost() =>
+        AssertUnitsInvalid(
+            r => r["units"]!["Cavalry"]!["cost"] = new JsonObject { ["wood"] = 0, ["stone"] = 0, ["food"] = 0 },
+            "units.Cavalry.cost");
+
+    [Fact]
+    public void UnknownUnitClass()
+    {
+        var ex = Assert.Throws<GameDataException>(() =>
+            TestData.Mutated(GameData.UnitsFile, r => r["units"]!["Cavalry"]!["class"] = "Dragon"));
+
+        Assert.Contains(GameData.UnitsFile, ex.Message);
+    }
+
+    [Theory]
+    [InlineData("wallBonusPerLevel", -0.1)]
+    [InlineData("casualtyExponent", 0)]
+    [InlineData("protectedResourceShare", -0.1)]
+    [InlineData("protectedResourceShare", 1.1)]
+    [InlineData("catapultsPerLevelOfDamage", 0)]
+    public void InvalidCombatValue(string field, double value) =>
+        AssertCombatInvalid(r => r[field] = value, field);
+
     [Fact]
     public void AllProblemsAreReportedTogether()
     {

@@ -1,0 +1,6 @@
+{
+  "wallBonusPerLevel": 0.05,
+  "casualtyExponent": 1.5,
+  "protectedResourceShare": 0.2,
+  "catapultsPerLevelOfDamage": 10
+}
