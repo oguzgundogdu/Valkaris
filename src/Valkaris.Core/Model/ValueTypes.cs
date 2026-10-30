@@ -55,7 +55,8 @@ public sealed record Movement(
     double DepartureTime,
     double ArrivalTime,
     BuildingType? CatapultTarget,
-    TileCoord? TargetTile = null);
+    TileCoord? TargetTile = null,
+    TileCoord? FromTile = null);
 
 public sealed record LoyaltyChange(double From, double To, bool Captured);
 

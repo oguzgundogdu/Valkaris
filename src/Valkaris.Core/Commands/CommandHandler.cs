@@ -26,6 +26,7 @@ public sealed class CommandHandler
             BuildCommand build => HandleBuild(issuerId, build),
             TrainCommand train => HandleTrain(issuerId, train),
             SendTroopsCommand send => HandleSend(issuerId, send),
+            FoundVillageCommand found => HandleFound(issuerId, found),
             _ => CommandResult.Rejected(CommandRejection.UnknownCommand),
         };
     }
@@ -86,6 +87,29 @@ public sealed class CommandHandler
             _state.ElapsedTime,
             option.ArrivalTime,
             command.CatapultTarget));
+
+        return CommandResult.Ok;
+    }
+
+    private CommandResult HandleFound(int issuerId, FoundVillageCommand command)
+    {
+        var option = FoundPreview.Evaluate(_state, _data, issuerId, command.FromVillageId, command.Tile);
+        if (option.Rejection is { } rejection)
+            return CommandResult.Rejected(rejection);
+
+        _state.Villages[command.FromVillageId].RemoveTroops(UnitType.Settler, 1);
+        _state.AddMovement(new Movement(
+            _state.NextMovementId++,
+            issuerId,
+            command.FromVillageId,
+            null,
+            MovementType.Settle,
+            FoundPreview.OneSettler,
+            Resources.Zero,
+            _state.ElapsedTime,
+            option.ArrivalTime,
+            null,
+            command.Tile));
 
         return CommandResult.Ok;
     }

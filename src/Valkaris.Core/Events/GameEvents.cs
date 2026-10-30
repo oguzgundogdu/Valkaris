@@ -1,3 +1,4 @@
+using Valkaris.Core.Commands;
 using Valkaris.Core.Model;
 
 namespace Valkaris.Core.Events;
@@ -14,3 +15,8 @@ public sealed record TroopsReturned(double Time, int VillageId, Resources Loot) 
 public sealed record ReinforcementsArrived(double Time, int VillageId) : GameEvent(Time);
 
 public sealed record BattleResolved(double Time, int ReportId) : GameEvent(Time);
+
+public sealed record VillageFounded(double Time, int VillageId) : GameEvent(Time);
+
+/// <summary>The tile or the limit no longer allowed it, so the Settler is walking home.</summary>
+public sealed record SettlingFailed(double Time, int OwnerId, CommandRejection Reason) : GameEvent(Time);

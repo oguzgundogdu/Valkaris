@@ -24,6 +24,9 @@ public sealed record SendTroopsCommand(
     IReadOnlyDictionary<UnitType, int> Troops,
     BuildingType? CatapultTarget = null) : ICommand;
 
+/// <summary>Sends one Settler to found a village on an empty tile.</summary>
+public sealed record FoundVillageCommand(int FromVillageId, TileCoord Tile) : ICommand;
+
 public enum CommandRejection
 {
     UnknownCommand,
@@ -41,6 +44,15 @@ public enum CommandRejection
     NoTroopsSelected,
     NotEnoughTroops,
     CatapultsCannotRaid,
+    SettlersCannotFight,
+    LordsCannotRaid,
+    NoSettlerHere,
+    TileOutsideMap,
+    TileIsWater,
+    TileTaken,
+    TooCloseToVillage,
+    VillageLimitReached,
+    NoCapital,
 }
 
 public sealed record CommandResult(CommandRejection? Rejection)

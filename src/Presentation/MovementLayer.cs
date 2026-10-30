@@ -40,7 +40,9 @@ public partial class MovementLayer : Control
         var now = session.State.ElapsedTime;
         foreach (var movement in session.State.Movements.Where(m => UiContent.IsVisibleMovement(session, m)))
         {
-            var from = WorldMapView.VillageWorldPosition(session.State.Villages[movement.FromVillageId]);
+            var from = movement.FromTile is { } fromTile
+                ? WorldMapView.TileWorldPosition(fromTile)
+                : WorldMapView.VillageWorldPosition(session.State.Villages[movement.FromVillageId]);
             var to = movement.ToVillageId is { } target
                 ? WorldMapView.VillageWorldPosition(session.State.Villages[target])
                 : WorldMapView.TileWorldPosition(movement.TargetTile!.Value);

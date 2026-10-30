@@ -54,6 +54,11 @@ public static class SendPreview
         if (command.Troops.Any(t => t.Value > from.TroopCount(t.Key)))
             return CommandRejection.NotEnoughTroops;
 
+        if (command.Type is MovementType.Attack or MovementType.Raid && command.Troops.GetValueOrDefault(UnitType.Settler) > 0)
+            return CommandRejection.SettlersCannotFight;
+        if (command.Type == MovementType.Raid && command.Troops.GetValueOrDefault(UnitType.Lord) > 0)
+            return CommandRejection.LordsCannotRaid;
+
         var catapults = command.Troops.GetValueOrDefault(UnitType.Catapult);
         if (command.Type == MovementType.Raid && catapults > 0)
             return CommandRejection.CatapultsCannotRaid;

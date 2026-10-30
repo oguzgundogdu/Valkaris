@@ -111,8 +111,55 @@ public sealed class Simulation
             case MovementType.Reinforce:
                 AddTroops(_state.Villages[movement.ToVillageId!.Value], movement.Troops);
                 return new ReinforcementsArrived(movement.ArrivalTime, movement.ToVillageId!.Value);
+            case MovementType.Settle:
+                return CompleteSettle(movement);
             default:
                 return ResolveBattle(movement);
+        }
+    }
+
+    private GameEvent CompleteSettle(Movement movement)
+    {
+        var tile = movement.TargetTile!.Value;
+        var problem = FoundPreview.TileRejection(_state, _data, tile) ?? FoundPreview.LimitRejection(_state, _data, movement.OwnerId);
+        if (problem is { } reason)
+        {
+            StartReturn(movement.OwnerId, movement.FromVillageId, tile, movement.FromVillageId, movement.Troops, Resources.Zero, movement.ArrivalTime);
+            return new SettlingFailed(movement.ArrivalTime, movement.OwnerId, reason);
+        }
+
+        var founded = _data.Game.FoundedVillage;
+        var village = new Village(_state.Villages.Keys.Max() + 1, movement.OwnerId, tile)
+        {
+            Name = NextFoundedName(),
+            Resources = founded.Resources,
+        };
+        foreach (var (type, level) in founded.Buildings)
+            village.SetBuildingLevel(type, level);
+        foreach (var (unit, count) in founded.Troops)
+            village.AddTroops(unit, count);
+
+        _state.AddVillage(village);
+        _state.Map.TileAt(tile).VillageId = village.Id;
+        return new VillageFounded(movement.ArrivalTime, village.Id);
+    }
+
+    /// <summary>A random unused name. If the list runs out, names repeat with a number.</summary>
+    private string NextFoundedName()
+    {
+        var names = _data.Map.FoundedVillageNames;
+        var taken = _state.Villages.Values.Select(v => v.Name).ToHashSet();
+        var free = names.Where(name => !taken.Contains(name)).ToList();
+        if (free.Count > 0)
+            return free[_state.NextRandom(free.Count)];
+
+        var round = 2;
+        while (true)
+        {
+            var numbered = names.Select(name => $"{name} {round}").Where(name => !taken.Contains(name)).ToList();
+            if (numbered.Count > 0)
+                return numbered[_state.NextRandom(numbered.Count)];
+            round++;
         }
     }
 
@@ -163,7 +210,9 @@ public sealed class Simulation
         if (target.IsBarbarian)
             ScheduleTroopRegen(target, movement.ArrivalTime);
 
-        SendHome(movement, survivors.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value), loot);
+        var returning = survivors.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
+        if (returning.Count > 0)
+            StartReturn(movement.OwnerId, target.Id, null, movement.FromVillageId, returning, loot, movement.ArrivalTime);
         return new BattleResolved(movement.ArrivalTime, report.Id);
     }
 
@@ -245,27 +294,32 @@ public sealed class Simulation
             village.AddTroops(unit, count);
     }
 
-    /// <summary>Starts the trip home from where the movement arrived. The survivors set the pace.</summary>
-    private void SendHome(Movement movement, IReadOnlyDictionary<UnitType, int> survivors, Resources loot)
+    /// <summary>Starts a trip home. The survivors set the pace.</summary>
+    private void StartReturn(
+        int ownerId,
+        int fromVillageId,
+        TileCoord? fromTile,
+        int homeVillageId,
+        IReadOnlyDictionary<UnitType, int> troops,
+        Resources loot,
+        double now)
     {
-        if (survivors.Values.All(count => count == 0))
-            return;
-
-        var from = _state.Villages[movement.ToVillageId!.Value];
-        var home = _state.Villages[movement.FromVillageId];
-        var duration = UnitRules.TravelSeconds(_data, _state, from.Position, home.Position, survivors);
+        var from = fromTile ?? _state.Villages[fromVillageId].Position;
+        var duration = UnitRules.TravelSeconds(_data, _state, from, _state.Villages[homeVillageId].Position, troops);
 
         _state.AddMovement(new Movement(
             _state.NextMovementId++,
-            movement.OwnerId,
-            movement.ToVillageId!.Value,
-            movement.FromVillageId,
+            ownerId,
+            fromVillageId,
+            homeVillageId,
             MovementType.Return,
-            survivors,
+            troops,
             loot,
-            movement.ArrivalTime,
-            movement.ArrivalTime + duration,
-            null));
+            now,
+            now + duration,
+            null,
+            null,
+            fromTile));
     }
 
     private static TroopsTrained CompleteTraining(Village village)
