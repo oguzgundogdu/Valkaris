@@ -75,11 +75,14 @@ public partial class BuildingPanel : PanelContainer
         _level.Text = level == 0 ? "Not built" : $"Level {level}";
         _description.Text = info.Description;
 
-        var effect = EffectText(session, building, level, option.TargetLevel, atMax);
+        // A rejection such as "match over" comes with no target level at all.
+        var hasNext = !atMax && option.TargetLevel > 0;
+
+        var effect = EffectText(session, building, level, option.TargetLevel, hasNext);
         _effect.Text = effect;
         _effect.Visible = effect.Length > 0;
 
-        _costSection.Visible = !atMax && option.TargetLevel > 0;
+        _costSection.Visible = hasNext;
         foreach (var (type, label) in _costs)
         {
             label.Text = Format.Amount(option.Cost.Get(type));
@@ -89,22 +92,23 @@ public partial class BuildingPanel : PanelContainer
         _time.Text = Format.Time(option.DurationSeconds);
 
         _upgrade.Disabled = !option.CanBuild;
-        _upgrade.Text = atMax
-            ? "Max level"
-            : option.TargetLevel == 1 ? "Build" : $"Upgrade to level {option.TargetLevel}";
+        _upgrade.Text = atMax ? "Max level"
+            : !hasNext ? "Unavailable"
+            : option.TargetLevel == 1 ? "Build"
+            : $"Upgrade to level {option.TargetLevel}";
 
         var reason = ReasonText(option);
         _reason.Text = reason;
         _reason.Visible = reason.Length > 0;
     }
 
-    private static string EffectText(IGameSession session, BuildingType building, int level, int nextLevel, bool atMax)
+    private static string EffectText(IGameSession session, BuildingType building, int level, int nextLevel, bool hasNext)
     {
         var data = session.Data;
         var definition = data.Buildings.Buildings[building];
 
         string Compare(Func<int, string> describe) =>
-            atMax ? $"Now {describe(level)}" : $"Now {describe(level)}   →   Level {nextLevel}: {describe(nextLevel)}";
+            hasNext ? $"Now {describe(level)}   →   Level {nextLevel}: {describe(nextLevel)}" : $"Now {describe(level)}";
 
         if (definition.Production is { } production)
         {

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using Valkaris.Core.Commands;
+using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
 using Valkaris.Core.Systems;
 
@@ -54,6 +55,10 @@ public partial class UiTest : Control
         var game = Find<GameScreen>();
         var session = game.Session;
         var village = session.State.Villages[1];
+
+        var dev = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
+        Expect(session.State.Settings.MatchDurationSeconds == (dev.DurationSeconds ?? session.Data.Game.MatchDurationsMinutes[0] * 60), "Match duration follows the start screen or dev argument");
+        Expect(session.State.Settings.SpeedMultiplier == (dev.Speed ?? session.Data.Game.SpeedMultipliers[0]), "Game speed follows the start screen or dev argument");
         var panel = Find<BuildingPanel>();
         var upgrade = panel.GetNode<Button>("%Upgrade");
 
@@ -232,6 +237,12 @@ public partial class UiTest : Control
         await Frames();
         var overlay = game.GetNode<Overlay>("%MatchOverOverlay");
         Expect(overlay.Visible, "Match end shows the overlay");
+
+        SelectTile(BuildingType.Woodcutter);
+        await Frames();
+        var panel = game.GetNode<BuildingPanel>("%BuildingPanel");
+        Expect(panel.GetNode<Button>("%Upgrade").Text == "Unavailable", "A finished match offers no upgrade");
+        Expect(!panel.GetNode<Label>("%Effect").Text.Contains("Level 0"), "A finished match shows no next level");
         await Shot("match-over");
 
         game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
@@ -244,6 +255,86 @@ public partial class UiTest : Control
         var fresh = Find<GameScreen>().Session;
         Expect(!ReferenceEquals(fresh, session), "Starting again creates a new session");
         Expect(fresh.State.ElapsedTime < 1 && !fresh.State.IsMatchOver, "The new match starts fresh");
+
+        await TestLevelLimits();
+    }
+
+    /// <summary>Plays a very fast real match through commands to reach the states near the level limits.</summary>
+    private async Task TestLevelLimits()
+    {
+        var data = Find<GameScreen>().Session.Data;
+        _main.QueueFree();
+        await Frames();
+
+        var settings = new GameSettings(1_000_000, 1000, MapSize.Small);
+        var slots = new[] { new PlayerSlot("You", Nation.Valdren, false), new PlayerSlot("Rival", Nation.Karuk, true) };
+        var session = new LocalGameSession(GameFactory.CreateMatch(settings, slots, data), data, 1);
+        var game = GD.Load<PackedScene>("res://scenes/Game.tscn").Instantiate<GameScreen>();
+        game.Init(session);
+        AddChild(game);
+        await Frames();
+
+        var village = session.State.Villages[1];
+        var view = game.GetNode<VillageView>("%VillageView");
+        var panel = game.GetNode<BuildingPanel>("%BuildingPanel");
+        var upgrade = panel.GetNode<Button>("%Upgrade");
+        var reason = panel.GetNode<Label>("%Reason");
+
+        void UpgradeTo(BuildingType building, int level)
+        {
+            for (var guard = 0; village.BuildingLevel(building) < level && guard < 50; guard++)
+            {
+                session.Send(new BuildCommand(village.Id, building));
+                session.Tick(60);
+            }
+            Expect(village.BuildingLevel(building) == level, $"{building} reaches level {level}");
+        }
+
+        async Task Select(BuildingType building)
+        {
+            view.GetNode<BuildingTile>(building.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
+            await Frames();
+        }
+
+        // Level 8 costs more stone than a level 1 Warehouse holds, however long the player saves.
+        UpgradeTo(BuildingType.MainBuilding, 7);
+        UpgradeTo(BuildingType.Woodcutter, 7);
+        session.Tick(60);
+        await Select(BuildingType.Woodcutter);
+        Expect(upgrade.Disabled && reason.Text.Contains("Warehouse"), $"Unaffordable cost points to the Warehouse, got '{reason.Text}'");
+        await Shot("warehouse-hint");
+
+        // With storage out of the way, the Main Building table blocks the next level until it grows.
+        var limit = BuildingRules.MaxOtherBuildingLevel(data, village.BuildingLevel(BuildingType.MainBuilding));
+        UpgradeTo(BuildingType.Warehouse, limit);
+        UpgradeTo(BuildingType.Quarry, limit);
+        session.Tick(60);
+        await Select(BuildingType.Quarry);
+        Expect(reason.Text == "Upgrade the Main Building to go higher.", $"Main Building limit is explained, got '{reason.Text}'");
+
+        // Upgrades queued up to the max level, in a full queue, must not break the panel.
+        UpgradeTo(BuildingType.MainBuilding, 8);
+        session.Tick(60);
+        session.Send(new BuildCommand(village.Id, BuildingType.MainBuilding));
+        session.Send(new BuildCommand(village.Id, BuildingType.MainBuilding));
+        await Select(BuildingType.MainBuilding);
+        Expect(upgrade.Text == "Max level" && upgrade.Disabled, $"Queued to max shows max level, got '{upgrade.Text}'");
+
+        session.Tick(60);
+        await Frames();
+        Expect(village.BuildingLevel(BuildingType.MainBuilding) == 10, "Main Building reaches max level");
+        Expect(upgrade.Text == "Max level" && upgrade.Disabled && !reason.Visible, "Max level needs no reason text");
+        await Shot("max-level");
+
+        if (_shotsDir is not null && DisplayServer.GetName() != "headless")
+        {
+            DisplayServer.WindowSetSize(new Vector2I(1920, 800));
+            await Frames(10);
+            await Shot("wide");
+            DisplayServer.WindowSetSize(new Vector2I(1024, 768));
+            await Frames(10);
+            await Shot("tall");
+        }
     }
 
     private void SelectTile(BuildingType building) =>
