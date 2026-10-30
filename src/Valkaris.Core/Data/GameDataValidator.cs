@@ -433,6 +433,8 @@ internal static class GameDataValidator
             var path = $"difficulties.{level}";
             if (profile.DecisionSeconds <= 0)
                 Error($"{path}.decisionSeconds", "must be positive.");
+            if (profile.FightersPerMinute < 0)
+                Error($"{path}.fightersPerMinute", "must not be negative.");
             if (profile.RaidMargin < 1)
                 Error($"{path}.raidMargin", "must be at least 1.");
             if (profile.AttackMargin < 1)

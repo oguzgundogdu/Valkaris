@@ -297,6 +297,9 @@ public sealed record AiProfile
     /// <summary>Seconds at game speed 1 between decisions.</summary>
     public required double DecisionSeconds { get; init; }
 
+    /// <summary>The army it wants by now, in fighters per minute of game time. Behind this, troops come before buildings.</summary>
+    public required double FightersPerMinute { get; init; }
+
     public required double RaidMargin { get; init; }
     public required double AttackMargin { get; init; }
     public required double LordMargin { get; init; }

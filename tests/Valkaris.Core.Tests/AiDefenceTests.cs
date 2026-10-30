@@ -101,7 +101,7 @@ public class AiDefenceTests
         village.Resources = new Resources(900, 900, 900);
         SendAttack(match);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.Contains(village.TrainingQueue, q => q.Unit == UnitType.Spearman);
     }
@@ -114,7 +114,7 @@ public class AiDefenceTests
         village.Resources = new Resources(900, 900, 900);
         SendAttack(match);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.Equal(BuildingType.Wall, village.BuildQueue[0].Building);
     }
@@ -128,7 +128,7 @@ public class AiDefenceTests
         village.SetBuildingLevel(BuildingType.Woodcutter, 9);
         village.Resources = new Resources(10, 10, 10);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.Empty(village.TrainingQueue);
     }
@@ -142,7 +142,7 @@ public class AiDefenceTests
         SendAttack(match);
         var arrival = match.State.Movements.Single().ArrivalTime;
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         var help = match.State.Movements.Single(m => m.Type == MovementType.Reinforce);
         Assert.Equal(Ai, help.ToVillageId);
@@ -182,7 +182,7 @@ public class AiDefenceTests
         var near = match.State.Villages.Values.Where(v => v.OwnerId == Attacker).First();
         Assert.True(match.Session.SendAs(Attacker, new SendTroopsCommand(near.Id, Ai, MovementType.Attack, cavalry)).Success);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.DoesNotContain(match.State.Movements, m => m.Type == MovementType.Reinforce);
     }

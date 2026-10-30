@@ -42,7 +42,7 @@ public class AiRaidTests
         var match = Match();
         match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 1);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.Null(FirstRaid(match));
     }
@@ -55,7 +55,7 @@ public class AiRaidTests
         village.RemoveTroops(UnitType.Spearman, village.TroopCount(UnitType.Spearman));
         village.AddTroops(UnitType.Spearman, 100);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         var share = match.Data.Ai.Difficulties[AiDifficulty.Normal].GarrisonShare;
         Assert.True(village.TroopCount(UnitType.Spearman) >= 100 * share);
@@ -127,7 +127,7 @@ public class AiRaidTests
         match.State.Villages[2].AddTroops(UnitType.Spearman, 1);
         Assert.True(match.Session.SendAs(2, new SendTroopsCommand(2, Ai, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 })).Success);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.Null(FirstRaid(match));
     }

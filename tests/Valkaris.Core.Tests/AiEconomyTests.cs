@@ -1,3 +1,4 @@
+using Valkaris.Ai;
 using Valkaris.Core.Model;
 using Valkaris.Core.Systems;
 
@@ -41,7 +42,7 @@ public class AiEconomyTests
         var village = match.State.Villages[1];
         village.Resources = new Resources(950, 950, 950);
 
-        match.Run(20);
+        new BuildPlanner(match.Views[1]).Plan(village);
 
         Assert.Contains(village.BuildQueue, q => q.Building == BuildingType.Warehouse);
     }
@@ -66,8 +67,7 @@ public class AiEconomyTests
     [Fact]
     public void ASavingAiWaitsForTheNextStep()
     {
-        // At its first decision it can afford a Quarry upgrade but not the Woodcutter upgrade that comes first.
-        var village = RunToFirstDecision(AiDifficulty.Normal, startingStone: 60);
+        var village = PlanWithLittleStone(AiDifficulty.Normal);
 
         Assert.Empty(village.BuildQueue);
     }
@@ -75,18 +75,19 @@ public class AiEconomyTests
     [Fact]
     public void ASpenderBuysTheNextThingItCanAfford()
     {
-        var village = RunToFirstDecision(AiDifficulty.Easy, startingStone: 30);
+        var village = PlanWithLittleStone(AiDifficulty.Easy);
 
         Assert.Equal(BuildingType.Quarry, Assert.Single(village.BuildQueue).Building);
     }
 
-    private static Village RunToFirstDecision(AiDifficulty difficulty, double startingStone)
+    /// <summary>One planning pass, with enough to afford a Quarry upgrade but not the Woodcutter upgrade that comes first.</summary>
+    private static Village PlanWithLittleStone(AiDifficulty difficulty)
     {
         var match = Match(difficulty);
         var village = match.State.Villages[1];
-        village.Resources = new Resources(200, startingStone, 100);
+        village.Resources = new Resources(200, 60, 100);
 
-        match.Session.Tick(match.Data.Ai.Difficulties[difficulty].DecisionSeconds * 8 / 7 + 0.1);
+        new BuildPlanner(match.Views[1]).Plan(village);
 
         return village;
     }

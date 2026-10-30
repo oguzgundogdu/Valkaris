@@ -15,6 +15,13 @@ public sealed class TrainingPlanner
         _memory = memory;
     }
 
+    /// <summary>True while the army is smaller than the profile wants by now, across all villages.</summary>
+    public bool IsBehind()
+    {
+        var wanted = _view.Profile.FightersPerMinute * _view.Now * _view.GameSpeed / 60;
+        return _view.OwnVillages.Sum(v => Count(v, null)) < wanted;
+    }
+
     /// <summary>Trains one batch. It leaves what the next build needs, unless the village is under attack.</summary>
     public void Plan(Village village, bool threatened, Resources saving)
     {
@@ -52,6 +59,10 @@ public sealed class TrainingPlanner
             }
         }
     }
+
+    /// <summary>True while this village is saving for a Lord or Settler, which should come before further buildings.</summary>
+    public bool IsSavingForGoal(Village village) =>
+        _view.Profile.SavesForGoals && SpecialWanted(village) is UnitType.Lord or UnitType.Settler;
 
     /// <summary>A unit trained one at a time for a purpose, rather than as part of the army's ratios.</summary>
     private UnitType? SpecialWanted(Village village)

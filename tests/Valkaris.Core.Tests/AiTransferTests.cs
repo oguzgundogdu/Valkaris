@@ -56,7 +56,7 @@ public class AiTransferTests
         home.SetBuildingLevel(BuildingType.MainBuilding, 1);
         home.Resources = new Resources(100, 100, 100);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.DoesNotContain(match.State.Movements, m => m.Type == MovementType.Transfer);
         Assert.Equal(0, match.RejectedCommands);
@@ -67,7 +67,7 @@ public class AiTransferTests
     {
         var (match, home, _) = Setup(marketplace: 0);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.Contains(home.BuildQueue, q => q.Building == BuildingType.Marketplace);
     }
@@ -78,7 +78,7 @@ public class AiTransferTests
         var match = new AiMatch(new[] { AiDifficulty.Hard, AiDifficulty.Normal }, idle: new[] { 2 });
         match.State.Villages[Ai].Resources = new Resources(900, 900, 900);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.DoesNotContain(match.State.Villages[Ai].BuildQueue, q => q.Building == BuildingType.Marketplace);
     }
@@ -89,7 +89,7 @@ public class AiTransferTests
         var (match, home, _) = Setup();
         home.Resources = new Resources(100, 100, 100);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.DoesNotContain(match.State.Movements, m => m.Type == MovementType.Transfer);
     }
@@ -111,7 +111,7 @@ public class AiTransferTests
     {
         var (match, _, camp) = Setup();
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
         match.Session.Tick(10);
 
         Assert.True(match.State.Movements.Count(m => m.Type == MovementType.Transfer && m.ToVillageId == camp.Id) <= 1);
@@ -124,7 +124,7 @@ public class AiTransferTests
         match.State.Villages[2].AddTroops(UnitType.Spearman, 1);
         Assert.True(match.Session.SendAs(2, new Valkaris.Core.Commands.SendTroopsCommand(2, camp.Id, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 })).Success);
 
-        match.Session.Tick(20);
+        match.Session.Tick(31);
 
         Assert.DoesNotContain(match.State.Movements, m => m.Type == MovementType.Transfer);
     }

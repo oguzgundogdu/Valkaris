@@ -1,0 +1,18 @@
+namespace Valkaris.Ai;
+
+/// <summary>A seeded generator of the AI's own, so it never disturbs the match's random numbers. SplitMix64.</summary>
+public sealed class AiRandom
+{
+    private ulong _state;
+
+    public AiRandom(ulong seed, int playerId) => _state = seed ^ ((ulong)playerId * 0x9E3779B97F4A7C15UL);
+
+    public double NextDouble()
+    {
+        _state += 0x9E3779B97F4A7C15UL;
+        var z = _state;
+        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+        z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+        return (z ^ (z >> 31)) / (double)ulong.MaxValue;
+    }
+}

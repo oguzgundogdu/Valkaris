@@ -1,5 +1,6 @@
 using Valkaris.Core.Events;
 using Valkaris.Core.Hosting;
+using Valkaris.Core.Model;
 
 namespace Valkaris.Ai;
 
@@ -30,8 +31,8 @@ public sealed class AiPlayer : IMatchAgent
         _transfers = new TransferPlanner(view, _builds);
         _interval = view.Profile.DecisionSeconds / view.GameSpeed;
 
-        // Staggered by player, so opponents don't all think at the same moment.
-        NextDecisionTime = _interval * (1 + view.PlayerId % 7 / 7.0);
+        // A random first decision from the match seed: a fixed order would always put one seat slightly ahead.
+        NextDecisionTime = _interval * (1 + new AiRandom(view.Seed, view.PlayerId).NextDouble());
     }
 
     public double NextDecisionTime { get; private set; }
@@ -52,8 +53,20 @@ public sealed class AiPlayer : IMatchAgent
         foreach (var village in _view.OwnVillages)
         {
             var threatened = _defence.IsThreatened(village);
-            var saving = _builds.Plan(village, threatened);
-            _training.Plan(village, threatened, saving);
+            if (!threatened && _training.IsSavingForGoal(village))
+            {
+                _training.Plan(village, threatened, Resources.Zero);
+            }
+            else if (threatened || _training.IsBehind())
+            {
+                _training.Plan(village, threatened, Resources.Zero);
+                _builds.Plan(village, threatened);
+            }
+            else
+            {
+                _training.Plan(village, threatened, _builds.Plan(village, threatened));
+            }
+
             _expansion.Found(village);
             if (!threatened)
             {

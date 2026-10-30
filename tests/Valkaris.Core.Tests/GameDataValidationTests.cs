@@ -297,6 +297,7 @@ public class GameDataValidationTests
 
     [Theory]
     [InlineData("decisionSeconds", 0)]
+    [InlineData("fightersPerMinute", -1)]
     [InlineData("raidMargin", 0.5)]
     [InlineData("attackMargin", 0.5)]
     [InlineData("lordMargin", 0.5)]

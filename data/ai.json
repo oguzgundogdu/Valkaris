@@ -1,5 +1,9 @@
 {
-  "names": ["Vargas", "Isolde", "Thane Orrik"],
+  "names": [
+    "Vargas",
+    "Isolde",
+    "Thane Orrik"
+  ],
   "warehouseFullShare": 0.85,
   "trainingBatchMax": 10,
   "cavalryPerSwordsman": 0.5,
@@ -13,51 +17,172 @@
   "catapultsWanted": 10,
   "fightersBeforeSaving": 20,
   "buildOrder": [
-    { "building": "Woodcutter", "level": 2 },
-    { "building": "Quarry", "level": 2 },
-    { "building": "Farm", "level": 2 },
-    { "building": "MainBuilding", "level": 2 },
-    { "building": "Barracks", "level": 1 },
-    { "building": "Farm", "level": 3 },
-    { "building": "Woodcutter", "level": 3 },
-    { "building": "Quarry", "level": 3 },
-    { "building": "Warehouse", "level": 2 },
-    { "building": "MainBuilding", "level": 3 },
-    { "building": "Barracks", "level": 3 },
-    { "building": "Wall", "level": 1 },
-    { "building": "Farm", "level": 4 },
-    { "building": "Woodcutter", "level": 4 },
-    { "building": "Quarry", "level": 4 },
-    { "building": "MainBuilding", "level": 4 },
-    { "building": "Warehouse", "level": 3 },
-    { "building": "Barracks", "level": 5 },
-    { "building": "Wall", "level": 3 },
-    { "building": "Farm", "level": 6 },
-    { "building": "Woodcutter", "level": 6 },
-    { "building": "Quarry", "level": 6 },
-    { "building": "MainBuilding", "level": 6 },
-    { "building": "Warehouse", "level": 5 },
-    { "building": "Wall", "level": 5 },
-    { "building": "Farm", "level": 8 },
-    { "building": "Woodcutter", "level": 8 },
-    { "building": "Quarry", "level": 8 },
-    { "building": "MainBuilding", "level": 8 },
-    { "building": "Warehouse", "level": 7 }
+    {
+      "building": "Woodcutter",
+      "level": 2
+    },
+    {
+      "building": "Quarry",
+      "level": 2
+    },
+    {
+      "building": "Farm",
+      "level": 2
+    },
+    {
+      "building": "MainBuilding",
+      "level": 2
+    },
+    {
+      "building": "Barracks",
+      "level": 1
+    },
+    {
+      "building": "Barracks",
+      "level": 2
+    },
+    {
+      "building": "Farm",
+      "level": 3
+    },
+    {
+      "building": "Woodcutter",
+      "level": 3
+    },
+    {
+      "building": "Quarry",
+      "level": 3
+    },
+    {
+      "building": "Barracks",
+      "level": 3
+    },
+    {
+      "building": "MainBuilding",
+      "level": 3
+    },
+    {
+      "building": "MainBuilding",
+      "level": 4
+    },
+    {
+      "building": "Barracks",
+      "level": 4
+    },
+    {
+      "building": "Barracks",
+      "level": 5
+    },
+    {
+      "building": "Farm",
+      "level": 4
+    },
+    {
+      "building": "Woodcutter",
+      "level": 4
+    },
+    {
+      "building": "Quarry",
+      "level": 4
+    },
+    {
+      "building": "Wall",
+      "level": 1
+    },
+    {
+      "building": "Warehouse",
+      "level": 2
+    },
+    {
+      "building": "Farm",
+      "level": 5
+    },
+    {
+      "building": "Woodcutter",
+      "level": 5
+    },
+    {
+      "building": "Quarry",
+      "level": 5
+    },
+    {
+      "building": "MainBuilding",
+      "level": 5
+    },
+    {
+      "building": "Wall",
+      "level": 3
+    },
+    {
+      "building": "Warehouse",
+      "level": 3
+    },
+    {
+      "building": "Farm",
+      "level": 6
+    },
+    {
+      "building": "Woodcutter",
+      "level": 6
+    },
+    {
+      "building": "Quarry",
+      "level": 6
+    },
+    {
+      "building": "MainBuilding",
+      "level": 6
+    },
+    {
+      "building": "Wall",
+      "level": 5
+    },
+    {
+      "building": "Warehouse",
+      "level": 5
+    },
+    {
+      "building": "Farm",
+      "level": 8
+    },
+    {
+      "building": "Woodcutter",
+      "level": 8
+    },
+    {
+      "building": "Quarry",
+      "level": 8
+    },
+    {
+      "building": "MainBuilding",
+      "level": 8
+    },
+    {
+      "building": "Warehouse",
+      "level": 7
+    }
   ],
   "beliefs": {
-    "barbarianPowerByTier": { "Camp": 200, "Stronghold": 1200 },
-    "barbarianLootByTier": { "Camp": 300, "Stronghold": 600 },
-    "playerPowerAtStart": 300,
-    "playerPowerPerMinute": 60,
+    "barbarianPowerByTier": {
+      "Camp": 160,
+      "Stronghold": 1000
+    },
+    "barbarianLootByTier": {
+      "Camp": 300,
+      "Stronghold": 600
+    },
+    "playerPowerAtStart": 250,
+    "playerPowerPerMinute": 10,
     "growthAfterSightingPerMinute": 0.25,
     "barbarianLootRecoveryPerMinute": 60
   },
   "difficulties": {
     "Easy": {
       "decisionSeconds": 30,
-      "raidMargin": 2.0,
-      "attackMargin": 2.0,
-      "lordMargin": 3.0,
+      "fightersPerMinute": 0.4,
+      "raidMargin": 1.4,
+      "attackMargin": 1.4,
+      "lordMargin": 2.5,
       "aggressionDelaySeconds": 900,
       "garrisonShare": 0.5,
       "maxRaidsPerVillage": 1,
@@ -69,29 +194,31 @@
     },
     "Normal": {
       "decisionSeconds": 15,
-      "raidMargin": 1.6,
+      "fightersPerMinute": 0.8,
+      "raidMargin": 1.7,
       "attackMargin": 1.6,
       "lordMargin": 2.5,
       "aggressionDelaySeconds": 600,
       "garrisonShare": 0.4,
       "maxRaidsPerVillage": 2,
       "raidCooldownSeconds": 180,
-      "wantedVillages": 4,
-      "expansionDelaySeconds": 480,
+      "wantedVillages": 3,
+      "expansionDelaySeconds": 720,
       "reinforces": true,
       "savesForGoals": true
     },
     "Hard": {
       "decisionSeconds": 8,
-      "raidMargin": 1.35,
-      "attackMargin": 1.4,
-      "lordMargin": 2.0,
-      "aggressionDelaySeconds": 360,
+      "fightersPerMinute": 0.7,
+      "raidMargin": 1.7,
+      "attackMargin": 1.5,
+      "lordMargin": 2.5,
+      "aggressionDelaySeconds": 420,
       "garrisonShare": 0.35,
       "maxRaidsPerVillage": 3,
       "raidCooldownSeconds": 120,
-      "wantedVillages": 6,
-      "expansionDelaySeconds": 300,
+      "wantedVillages": 3,
+      "expansionDelaySeconds": 600,
       "reinforces": true,
       "savesForGoals": true
     }
