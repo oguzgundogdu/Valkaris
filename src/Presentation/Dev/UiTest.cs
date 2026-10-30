@@ -507,6 +507,57 @@ public partial class UiTest : Control
         await Frames();
     }
 
+    private async Task TestCrowdedMediumMap(GameData data)
+    {
+        foreach (var child in GetChildren().OfType<GameScreen>())
+            child.QueueFree();
+        await Frames();
+
+        var settings = new GameSettings(TestDuration, 1, MapSize.Medium, 11);
+        var slots = new[] { new PlayerSlot("You", Nation.Valdren, false), new PlayerSlot("Rival", Nation.Karuk, true) };
+        var session = new LocalGameSession(GameFactory.CreateMatch(settings, slots, data), data, 1);
+        var game = GD.Load<PackedScene>("res://scenes/Game.tscn").Instantiate<GameScreen>();
+        game.Init(session);
+        AddChild(game);
+        await Frames();
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        game.ShowView(GameScreen.MainView.World);
+        GD.Print($"[uitest] first map open on a medium map took {watch.ElapsedMilliseconds} ms");
+
+        var own = session.State.Villages[1];
+        var targets = session.State.Villages.Values.Where(v => v.IsBarbarian).ToList();
+        foreach (var target in targets.Take(8))
+            session.Send(new SendTroopsCommand(1, target.Id, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 }));
+        session.Tick(20);
+        await Frames();
+
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var layer = world.GetNode<MovementLayer>("World/Movements");
+        Expect(layer.Entries.Count == 8, $"Every movement is drawn, got {layer.Entries.Count}");
+        await Shot("map-crowded");
+
+        if (_shotsDir is not null && DisplayServer.GetName() != "headless")
+        {
+            DisplayServer.WindowSetSize(new Vector2I(1920, 800));
+            await Frames(10);
+            await Shot("map-crowded-wide");
+            DisplayServer.WindowSetSize(new Vector2I(1280, 720));
+            await Frames(10);
+        }
+
+        var at = world.WorldToView(WorldMapView.VillageWorldPosition(targets[^1]));
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at });
+        world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at });
+        await Frames();
+        var popup = world.GetNode<VillagePopup>("Popup");
+        Expect(popup.Visible && new Rect2(Vector2.Zero, world.Size).Encloses(popup.GetRect()), "The popup stays inside the view on a medium map");
+
+        session.Tick(TestDuration);
+        await Frames();
+        await Shot("map-match-over");
+    }
+
     private async Task TestLeaveMatch()
     {
         var game = Find<GameScreen>();
@@ -999,6 +1050,7 @@ public partial class UiTest : Control
         game.QueueFree();
         await Frames();
         await TestBeingAttacked(data);
+        await TestCrowdedMediumMap(data);
     }
 
     private void SelectTile(BuildingType building) =>
@@ -1035,6 +1087,8 @@ public partial class UiTest : Control
         if (_shotsDir is null || DisplayServer.GetName() == "headless")
             return;
 
+        // Let view fades finish, so the picture shows the settled screen.
+        await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
         await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
         GetViewport().GetTexture().GetImage().SavePng($"{_shotsDir}/{name}.png");
     }
