@@ -277,6 +277,60 @@ public class AiMemoryTests
         Assert.Null(_memory.SightingOf(camp.Id)!.Stock);
     }
 
+    private void ScoutedRoughly(int troopsLow, int troopsHigh, int wallLow, int wallHigh) =>
+        _state.AddScoutReport(new ScoutReport(
+            _reportId++, _state.ElapsedTime, Self, Enemy, 2, Enemy,
+            new Dictionary<UnitType, int> { [UnitType.Scout] = 1 }, true, null, null, null,
+            Quality: ScoutQuality.Narrow, TroopRange: new ValueRange(troopsLow, troopsHigh), WallRange: new ValueRange(wallLow, wallHigh)));
+
+    [Fact]
+    public void ARangeIsPlannedAgainstItsUpperEnd()
+    {
+        ScoutedRoughly(20, 40, 2, 3);
+        _memory.Update();
+
+        var data = TestData.Shipped;
+        var expected = 40 * data.Ai.Beliefs.PowerPerTroop * (1 + data.Combat.WallBonusPerLevel * 3) * data.Ai.Beliefs.ScoutedPlayerAllowance;
+        Assert.Equal(expected, _memory.EstimateDefence(Known(Enemy)), 6);
+    }
+
+    [Fact]
+    public void ARangeClearsAFailureAndGivesNoStock()
+    {
+        Scouted(Self, Enemy, Enemy, null, scouts: 5);
+        ScoutedRoughly(0, 4, 0, 1);
+        _memory.Update();
+
+        Assert.Null(_memory.CaughtAt(Known(Enemy)));
+        Assert.Null(_memory.SightingOf(Enemy)!.Stock);
+    }
+
+    [Fact]
+    public void AnExactReportReplacesARange()
+    {
+        ScoutedRoughly(20, 40, 2, 3);
+        Scouted(Self, Enemy, Enemy, 2);
+        _memory.Update();
+
+        Assert.Equal(2 * SpearDefence * TestData.Shipped.Ai.Beliefs.ScoutedPlayerAllowance, _memory.EstimateDefence(Known(Enemy)), 6);
+    }
+
+    [Fact]
+    public void AnOverwhelmingReportGivesLoyaltyAndTheWatchtower()
+    {
+        _state.AddScoutReport(new ScoutReport(
+            _reportId++, _state.ElapsedTime, Self, Enemy, 2, Enemy,
+            new Dictionary<UnitType, int> { [UnitType.Scout] = 1 }, true,
+            new Dictionary<UnitType, int>(), 0, Resources.Zero,
+            Quality: ScoutQuality.Overwhelming,
+            Buildings: new Dictionary<BuildingType, int> { [BuildingType.Watchtower] = 3 },
+            Loyalty: 60));
+        _memory.Update();
+
+        Assert.Equal(60, _memory.SightingOf(Enemy)!.Loyalty);
+        Assert.Equal(3, _memory.SightingOf(Enemy)!.WatchtowerLevel);
+    }
+
     [Fact]
     public void CaughtScoutsSayNothingAboutTheGarrison()
     {

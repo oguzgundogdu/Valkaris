@@ -87,6 +87,28 @@ public class AiWarTests
         Assert.True(power >= seen * profile.AttackMargin, $"power {power}, seen {seen}");
     }
 
+    [Theory]
+    [InlineData(100, false)]
+    [InlineData(60, true)]
+    public void OnlyFallingLoyaltySeenByScoutsIsACaptureUnderWay(double loyalty, bool expected)
+    {
+        var match = Match();
+        var view = match.Views[Ai];
+        var memory = new AiMemory(view);
+        match.State.AddScoutReport(new ScoutReport(
+            1000, 0, Ai, Enemy, Ai, Enemy,
+            new Dictionary<UnitType, int> { [UnitType.Scout] = 1 }, true,
+            new Dictionary<UnitType, int>(), 0, Resources.Zero,
+            Quality: ScoutQuality.Overwhelming,
+            Buildings: new Dictionary<BuildingType, int>(),
+            Loyalty: loyalty));
+        memory.Update();
+
+        var war = new WarPlanner(view, memory, new RivalPlanner(view, memory));
+
+        Assert.Equal(expected, war.CaptureUnderWay(view.KnownVillages.First(v => v.Id == Enemy)));
+    }
+
     [Fact]
     public void LordsStayHomeWithoutTheirMargin()
     {

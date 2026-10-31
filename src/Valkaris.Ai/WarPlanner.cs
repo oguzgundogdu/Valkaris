@@ -153,8 +153,8 @@ public sealed class WarPlanner
     }
 
     /// <summary>Finish what was started: a target whose loyalty is already falling comes first.</summary>
-    private bool CaptureUnderWay(KnownVillage target) =>
-        _memory.SightingOf(target.Id) is { Loyalty: not null } sighting && sighting.OwnerId == target.OwnerId;
+    public bool CaptureUnderWay(KnownVillage target) =>
+        _memory.SightingOf(target.Id) is { Loyalty: < Village.MaxLoyalty } sighting && sighting.OwnerId == target.OwnerId;
 
     private bool Attack(Village village, KnownVillage target, Dictionary<UnitType, int> spare)
     {

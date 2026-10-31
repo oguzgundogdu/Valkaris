@@ -19,6 +19,15 @@ public sealed record Sighting(
 
     /// <summary>The resources scouts counted, at the sighting's time. A battle makes this out of date.</summary>
     public Resources? Stock { get; init; }
+
+    /// <summary>Scouts saw this, so a player's army may have been out.</summary>
+    public bool FromScouts { get; init; }
+
+    /// <summary>A rough look gives only ranges, so this stands for the defence at their upper ends.</summary>
+    public double? DefenceCeiling { get; init; }
+
+    /// <summary>The Watchtower level, once scouts have seen the buildings.</summary>
+    public int? WatchtowerLevel { get; init; }
 }
 
 /// <summary>Scouts died here, so its counter-scouting is strong. The defender's owner is kept, since a new owner changes everything.</summary>
@@ -92,32 +101,31 @@ public sealed class AiMemory
             return;
         }
 
-        // Ranges aren't used yet.
-        if (report.Garrison is null)
-        {
-            _caught.Remove(report.TargetVillageId);
-            return;
-        }
-
         // Scouts see no capital protection, and fight nothing, so what was known of that still stands.
         var earlier = _sightings.GetValueOrDefault(report.TargetVillageId);
         var known = earlier?.OwnerId == report.DefenderId ? earlier : null;
-        var defence = DefenceOf(report.Garrison!, report.WallLevel!.Value);
+        var ceiling = report.TroopRange is { } troops
+            ? troops.High * _view.Config.Beliefs.PowerPerTroop * (1 + _view.Combat.WallBonusPerLevel * report.WallRange!.High)
+            : (double?)null;
+        var defence = ceiling ?? DefenceOf(report.Garrison!, report.WallLevel!.Value);
 
         _caught.Remove(report.TargetVillageId);
         _sightings[report.TargetVillageId] = new Sighting(
             report.DefenderId,
             report.Time,
-            report.Garrison!,
+            report.Garrison ?? new Dictionary<UnitType, int>(),
             Math.Max(defence, known?.PeakDefence ?? 0),
-            report.WallLevel.Value,
-            known?.Loyalty,
+            report.WallLevel ?? report.WallRange!.High,
+            report.Loyalty ?? known?.Loyalty,
             known?.CapitalProtected ?? false,
             known?.AttackWon ?? false,
             known?.LootTaken ?? 0)
         {
             LastBattleTime = known?.LastBattleTime,
             Stock = report.Stock,
+            FromScouts = true,
+            DefenceCeiling = ceiling,
+            WatchtowerLevel = report.Buildings?.GetValueOrDefault(BuildingType.Watchtower) ?? known?.WatchtowerLevel,
         };
     }
 
@@ -168,12 +176,11 @@ public sealed class AiMemory
         if (_sightings.TryGetValue(village.Id, out var sighting) && sighting.OwnerId == village.OwnerId)
         {
             var minutes = (_view.Now - sighting.Time) * _view.GameSpeed / 60;
-            var remaining = DefenceOf(sighting.Remaining, sighting.WallLevel);
+            var remaining = sighting.DefenceCeiling ?? DefenceOf(sighting.Remaining, sighting.WallLevel);
 
             // Scouts count only who was home, and a player's army may be out.
-            if (!village.IsBarbarian && sighting.Stock is not null)
+            if (!village.IsBarbarian && sighting.FromScouts)
                 remaining *= beliefs.ScoutedPlayerAllowance;
-
 
             // A camp's garrison comes back to what it was. A player's grows with what they can train.
             if (village.IsAbandoned)
