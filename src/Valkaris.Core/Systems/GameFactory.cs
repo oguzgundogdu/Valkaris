@@ -3,7 +3,7 @@ using Valkaris.Core.Model;
 
 namespace Valkaris.Core.Systems;
 
-public sealed record PlayerSlot(string Name, Nation Nation, bool IsAi, AiDifficulty? Difficulty = null);
+public sealed record PlayerSlot(string Name, Nation Nation, bool IsAi, AiDifficulty? Difficulty = null, string? VillageName = null);
 
 public static class GameFactory
 {
@@ -23,6 +23,7 @@ public static class GameFactory
 
         MapGenerator.GenerateTerrain(state, data);
         var names = MapGenerator.Shuffled(state, data.Map.PlayerVillageNames);
+        var chosen = new List<string>();
 
         for (var i = 0; i < slots.Count; i++)
         {
@@ -33,6 +34,13 @@ public static class GameFactory
 
             var village = CreateStartingVillage(state, id, player.Id, MapGenerator.PlayerStart(state, data, i), data);
             village.Name = names[i];
+            if (slot.VillageName is { Length: > 0 } name)
+            {
+                if (VillageNameRules.Rejection(data, chosen, name) is { } rejection)
+                    throw new ArgumentException($"Village name '{name}' is not allowed: {rejection}.", nameof(slots));
+                village.Name = VillageNameRules.Clean(name);
+                chosen.Add(village.Name);
+            }
             state.AddVillage(village);
         }
 

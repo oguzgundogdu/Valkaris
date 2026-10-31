@@ -1,3 +1,4 @@
+using Valkaris.Core.Systems;
 using Valkaris.Core.Model;
 
 namespace Valkaris.Core.Data;
@@ -164,6 +165,11 @@ internal static class GameDataValidator
 
         if (founded.Troops.Values.Any(count => count < 0))
             Error("foundedVillage.troops", "must not contain negative counts.");
+
+        if (game.VillageNames.MinLength < 1)
+            Error("villageNames.minLength", "must be at least 1.");
+        if (game.VillageNames.MaxLength < game.VillageNames.MinLength)
+            Error("villageNames.maxLength", "must not be below minLength.");
 
         if (game.MaxBuildQueueLength < 1)
             Error("maxBuildQueueLength", "must be at least 1.");
@@ -336,6 +342,12 @@ internal static class GameDataValidator
         var mostBarbarians = config.BarbarianCounts.Count == 0 ? 0 : config.BarbarianCounts.Values.Max();
         if (config.BarbarianVillageNames.Count < mostBarbarians)
             Error("barbarianVillageNames", $"must have at least {mostBarbarians} names.");
+
+        var listed = config.PlayerVillageNames.Concat(config.FoundedVillageNames).Concat(config.BarbarianVillageNames).ToList();
+        foreach (var name in listed.Where(name => VillageNameRules.FormatRejection(game.VillageNames, name) is not null))
+            Error("villageNames", $"'{name}' breaks the rules players' names follow.");
+        foreach (var name in listed.GroupBy(VillageNameRules.Folded).Where(group => group.Count() > 1).Select(group => group.Key))
+            Error("villageNames", $"'{name}' is on the lists twice.");
     }
 
     private static void ValidateVillages(VillagesConfig config, BuildingsConfig buildings, List<string> errors)

@@ -36,6 +36,9 @@ public sealed record SurrenderCommand : ICommand;
 /// <summary>Sends resources by carrier to another of the player's villages.</summary>
 public sealed record SendResourcesCommand(int FromVillageId, int ToVillageId, int Wood, int Stone, int Food) : ICommand;
 
+/// <summary>Renames one of the issuer's own villages. See VillageNameRules.</summary>
+public sealed record RenameVillageCommand(int VillageId, string Name) : ICommand;
+
 public enum CommandRejection
 {
     UnknownCommand,
@@ -71,6 +74,10 @@ public enum CommandRejection
     NotEnoughCarriers,
     OnlyScoutsCanScout,
     AlreadyOutOfTheMatch,
+    VillageNameTooShort,
+    VillageNameTooLong,
+    VillageNameInvalid,
+    VillageNameTaken,
 }
 
 public sealed record CommandResult(CommandRejection? Rejection)

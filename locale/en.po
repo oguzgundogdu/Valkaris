@@ -203,6 +203,18 @@ msgstr "This can't be done right now."
 msgid "rejection.already_out_of_the_match"
 msgstr "This can't be done right now."
 
+msgid "rejection.village_name_too_short"
+msgstr "That name is too short."
+
+msgid "rejection.village_name_too_long"
+msgstr "That name is too long."
+
+msgid "rejection.village_name_invalid"
+msgstr "Use letters, numbers, spaces, - and ' only."
+
+msgid "rejection.village_name_taken"
+msgstr "That name is taken."
+
 msgid "rejection.invalid_count"
 msgstr "Choose how many."
 

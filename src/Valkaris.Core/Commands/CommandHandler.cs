@@ -32,6 +32,7 @@ public sealed class CommandHandler
             SetCapitalCommand capital => HandleSetCapital(issuerId, capital),
             SendResourcesCommand transfer => HandleSendResources(issuerId, transfer),
             SurrenderCommand => HandleSurrender(issuerId),
+            RenameVillageCommand rename => HandleRename(issuerId, rename),
             _ => CommandResult.Rejected(CommandRejection.UnknownCommand),
         };
     }
@@ -42,6 +43,19 @@ public sealed class CommandHandler
         var events = _events.ToList();
         _events.Clear();
         return events;
+    }
+
+    private CommandResult HandleRename(int issuerId, RenameVillageCommand command)
+    {
+        if (!_state.Villages.TryGetValue(command.VillageId, out var village))
+            return CommandResult.Rejected(CommandRejection.VillageNotFound);
+        if (village.OwnerId != issuerId)
+            return CommandResult.Rejected(CommandRejection.NotOwner);
+        if (VillageNameRules.Rejection(_state, _data, village, command.Name) is { } rejection)
+            return CommandResult.Rejected(rejection);
+
+        village.Name = VillageNameRules.Clean(command.Name);
+        return CommandResult.Ok;
     }
 
     private CommandResult HandleSurrender(int issuerId)

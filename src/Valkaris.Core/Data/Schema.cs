@@ -9,6 +9,7 @@ public sealed record GameConfig
     public required IReadOnlyDictionary<BuildingType, int> StartingBuildings { get; init; }
     public required IReadOnlyDictionary<UnitType, int> StartingTroops { get; init; }
     public required FoundedVillageConfig FoundedVillage { get; init; }
+    public required VillageNameConfig VillageNames { get; init; }
     public required int MaxBuildQueueLength { get; init; }
     public required int MaxTrainingQueueLength { get; init; }
     public required int MinPlayers { get; init; }
@@ -23,6 +24,12 @@ public sealed record GameConfig
 }
 
 /// <summary>What a Settler's new village starts with.</summary>
+public sealed record VillageNameConfig
+{
+    public required int MinLength { get; init; }
+    public required int MaxLength { get; init; }
+}
+
 public sealed record FoundedVillageConfig
 {
     public required Resources Resources { get; init; }

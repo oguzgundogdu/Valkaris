@@ -27,6 +27,7 @@
     },
     "troops": {}
   },
+  "villageNames": { "minLength": 3, "maxLength": 20 },
   "maxBuildQueueLength": 2,
   "maxTrainingQueueLength": 2,
   "minPlayers": 2,

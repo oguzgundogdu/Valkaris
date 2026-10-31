@@ -202,6 +202,18 @@ msgstr "Bu şu anda yapılamaz."
 msgid "rejection.already_out_of_the_match"
 msgstr "Bu şu anda yapılamaz."
 
+msgid "rejection.village_name_too_short"
+msgstr "Bu ad çok kısa."
+
+msgid "rejection.village_name_too_long"
+msgstr "Bu ad çok uzun."
+
+msgid "rejection.village_name_invalid"
+msgstr "Yalnızca harf, rakam, boşluk, - ve ' kullan."
+
+msgid "rejection.village_name_taken"
+msgstr "Bu ad alınmış."
+
 msgid "rejection.invalid_count"
 msgstr "Kaç tane olacağını seç."
 
