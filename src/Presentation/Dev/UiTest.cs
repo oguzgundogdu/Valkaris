@@ -23,9 +23,11 @@ public partial class UiTest : Control
     private readonly List<string> _failures = new();
     private string? _shotsDir;
     private Main _main = null!;
+    private Vector2I _windowSize;
 
     public override async void _Ready()
     {
+        _windowSize = DisplayServer.WindowGetSize();
         _shotsDir = OS.GetCmdlineUserArgs()
             .FirstOrDefault(a => a.StartsWith("--shots="))?["--shots=".Length..];
 
@@ -732,7 +734,7 @@ public partial class UiTest : Control
             DisplayServer.WindowSetSize(new Vector2I(1920, 800));
             await Frames(10);
             await Shot("map-crowded-wide");
-            DisplayServer.WindowSetSize(new Vector2I(1280, 720));
+            DisplayServer.WindowSetSize(_windowSize);
             await Frames(10);
         }
 
@@ -1233,7 +1235,7 @@ public partial class UiTest : Control
             DisplayServer.WindowSetSize(new Vector2I(1024, 768));
             await Frames(10);
             await Shot("tall");
-            DisplayServer.WindowSetSize(new Vector2I(1280, 720));
+            DisplayServer.WindowSetSize(_windowSize);
             await Frames(10);
         }
 
@@ -1578,7 +1580,7 @@ public partial class UiTest : Control
                 game.ShowView(GameScreen.MainView.World);
                 await Frames();
             }
-            DisplayServer.WindowSetSize(new Vector2I(1280, 720));
+            DisplayServer.WindowSetSize(_windowSize);
             await Frames(10);
         }
     }
@@ -2364,8 +2366,51 @@ public partial class UiTest : Control
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
+    /// <summary>Text that doesn't fit, on the screen shown right now: anything past the window's edge, or cut off in its own box.</summary>
+    private void CheckLayout(string screen)
+    {
+        var window = GetViewportRect().Size;
+        foreach (var control in FindAll<Control>(this))
+        {
+            if (!control.IsVisibleInTree() || control.Size.X <= 0 || Scrolls(control))
+                continue;
+
+            var rect = control.GetGlobalRect();
+            if (control is Label or Button or OptionButton or LineEdit && (rect.End.X > window.X + 1 || rect.End.Y > window.Y + 1 || rect.Position.X < -1))
+                Expect(false, $"{screen}: {control.GetPath()} is outside the window, {rect} in {window}");
+
+            var text = control switch
+            {
+                Label { AutowrapMode: TextServer.AutowrapMode.Off } label => label.Text,
+                Button button and not OptionButton => button.Text,
+                _ => "",
+            };
+            if (text.Length == 0 || text.Contains('\n'))
+                continue;
+
+            var font = control.GetThemeFont("font");
+            var width = font.GetStringSize(control.Tr(text), HorizontalAlignment.Left, -1, control.GetThemeFontSize("font_size")).X;
+            if (width > control.Size.X + 1)
+                Expect(false, $"{screen}: '{control.Tr(text)}' is cut off in {control.GetPath()}, {width} in {control.Size.X}");
+        }
+    }
+
+    /// <summary>The map moves under its frame, and scroll areas are meant to hold more than they show.</summary>
+    private static bool Scrolls(Control control)
+    {
+        for (var parent = control.GetParent(); parent is not null; parent = parent.GetParent())
+        {
+            if (parent is WorldMapView)
+                return true;
+            if (parent is ScrollContainer scroll && control.GetGlobalRect().End.Y > scroll.GetGlobalRect().End.Y)
+                return true;
+        }
+        return false;
+    }
+
     private async Task Shot(string name)
     {
+        CheckLayout(name);
         if (_shotsDir is null || DisplayServer.GetName() == "headless")
             return;
 
