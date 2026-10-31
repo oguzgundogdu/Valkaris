@@ -304,6 +304,14 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 
 Players must be able to manage their villages from both views.
 
+**Village art:** the village view draws sprites rendered once from CC0 3D kits (Kenney Fantasy Town Kit and Nature Kit, with licences in `assets/village`) by the dev tool in `tools/art`, which stays out of the game's import and export. There is no 3D at runtime.
+- **Ground:** painted once per village in the world map's colours, with paths from the Main Building to every plot. It doesn't scroll or zoom, and it is scaled to fit.
+- **Plots:** every village uses the same fixed plot for each building. The Wall's plot is the gatehouse at the front.
+- **Stages:** a building's levels split into thirds, for 3 sprites (for 10 levels: 1-3, 4-7, 8-10). Level 0 is an empty plot, and work under way shows scaffolding. Each building keeps one roof colour at every stage, so growth shows through size, material and details.
+- **Growth:** houses, trees, rocks, flowers, fences and crops are placed from the match seed and village id, using a local generator rather than the match's random numbers. Growing only adds to them, and nothing moves. Farm stages add crops.
+- **Wall ring:** none until the Wall is built, then a fence, a low wall, and a full wall with corner towers, by stage. It draws under everything, so it never covers a building, label or click area.
+- **Labels:** each building shows a small level badge, plus a progress strip while building. Its full name plate shows on hover and when selected, and holding Alt shows all of them. Labels draw above neighbouring buildings and scenery.
+
 **Village view layout:** a top bar (resources with cap and rate, hostile arrival warning, pause, match clock), the village ground with one clickable tile per building, and a side column of tabs: **Village** (selected building's details, build queue), **Troops** (garrison, training, training queue), **Send** (target, mission, troops, what is on the way) and **Reports** (with an unread count; a report opens in a modal). A disabled upgrade button always states why, including when a cost is above warehouse capacity and saving up alone can never pay it.
 
 **World map layout:** the same top bar and side tabs, with the map in place of the village ground.
@@ -409,6 +417,12 @@ Players must be able to manage their villages from both views.
 6.7. **Scouting depth:** Scouts, the Watchtower, uncertain reports, and AI counter-scouting.
 6.7b. **God mode** for testing.
 6.8. **Localisation:** English and Turkish, and village naming.
+6.9. **Village view visuals:** rendered 2.5D sprites, three stages per building, a painted ground, growth from houses and scenery, and the Wall ring.
 7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
 8. **Nations:** passive bonuses.
 9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).
+   Parked from 6.9:
+   - Ambient village life: chimney smoke, villagers on paths, swaying trees, a carrier leaving when resources are sent, troops gathering at the Barracks after training. Kenney Mini Characters 1 (CC0, licence file included) is the chosen source for figures.
+   - Wall ring: the stage 2 side walls read as a stack of diamonds, and its corner posts look thin.
+   - Crowding at stage 3, where the Watchtower overlaps a house and the centre is busy. Cut trees first, then houses.
+   - Scenery rocks have an odd colour on top.

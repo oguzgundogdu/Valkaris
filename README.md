@@ -62,7 +62,8 @@ Use `--minutes=unlimited` for Unlimited matches, which stop at `--cap-minutes` (
 | `src/Valkaris.Core` | Game rules and state, with no Godot dependency |
 | `src/Valkaris.Ai` | The AI, which can only act through commands |
 | `src/Presentation` | Godot scenes' scripts |
-| `scenes/`, `assets/` | Godot scenes and placeholder art |
+| `scenes/`, `assets/` | Godot scenes and art. `assets/village` holds rendered CC0 sprites with their licence files |
+| `tools/art/` | Dev tool that renders the village sprites: `godot-mono --path tools/art --script render.gd` |
 | `data/` | All balance values, as JSON |
 | `locale/` | All player-facing text, as PO files |
 | `tools/Valkaris.Sim` | The headless simulation tool |
