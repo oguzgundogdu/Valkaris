@@ -49,7 +49,9 @@ public sealed class Simulation
         if (_state.IsMatchOver)
             return false;
 
-        var end = Math.Min(Math.Max(time, _state.ElapsedTime), _state.Settings.MatchDurationSeconds);
+        var end = Math.Max(time, _state.ElapsedTime);
+        if (_state.Settings.MatchDurationSeconds is { } duration)
+            end = Math.Min(end, duration);
 
         if (NextEvent(end) is { } next)
         {

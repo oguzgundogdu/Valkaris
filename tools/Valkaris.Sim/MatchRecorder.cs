@@ -10,6 +10,9 @@ namespace Valkaris.Sim;
 /// <summary>Watches a match from outside, with full access to the state, and turns it into a MatchResult.</summary>
 public sealed class MatchRecorder
 {
+    /// <summary>When an Unlimited match, with no halfway point, is measured for the mid-match stats.</summary>
+    private const double UnlimitedMidSeconds = 30 * 60;
+
     private readonly GameState _state;
     private readonly GameData _data;
     private readonly Dictionary<int, double> _firstBarracks = new();
@@ -138,7 +141,7 @@ public sealed class MatchRecorder
     /// <summary>Looks at every player's village and resource. Call this at regular times.</summary>
     public void Sample()
     {
-        if (_atMid.Count == 0 && _state.ElapsedTime >= _state.Settings.MatchDurationSeconds / 2)
+        if (_atMid.Count == 0 && _state.ElapsedTime >= (_state.Settings.MatchDurationSeconds ?? UnlimitedMidSeconds * 2) / 2)
         {
             foreach (var id in _state.Players.Keys)
                 _atMid[id] = MeasureDefence(id);
@@ -167,7 +170,8 @@ public sealed class MatchRecorder
 
     public MatchResult Finish(ulong seed)
     {
-        var outcome = _state.Outcome ?? throw new InvalidOperationException("The match has not ended.");
+        // An Unlimited match stopped at the tool's cap has no outcome, so it is scored as it stands.
+        var outcome = _state.Outcome ?? new MatchOutcome(MatchEndReason.TimeUp, _state.ElapsedTime, Array.Empty<int>(), ScoreRules.Ranked(_state, _data));
         var battles = _state.Reports;
 
         bool IsAttackOnPlayer(BattleReport r) => r.DefenderId != Village.BarbarianOwnerId;
@@ -228,7 +232,8 @@ public sealed class MatchRecorder
             _commands,
             _rejections.OrderBy(r => r.Key).ToDictionary(r => r.Key, r => r.Value),
             battles.Where(IsAttackOnPlayer).Sum(r => ValueOf(r.AttackerLost)),
-            battles.Where(IsAttackOnPlayer).Sum(r => ValueOf(r.DefenderLost)));
+            battles.Where(IsAttackOnPlayer).Sum(r => ValueOf(r.DefenderLost)),
+            _state.Outcome is null);
     }
 
     private SeatScouting ScoutingOf(Player player, IReadOnlyList<BattleReport> attacks)

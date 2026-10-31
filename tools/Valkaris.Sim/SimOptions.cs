@@ -8,7 +8,11 @@ public sealed record SimOptions
     public int Players { get; init; } = 4;
     public IReadOnlyList<AiDifficulty> Difficulties { get; init; } = new[] { AiDifficulty.Normal };
     public MapSize Map { get; init; } = MapSize.Small;
-    public double Minutes { get; init; } = 30;
+    /// <summary>Null runs Unlimited matches, up to CapMinutes.</summary>
+    public double? Minutes { get; init; } = 30;
+
+    /// <summary>A tool limit only: an Unlimited match still going by now is recorded as unfinished.</summary>
+    public double CapMinutes { get; init; } = 240;
     public double Speed { get; init; } = 1;
     public ulong Seed { get; init; } = 1;
     public int? Threads { get; init; }
@@ -34,7 +38,8 @@ public sealed record SimOptions
                 "--players" => options with { Players = int.Parse(value) },
                 "--difficulty" => options with { Difficulties = value.Split(',').Select(Enum.Parse<AiDifficulty>).ToList() },
                 "--map" => options with { Map = Enum.Parse<MapSize>(value) },
-                "--minutes" => options with { Minutes = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) },
+                "--minutes" => options with { Minutes = value == "unlimited" ? null : double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) },
+                "--cap-minutes" => options with { CapMinutes = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) },
                 "--speed" => options with { Speed = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) },
                 "--seed" => options with { Seed = ulong.Parse(value) },
                 "--threads" => options with { Threads = int.Parse(value) },

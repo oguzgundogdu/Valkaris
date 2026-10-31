@@ -61,7 +61,7 @@ public static class MatchRunner
             })));
         }
 
-        while (!state.IsMatchOver)
+        while (!state.IsMatchOver && state.ElapsedTime < options.CapMinutes * 60)
         {
             session.Tick(options.SampleSeconds);
             recorder.Sample();

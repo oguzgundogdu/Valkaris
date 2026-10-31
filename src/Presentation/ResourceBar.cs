@@ -107,8 +107,9 @@ public partial class ResourceBar : PanelContainer
         if (village is not null)
             RefreshResources(session, village);
 
-        var remaining = session.State.Settings.MatchDurationSeconds - session.State.ElapsedTime;
-        _clock.Text = Format.Time(remaining);
+        _clock.Text = Format.Time(session.State.Settings.MatchDurationSeconds is { } duration
+            ? duration - session.State.ElapsedTime
+            : session.State.ElapsedTime);
         _pause.Visible = session.CanPause;
 
         var hostile = session.State.Movements

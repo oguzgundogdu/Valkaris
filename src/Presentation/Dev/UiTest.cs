@@ -945,7 +945,7 @@ public partial class UiTest : Control
         var game = Find<GameScreen>();
         var session = game.Session;
 
-        session.Tick(session.State.Settings.MatchDurationSeconds);
+        session.Tick(session.State.Settings.MatchDurationSeconds!.Value);
         await Frames();
         var endScreen = game.GetNode<MatchEndScreen>("%MatchEndScreen");
         Expect(endScreen.Visible, "Match end shows the results");
@@ -1107,7 +1107,7 @@ public partial class UiTest : Control
             session.Tick(60);
             await Frames(1);
 
-            if (!mapShot && session.State.ElapsedTime > session.State.Settings.MatchDurationSeconds * 0.8)
+            if (!mapShot && session.State.ElapsedTime > session.State.Settings.MatchDurationSeconds!.Value * 0.8)
             {
                 mapShot = true;
                 await Shot("live-ai-map");

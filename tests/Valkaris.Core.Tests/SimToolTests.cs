@@ -93,7 +93,7 @@ public class SimToolTests
 
         public MatchResult Finish()
         {
-            Session.Tick(State.Settings.MatchDurationSeconds);
+            Session.Tick(State.Settings.MatchDurationSeconds!.Value);
             Recorder.Sample();
             return Recorder.Finish(7);
         }
@@ -152,7 +152,7 @@ public class SimToolTests
 
         match.Session.Tick(100);
         match.Recorder.Sample();
-        match.Session.Tick(match.State.Settings.MatchDurationSeconds);
+        match.Session.Tick(match.State.Settings.MatchDurationSeconds!.Value);
         var result = match.Recorder.Finish(1);
 
         Assert.Equal(6, result.ResourceSamples);
@@ -314,6 +314,28 @@ public class SimToolTests
     [Fact]
     public void TheSpreadIsAlsoGivenAsAMultipleOfEven() =>
         Assert.Equal(2, new AttackSpread(1, 0.5, 0.25, 0).MultipleOfEven, 6);
+
+    [Fact]
+    public void AnUnlimitedMatchPastTheCapIsRecordedAsUnfinished()
+    {
+        var options = Quick with { Minutes = null, CapMinutes = 2, Matches = 1 };
+
+        var result = MatchRunner.RunOne(options, TestData.Shipped, 1, 0);
+        var report = SimReport.Build(new[] { result }, Array.Empty<MatchFailure>());
+
+        Assert.True(result.Unfinished);
+        Assert.Equal(1, report.UnfinishedShare);
+        Assert.Equal(0, report.EndedWithinTwoHoursShare);
+    }
+
+    [Fact]
+    public void UnlimitedIsAnOption()
+    {
+        var options = SimOptions.Parse(new[] { "--minutes=unlimited", "--cap-minutes=90" });
+
+        Assert.Null(options.Minutes);
+        Assert.Equal(90, options.CapMinutes);
+    }
 
     [Fact]
     public void RejectedCommandsAreCountedByReason()

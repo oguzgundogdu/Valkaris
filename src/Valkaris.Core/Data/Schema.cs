@@ -14,6 +14,10 @@ public sealed record GameConfig
     public required int MinPlayers { get; init; }
     public required int MaxPlayers { get; init; }
     public required IReadOnlyList<double> MatchDurationsMinutes { get; init; }
+
+    /// <summary>Whether matches with no time limit are offered alongside the durations.</summary>
+    public required bool UnlimitedMatches { get; init; }
+
     public required IReadOnlyList<double> SpeedMultipliers { get; init; }
     public required IReadOnlyDictionary<MapSize, MapSizeDefinition> MapSizes { get; init; }
 }

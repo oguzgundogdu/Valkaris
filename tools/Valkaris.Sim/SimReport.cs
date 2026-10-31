@@ -62,6 +62,8 @@ public sealed record SimReport(
     int Failed,
     Spread Length,
     double LastPlayerStandingShare,
+    double UnfinishedShare,
+    double EndedWithinTwoHoursShare,
     double DrawShare,
     IReadOnlyList<DifficultyStats> ByDifficulty,
     IReadOnlyList<double> WinShareBySeat,
@@ -93,6 +95,8 @@ public sealed record SimReport(
     IReadOnlyDictionary<string, int> Rejections,
     IReadOnlyList<MatchFailure> Failures)
 {
+    private const double TwoHours = 2 * 60 * 60;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -127,6 +131,8 @@ public sealed record SimReport(
             failures.Count,
             Of(r => r.LengthSeconds),
             Share(r => r.Reason == MatchEndReason.LastPlayerStanding),
+            Share(r => r.Unfinished),
+            Share(r => !r.Unfinished && r.LengthSeconds <= TwoHours),
             Share(r => r.IsDraw),
             Enum.GetValues<AiDifficulty>().Select(d => ForDifficulty(d, results)).Where(s => s.Seats > 0).ToList(),
             bySeat,
@@ -283,6 +289,8 @@ public sealed record SimReport(
         text.AppendLine("Match");
         Line("Length", Mins(Length));
         Line("Last player standing", Pct(LastPlayerStandingShare));
+        Line("Ended within two hours", Pct(EndedWithinTwoHoursShare));
+        Line("Unfinished at the tool's cap", Pct(UnfinishedShare));
         Line("Draws", Pct(DrawShare));
         Line("Win share by seat", string.Join("  ", WinShareBySeat.Select(Pct)));
         foreach (var d in ByDifficulty)

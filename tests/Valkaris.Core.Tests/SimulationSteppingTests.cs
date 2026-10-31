@@ -195,7 +195,7 @@ public class SimulationSteppingTests
         SnapshotAssert.RoundTrips(state);
 
         // Time runs out: no more commands, no more production.
-        simulation.Advance(state.Settings.MatchDurationSeconds);
+        simulation.Advance(state.Settings.MatchDurationSeconds!.Value);
         Assert.True(state.IsMatchOver);
         var finalResources = village.Resources;
         Assert.Equal(

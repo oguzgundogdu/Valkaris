@@ -70,7 +70,7 @@ public class BuildPreviewTests
     [Fact]
     public void MatchOver()
     {
-        new Simulation(_state, TestData.Shipped).Advance(_state.Settings.MatchDurationSeconds);
+        new Simulation(_state, TestData.Shipped).Advance(_state.Settings.MatchDurationSeconds!.Value);
 
         Assert.Equal(CommandRejection.MatchOver, Evaluate(BuildingType.Farm).Rejection);
     }
@@ -161,7 +161,7 @@ public class BuildPreviewTests
                 s.Villages[VillageId].SetBuildingLevel(BuildingType.MainBuilding, 10);
                 s.Villages[VillageId].Resources = new Resources(100_000, 100_000, 100_000);
             },
-            s => s.ElapsedTime = s.Settings.MatchDurationSeconds,
+            s => s.ElapsedTime = s.Settings.MatchDurationSeconds!.Value,
             s => s.Villages[VillageId].EnqueueBuild(new BuildQueueItem(BuildingType.Farm, 2, 0, 10)),
             s =>
             {

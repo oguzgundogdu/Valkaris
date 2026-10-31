@@ -148,7 +148,7 @@ public class MovementTests
     [Fact]
     public void RejectsWhenMatchIsOver()
     {
-        new Simulation(_state, Data).Advance(_state.Settings.MatchDurationSeconds);
+        new Simulation(_state, Data).Advance(_state.Settings.MatchDurationSeconds!.Value);
         AssertRejected(CommandRejection.MatchOver, Attack());
     }
 

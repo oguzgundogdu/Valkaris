@@ -59,4 +59,5 @@ public sealed record MatchResult(
     int Commands,
     IReadOnlyDictionary<string, int> Rejections,
     double AttackerResourcesLost = 0,
-    double DefenderResourcesLost = 0);
+    double DefenderResourcesLost = 0,
+    bool Unfinished = false);

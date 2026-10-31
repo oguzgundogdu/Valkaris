@@ -147,7 +147,7 @@ public class TrainingTests
     [Fact]
     public void RejectsWhenMatchIsOver()
     {
-        _simulation.Advance(_state.Settings.MatchDurationSeconds);
+        _simulation.Advance(_state.Settings.MatchDurationSeconds!.Value);
         AssertRejected(CommandRejection.MatchOver, Train());
     }
 
@@ -205,7 +205,7 @@ public class TrainingTests
             s => s.Villages[VillageId].Resources = Resources.Zero,
             s => s.Villages[VillageId].Resources = new Resources(100_000, 100_000, 100_000),
             s => s.Villages[VillageId].SetBuildingLevel(BuildingType.Barracks, 5),
-            s => s.ElapsedTime = s.Settings.MatchDurationSeconds,
+            s => s.ElapsedTime = s.Settings.MatchDurationSeconds!.Value,
             s =>
             {
                 s.Villages[VillageId].SetBuildingLevel(BuildingType.Barracks, 5);
