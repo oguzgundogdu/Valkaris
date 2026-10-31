@@ -1,17 +1,17 @@
 {
   "loyalty": {
-    "dropMin": 20,
-    "dropMax": 30,
-    "afterCapture": 40,
-    "regenPerSecond": 0.15,
-    "regenPerSecondPerMainLevel": 0.06
+    "dropMin": 35,
+    "dropMax": 45,
+    "afterCapture": 100,
+    "regenPerSecond": 0.05,
+    "regenPerSecondPerMainLevel": 0.01
   },
   "carriers": {
     "capacity": 200,
     "speed": 0.6
   },
   "capital": {
-    "lockedAboveMainLevel": 3,
+    "lockedAboveMainLevel": 8,
     "choiceSeconds": 60,
     "penaltyMainLevel": 1
   }

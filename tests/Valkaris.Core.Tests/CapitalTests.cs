@@ -110,7 +110,7 @@ public class CapitalTests
         var capital = _state.Villages[RivalCapital];
         capital.SetBuildingLevel(BuildingType.MainBuilding, Threshold + 1);
 
-        var report = Attack(Human, HumanCapital, RivalCapital, BuildingType.MainBuilding, (UnitType.Swordsman, 100), (UnitType.Catapult, 10), (UnitType.Lord, 1));
+        var report = Attack(Human, HumanCapital, RivalCapital, BuildingType.MainBuilding, (UnitType.Swordsman, 100), (UnitType.Catapult, TestData.Shipped.Combat.CatapultsPerLevelOfDamage), (UnitType.Lord, 1));
 
         Assert.Equal(Threshold, capital.BuildingLevel(BuildingType.MainBuilding));
         Assert.False(report.CapitalProtected);

@@ -451,9 +451,9 @@ public partial class UiTest : Control
         var hostile = session.State.Movements[0];
         var own = session.State.Villages[1];
         var rival = session.State.Villages[2];
-        var camp = session.State.Villages.Values.Where(v => v.IsBarbarian).OrderBy(v => UnitRules.Distance(v.Position, own.Position)).First();
+        var camp = session.State.Villages.Values.Where(v => v.IsBarbarian).OrderByDescending(v => UnitRules.Distance(v.Position, own.Position)).First();
 
-        session.Send(new SendTroopsCommand(1, camp.Id, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 5 }));
+        session.Send(new SendTroopsCommand(1, camp.Id, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 2 }));
 
         incoming.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();

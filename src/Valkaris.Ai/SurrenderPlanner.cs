@@ -4,8 +4,8 @@ using Valkaris.Core.Model;
 namespace Valkaris.Ai;
 
 /// <summary>
-/// Gives up when the position is hopeless: a capital lost, most villages gone, and far weaker than what its reports
-/// have shown. It judges only from its own villages and reports, as a player would.
+/// Gives up when the position is hopeless: a capital lost or nothing else left, most villages gone, and far weaker than
+/// what its reports have shown. It judges only from its own villages and reports, as a player would.
 /// </summary>
 public sealed class SurrenderPlanner
 {
@@ -46,7 +46,8 @@ public sealed class SurrenderPlanner
 
     private bool IsHopeless(IReadOnlyList<Village> villages)
     {
-        if (!_lostCapital || villages.Count > _mostVillages * _view.Profile.SurrenderVillageShare)
+        // With only one village left, losing the capital is one battle away.
+        if ((!_lostCapital && villages.Count > 1) || villages.Count > _mostVillages * _view.Profile.SurrenderVillageShare)
             return false;
 
         var own = villages.Sum(v => _forces.AttackOf(v.Troops)) + _view.OwnMovements.Sum(m => _forces.AttackOf(m.Troops));

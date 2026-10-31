@@ -81,6 +81,27 @@ public class AiSurrenderTests
     [Fact]
     public void WithoutLosingACapitalItFightsOn()
     {
+        var kept = GiveCamp();
+        ClearTroops(_state.Villages[Ai]);
+        foreach (var lost in _state.Villages.Values.Where(v => v.IsBarbarian).Take(3).ToList())
+        {
+            lost.OwnerId = Ai;
+            lost.BarbarianTier = null;
+        }
+        _planner.Plan();
+        foreach (var lost in _state.Villages.Values.Where(v => v.OwnerId == Ai && v.Id != kept.Id && v.Id != Ai))
+            lost.OwnerId = Enemy;
+        SeenBy(10000);
+        _memory.Update();
+        _planner.Plan();
+        Wait(Profile.SurrenderHoldSeconds);
+
+        Assert.False(_planner.Plan());
+    }
+
+    [Fact]
+    public void WithOneVillageLeftNoCapitalNeedsToHaveFallen()
+    {
         var camp = GiveCamp();
         ClearTroops(_state.Villages[Ai]);
         _planner.Plan();
@@ -90,7 +111,7 @@ public class AiSurrenderTests
         _planner.Plan();
         Wait(Profile.SurrenderHoldSeconds);
 
-        Assert.False(_planner.Plan());
+        Assert.True(_planner.Plan());
     }
 
     [Fact]

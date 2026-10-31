@@ -52,7 +52,7 @@ public class LoyaltyTests
 
         Assert.True(report.AttackerWon);
         Assert.NotNull(report.Loyalty);
-        Assert.InRange(report.Loyalty!.From - report.Loyalty.To, 20, 30);
+        Assert.InRange(report.Loyalty!.From - report.Loyalty.To, TestData.Shipped.Villages.Loyalty.DropMin, TestData.Shipped.Villages.Loyalty.DropMax);
         Assert.False(report.Loyalty.Captured);
         Assert.Equal(report.Loyalty.To, _state.Villages[Target].Loyalty);
         Assert.Equal(Attacker, _state.Reports[^1].AttackerId);
@@ -63,7 +63,7 @@ public class LoyaltyTests
     {
         var report = Fight(Force((UnitType.Swordsman, 50), (UnitType.Lord, 10)));
 
-        Assert.InRange(report.Loyalty!.From - report.Loyalty.To, 20, 30);
+        Assert.InRange(report.Loyalty!.From - report.Loyalty.To, TestData.Shipped.Villages.Loyalty.DropMin, TestData.Shipped.Villages.Loyalty.DropMax);
     }
 
     [Fact]
@@ -115,11 +115,11 @@ public class LoyaltyTests
         {
             var first = DropWithSeed(seed);
             Assert.Equal(first, DropWithSeed(seed));
-            Assert.InRange(first, 20, 30);
+            Assert.InRange(first, TestData.Shipped.Villages.Loyalty.DropMin, TestData.Shipped.Villages.Loyalty.DropMax);
             seen.Add(first);
         }
 
-        Assert.Equal(11, seen.Count);
+        Assert.Equal(TestData.Shipped.Villages.Loyalty.DropMax - TestData.Shipped.Villages.Loyalty.DropMin + 1, seen.Count);
     }
 
     private static double DropWithSeed(ulong seed)
