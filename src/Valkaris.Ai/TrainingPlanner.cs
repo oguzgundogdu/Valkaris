@@ -32,6 +32,9 @@ public sealed class TrainingPlanner
     {
         var available = threatened ? village.Resources : Remaining(village.Resources, saving);
 
+        if (!threatened && TrainScouts(village, available))
+            return;
+
         if (!threatened && SpecialWanted(village) is { } special)
         {
             var option = _view.PreviewTrain(village.Id, special, 1);
@@ -66,6 +69,20 @@ public sealed class TrainingPlanner
                 return;
             }
         }
+    }
+
+    /// <summary>The capital keeps the Scouts, so they are in one place when a mission needs them.</summary>
+    private bool TrainScouts(Village village, Resources available)
+    {
+        if (village.Id != (_view.CapitalVillageId ?? _view.OwnVillages[0].Id))
+            return false;
+
+        var count = Math.Min(Math.Min(_memory.ScoutsWanted - CountEverywhere(UnitType.Scout), Affordable(UnitType.Scout, available)), _view.Config.TrainingBatchMax);
+        if (count < 1 || !_view.PreviewTrain(village.Id, UnitType.Scout, count).CanTrain)
+            return false;
+
+        _view.Send(new TrainCommand(village.Id, UnitType.Scout, count));
+        return true;
     }
 
     /// <summary>True while this village is saving for a Lord or Settler, which should come before further buildings.</summary>

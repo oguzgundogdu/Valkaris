@@ -296,7 +296,7 @@ public sealed class Simulation
     {
         var target = _state.Villages[movement.ToVillageId!.Value];
         var garrison = target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
-        var succeeded = garrison.Values.Sum() <= movement.Troops.Values.Sum() * _data.Combat.TroopsPerScout;
+        var succeeded = garrison.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value) <= movement.Troops.Values.Sum() * _data.Combat.TroopsPerScout;
 
         var report = new ScoutReport(
             _state.NextReportId++,

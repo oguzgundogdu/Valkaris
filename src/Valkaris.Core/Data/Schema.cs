@@ -372,6 +372,9 @@ public sealed record AiProfile
     /// <summary>The highest Wall it builds, in the build order or under attack.</summary>
     public required int MaxWallLevel { get; init; }
 
+    /// <summary>The most Scouts it will send on one mission, however many it thinks are needed.</summary>
+    public required int MaxScoutForce { get; init; }
+
     /// <summary>Game seconds that news of a target stays good enough to attack on. Older than this, it scouts first.</summary>
     public required double ScoutMaxAgeSeconds { get; init; }
 }

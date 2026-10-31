@@ -208,6 +208,7 @@
       "rivalStrongerRatio": 4.0,
       "massSeconds": 240,
       "maxWallLevel": 0,
+      "maxScoutForce": 6,
       "maxFightersPerMinute": 1.5
     },
     "Normal": {
@@ -231,7 +232,8 @@
       "rivalFocusShare": 0.6,
       "rivalStrongerRatio": 5.0,
       "massSeconds": 90,
-      "maxWallLevel": 5
+      "maxWallLevel": 5,
+      "maxScoutForce": 20
     },
     "Hard": {
       "decisionSeconds": 3,
@@ -254,7 +256,8 @@
       "rivalFocusShare": 0.6,
       "rivalStrongerRatio": 6.0,
       "massSeconds": 75,
-      "maxWallLevel": 5
+      "maxWallLevel": 5,
+      "maxScoutForce": 30
     }
   }
 }

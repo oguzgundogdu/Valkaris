@@ -69,6 +69,7 @@ public class AiWarTests
     {
         var match = Match();
         PastDelay(match);
+        match.State.Villages[Ai].AddTroops(UnitType.Scout, 10);
         match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 300);
 
         RunUntilAttack(match);

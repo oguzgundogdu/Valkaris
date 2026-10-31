@@ -56,9 +56,8 @@ public static class SendPreview
         if (command.Troops.Any(t => t.Value > from.TroopCount(t.Key)))
             return CommandRejection.NotEnoughTroops;
 
-        if (command.Type == MovementType.Scout
-            && command.Troops.Any(t => t.Value > 0 && t.Key is UnitType.Catapult or UnitType.Settler or UnitType.Lord))
-            return CommandRejection.OnlyFightersCanScout;
+        if (command.Type == MovementType.Scout && command.Troops.Any(t => t.Value > 0 && t.Key != UnitType.Scout))
+            return CommandRejection.OnlyScoutsCanScout;
 
         if (command.Type is MovementType.Attack or MovementType.Raid && command.Troops.GetValueOrDefault(UnitType.Settler) > 0)
             return CommandRejection.SettlersCannotFight;

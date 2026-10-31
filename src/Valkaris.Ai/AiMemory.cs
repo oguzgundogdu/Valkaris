@@ -38,6 +38,9 @@ public sealed class AiMemory
 
     public AiMemory(AiView view) => _view = view;
 
+    /// <summary>The Scouts its next mission needs, kept up to date by the scout planner for the training planner.</summary>
+    public int ScoutsWanted { get; set; } = 1;
+
     public Sighting? SightingOf(int villageId) => _sightings.GetValueOrDefault(villageId);
 
     /// <summary>The strongest player force in its own reports: an army that came for it, or a garrison it attacked.</summary>

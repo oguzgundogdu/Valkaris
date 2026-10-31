@@ -69,7 +69,7 @@ public enum CommandRejection
     NoResourcesSelected,
     NoMarketplace,
     NotEnoughCarriers,
-    OnlyFightersCanScout,
+    OnlyScoutsCanScout,
     AlreadyOutOfTheMatch,
 }
 

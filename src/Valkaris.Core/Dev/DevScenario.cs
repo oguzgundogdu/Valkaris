@@ -57,11 +57,11 @@ public static class DevScenario
     private static void ApplyScouting(GameState state, GameData data)
     {
         var rival = state.Villages[Rival];
-        SetTroops(rival, (UnitType.Spearman, data.Combat.TroopsPerScout - 2), (UnitType.Cavalry, 2));
+        SetTroops(rival, (UnitType.Spearman, data.Combat.TroopsPerScout - 2), (UnitType.Cavalry, 2), (UnitType.Scout, 4));
         rival.SetBuildingLevel(BuildingType.Wall, 2);
 
         var home = state.Villages[Local];
-        SetTroops(home, (UnitType.Spearman, 4));
+        SetTroops(home, (UnitType.Spearman, 4), (UnitType.Scout, 4));
 
         foreach (var village in new[] { rival, home })
         {

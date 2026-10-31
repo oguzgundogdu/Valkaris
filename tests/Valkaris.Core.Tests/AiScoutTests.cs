@@ -39,13 +39,14 @@ public class AiScoutTests
     private static Movement? Attack(AiMatch match) =>
         match.State.Movements.FirstOrDefault(m => m.OwnerId == Ai && m.Type == MovementType.Attack);
 
-    private static AiMatch ReadyToScout(int enemyTroops = 5, int cavalry = 300)
+    private static AiMatch ReadyToScout(int enemyTroops = 5, int cavalry = 300, int scouts = 30)
     {
         var match = Match();
         PastDelay(match);
         NoCamps(match);
         SetGarrison(match.State.Villages[Enemy], UnitType.Spearman, enemyTroops);
         match.State.Villages[Ai].AddTroops(UnitType.Cavalry, cavalry);
+        match.State.Villages[Ai].AddTroops(UnitType.Scout, scouts);
         return match;
     }
 
@@ -116,7 +117,7 @@ public class AiScoutTests
     }
 
     [Fact]
-    public void TheFastestTroopsGo()
+    public void OnlyScoutsGoAndItTrainsThemItself()
     {
         var match = Match();
         match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 300);
@@ -124,14 +125,14 @@ public class AiScoutTests
 
         RunUntil(match, () => Scouts(match) is not null, limit: 3000);
 
-        Assert.Equal(new[] { UnitType.Cavalry }, Scouts(match)!.Troops.Keys);
+        Assert.Equal(new[] { UnitType.Scout }, Scouts(match)!.Troops.Keys);
     }
 
     [Fact]
     public void CaughtScoutsAreFollowedByMoreAfterTheWait()
     {
         // Enough to scout with, but too few to attack on the estimate instead.
-        var match = ReadyToScout(enemyTroops: 5000, cavalry: 8);
+        var match = ReadyToScout(enemyTroops: 5000, cavalry: 8, scouts: 8);
         RunUntil(match, () => match.State.ScoutReports.Count > 0);
         var first = match.State.ScoutReports[0];
         Assert.False(first.Succeeded);
@@ -170,7 +171,7 @@ public class AiScoutTests
             NoCamps(match);
             SetGarrison(match.State.Villages[Enemy], UnitType.Spearman, match.Data.Combat.TroopsPerScout);
             match.State.Villages[Enemy].SetBuildingLevel(BuildingType.Wall, 10);
-            match.State.Villages[Ai].AddTroops(UnitType.Cavalry, 3);
+            match.State.Villages[Ai].AddTroops(UnitType.Scout, 3);
             match.Run(1500);
             return match.State.ScoutReports.Count(r => r.SenderId == Ai);
         }

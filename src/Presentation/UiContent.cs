@@ -136,7 +136,7 @@ public static class UiContent
             return $"Scouts caught {age} ago: more than {report.Sent.Values.Sum() * session.Data.Combat.TroopsPerScout} troops";
 
         var wall = report.WallLevel > 0 ? $", Wall {report.WallLevel}" : "";
-        return $"Scouted {age} ago: {report.Garrison!.Values.Sum()} troops{wall}, {Format.Total(report.Stock!.Value)} resources";
+        return $"Scouted {age} ago: {report.Garrison!.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value)} troops{wall}, {Format.Total(report.Stock!.Value)} resources";
     }
 
     public static string RejectionText(CommandRejection rejection) => rejection switch
@@ -150,7 +150,7 @@ public static class UiContent
         CommandRejection.SettlersCannotFight => "Settlers can't go on an attack or raid.",
         CommandRejection.ScoutsCannotFight => "Scouts can't go on an attack or raid.",
         CommandRejection.LordsCannotRaid => "Lords can't go on a raid.",
-        CommandRejection.OnlyFightersCanScout => "Only Spearmen, Swordsmen and Cavalry can scout.",
+        CommandRejection.OnlyScoutsCanScout => "Only Scouts can scout.",
         CommandRejection.NoSettlerHere => "Train a Settler in this village first.",
         CommandRejection.TileOutsideMap => "That's outside the map.",
         CommandRejection.TileIsWater => "Villages can't be founded on water.",

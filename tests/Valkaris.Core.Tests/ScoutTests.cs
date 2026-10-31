@@ -27,7 +27,7 @@ public class ScoutTests
         _simulation = new Simulation(_state, Data);
         _home = _state.Villages[Sender];
         _target = _state.Villages[Defender];
-        SetTroops(_home, UnitType.Cavalry, 20);
+        SetTroops(_home, UnitType.Scout, 20);
         SetTroops(_target, UnitType.Spearman, 0);
     }
 
@@ -38,7 +38,7 @@ public class ScoutTests
         village.AddTroops(unit, count);
     }
 
-    private static SendTroopsCommand Scout(int count, UnitType unit = UnitType.Cavalry, int to = Defender) =>
+    private static SendTroopsCommand Scout(int count, UnitType unit = UnitType.Scout, int to = Defender) =>
         new(Sender, to, MovementType.Scout, new Dictionary<UnitType, int> { [unit] = count });
 
     private List<GameEvent> SendAndArrive(int scouts)
@@ -134,12 +134,12 @@ public class ScoutTests
 
         var trip = _state.Movements.Single();
         Assert.Equal(MovementType.Return, trip.Type);
-        Assert.Equal(4, trip.Troops[UnitType.Cavalry]);
+        Assert.Equal(4, trip.Troops[UnitType.Scout]);
         Assert.Equal(Resources.Zero, trip.Loot);
 
         _simulation.AdvanceTo(trip.ArrivalTime);
 
-        Assert.Equal(20, _home.TroopCount(UnitType.Cavalry));
+        Assert.Equal(20, _home.TroopCount(UnitType.Scout));
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class ScoutTests
         SendAndArrive(4);
 
         Assert.Empty(_state.Movements);
-        Assert.Equal(16, _home.TroopCount(UnitType.Cavalry));
+        Assert.Equal(16, _home.TroopCount(UnitType.Scout));
     }
 
     [Theory]
@@ -221,40 +221,20 @@ public class ScoutTests
     [InlineData(UnitType.Spearman)]
     [InlineData(UnitType.Swordsman)]
     [InlineData(UnitType.Cavalry)]
-    public void FightersCanScout(UnitType unit)
-    {
-        _home.AddTroops(unit, 1);
-
-        Assert.True(SendPreview.Evaluate(_state, Data, Sender, Scout(1, unit)).CanSend);
-    }
-
-    [Theory]
     [InlineData(UnitType.Catapult)]
     [InlineData(UnitType.Settler)]
     [InlineData(UnitType.Lord)]
-    public void OtherUnitsCannotScout(UnitType unit)
+    public void OnlyScoutsCanScout(UnitType unit)
     {
         _home.AddTroops(unit, 1);
 
-        Assert.Equal(CommandRejection.OnlyFightersCanScout, _handler.Handle(Sender, Scout(1, unit)).Rejection);
+        Assert.Equal(CommandRejection.OnlyScoutsCanScout, _handler.Handle(Sender, Scout(1, unit)).Rejection);
         Assert.Empty(_state.Movements);
     }
 
     [Fact]
     public void AVillageOfYourOwnCannotBeScouted() =>
         Assert.Equal(CommandRejection.InvalidMission, _handler.Handle(Sender, Scout(1, to: Sender)).Rejection);
-
-    [Fact]
-    public void ScoutsTravelAtTheSlowestUnitsSpeed()
-    {
-        _home.AddTroops(UnitType.Spearman, 1);
-        var mixed = new SendTroopsCommand(Sender, Defender, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1, [UnitType.Spearman] = 1 });
-
-        var cavalry = SendPreview.Evaluate(_state, Data, Sender, Scout(1)).DurationSeconds;
-        var both = SendPreview.Evaluate(_state, Data, Sender, mixed).DurationSeconds;
-
-        Assert.True(both > cavalry);
-    }
 
     [Fact]
     public void ScoutsArrivingAtAVillageTheirOwnerNowHoldsMergeIn()
@@ -265,7 +245,7 @@ public class ScoutTests
         _simulation.AdvanceTo(_state.Movements.Single().ArrivalTime);
 
         Assert.Empty(_state.ScoutReports);
-        Assert.Equal(2, _target.TroopCount(UnitType.Cavalry));
+        Assert.Equal(2, _target.TroopCount(UnitType.Scout));
     }
 
     [Fact]
@@ -283,7 +263,7 @@ public class ScoutTests
         _simulation.AdvanceTo(_state.Movements.Single().ArrivalTime);
 
         Assert.Empty(_state.Movements);
-        Assert.Equal(2, other.TroopCount(UnitType.Cavalry));
+        Assert.Equal(2, other.TroopCount(UnitType.Scout));
     }
 
     [Fact]
@@ -303,8 +283,9 @@ public class ScoutTests
     [Fact]
     public void BattleAndScoutReportsShareIds()
     {
+        _home.AddTroops(UnitType.Swordsman, 1);
         SendAndArrive(1);
-        _handler.Handle(Sender, new SendTroopsCommand(Sender, Defender, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 }));
+        _handler.Handle(Sender, new SendTroopsCommand(Sender, Defender, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 1 }));
         _simulation.AdvanceTo(_state.Movements.Max(m => m.ArrivalTime));
 
         Assert.NotEqual(Report.Id, _state.Reports.Single().Id);
@@ -324,9 +305,9 @@ public class ScoutTests
 
         Assert.True(Report.Succeeded);
         Assert.Equal(ExpectedArrival(), Report.Time, 6);
-        Assert.Equal(20, _home.TroopCount(UnitType.Cavalry));
+        Assert.Equal(20, _home.TroopCount(UnitType.Scout));
     }
 
     private double ExpectedArrival() =>
-        UnitRules.TravelSeconds(Data, _state, _home.Position, _target.Position, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 });
+        UnitRules.TravelSeconds(Data, _state, _home.Position, _target.Position, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 });
 }

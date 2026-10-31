@@ -254,8 +254,8 @@ public class AiViewTests
     [Fact]
     public void IncomingScoutsAreNotListedAsIncoming()
     {
-        _state.Villages[Other].AddTroops(UnitType.Cavalry, 1);
-        Assert.True(new CommandHandler(_state, TestData.Shipped).Handle(Other, new SendTroopsCommand(Other, Self, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 1 })).Success);
+        _state.Villages[Other].AddTroops(UnitType.Scout, 1);
+        Assert.True(new CommandHandler(_state, TestData.Shipped).Handle(Other, new SendTroopsCommand(Other, Self, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success);
 
         Assert.Empty(_view.Incoming);
     }

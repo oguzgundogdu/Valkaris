@@ -477,6 +477,8 @@ internal static class GameDataValidator
                 Error($"{path}.surrenderStrengthRatio", "must not be negative.");
             if (profile.SurrenderHoldSeconds < 0)
                 Error($"{path}.surrenderHoldSeconds", "must not be negative.");
+            if (profile.MaxScoutForce < 1)
+                Error($"{path}.maxScoutForce", "must be at least 1.");
             if (profile.MaxWallLevel < 0)
                 Error($"{path}.maxWallLevel", "must not be negative.");
             if (profile.ScoutMaxAgeSeconds < 0)

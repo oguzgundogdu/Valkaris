@@ -132,9 +132,9 @@ public class SurrenderTests
     [Fact]
     public void ItCanBeScouted()
     {
-        _state.Villages[Other].AddTroops(UnitType.Cavalry, 100);
+        _state.Villages[Other].AddTroops(UnitType.Scout, 100);
         Surrender();
-        Assert.True(_session.SendAs(Other, new SendTroopsCommand(Other, Quitter, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Cavalry] = 100 })).Success);
+        Assert.True(_session.SendAs(Other, new SendTroopsCommand(Other, Quitter, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 100 })).Success);
 
         _session.Tick(_state.Movements.Single().ArrivalTime);
 

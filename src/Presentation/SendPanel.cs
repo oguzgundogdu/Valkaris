@@ -176,7 +176,7 @@ public partial class SendPanel : VBoxContainer
         GetNode<Control>("%Warning").Visible = false;
         var scoutRule = GetNode<Label>("%ScoutRule");
         scoutRule.Visible = type == MovementType.Scout;
-        scoutRule.Text = $"One scout gets past every {session.Data.Combat.TroopsPerScout} troops in the garrison. With too few, they all die. Cavalry are fastest.";
+        scoutRule.Text = $"Only Scouts can scout. One gets past every {session.Data.Combat.TroopsPerScout} troops in the garrison. With too few, they all die.";
         _send.Text = _sendingResources ? "Send resources" : "Send troops";
 
         if (_sendingResources)
@@ -232,14 +232,16 @@ public partial class SendPanel : VBoxContainer
     private void RefreshTroopForm(IGameSession session, Village village, Village? target, MovementType type)
     {
 
+        var unitRows = GetNode<VBoxContainer>("%Units");
         foreach (var (unit, row) in _units)
         {
             var present = village.TroopCount(unit);
             row.Amount.MaxValue = present;
             row.Available.Text = $"/ {present}";
+            unitRows.GetNode<Control>(unit.ToString()).Visible = CanGo(unit, type);
         }
 
-        var troops = _units.ToDictionary(u => u.Key, u => (int)u.Value.Amount.Value);
+        var troops = _units.ToDictionary(u => u.Key, u => CanGo(u.Key, type) ? (int)u.Value.Amount.Value : 0);
         var showCatapultTarget = type == MovementType.Attack && troops[UnitType.Catapult] > 0;
         _catapultRow.Visible = showCatapultTarget;
         BuildingType? aim = showCatapultTarget && _catapultTarget.Selected > 0
@@ -259,6 +261,14 @@ public partial class SendPanel : VBoxContainer
             : target!.Id == village.Id ? "Troops are already in this village."
             : option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : "";
     }
+
+    /// <summary>Only Scouts scout, and they never go on an attack or raid.</summary>
+    private static bool CanGo(UnitType unit, MovementType type) => type switch
+    {
+        MovementType.Scout => unit == UnitType.Scout,
+        MovementType.Attack or MovementType.Raid => unit != UnitType.Scout,
+        _ => true,
+    };
 
     private void RefreshTarget(IGameSession session, Village village, Village? target, bool mapIsOpen)
     {

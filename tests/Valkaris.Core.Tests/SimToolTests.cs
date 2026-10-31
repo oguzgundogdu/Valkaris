@@ -250,10 +250,11 @@ public class SimToolTests
         foreach (var (unit, count) in target.Troops.ToList())
             target.RemoveTroops(unit, count);
         match.State.Villages[1].AddTroops(UnitType.Cavalry, 10);
-        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Cavalry, 1)));
+        match.State.Villages[1].AddTroops(UnitType.Scout, 10);
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Scout, 1)));
         match.Session.Tick(match.State.Movements.Single().ArrivalTime);
         target.AddTroops(UnitType.Spearman, 1000);
-        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Cavalry, 2)));
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Scout, 2)));
         match.Send(1, new SendTroopsCommand(1, 2, MovementType.Attack, Force(UnitType.Cavalry, 1)));
 
         var scouting = match.Finish().Seats[0].Scouting!;
