@@ -30,7 +30,7 @@ public static class WireCodec
     {
         typeof(BuildingCompleted), typeof(TroopsTrained), typeof(TroopsReturned), typeof(ReinforcementsArrived),
         typeof(BattleResolved), typeof(ScoutResolved), typeof(ScoutNoticed), typeof(VillageCaptured),
-        typeof(CapitalChoiceRequired), typeof(CapitalChanged), typeof(PlayerEliminated), typeof(PlayerSurrendered),
+        typeof(CapitalChoiceRequired), typeof(CapitalChanged), typeof(PlayerEliminated), typeof(PlayerSurrendered), typeof(PlayerDisconnected),
         typeof(MatchEnded), typeof(ResourcesDelivered), typeof(CarriersReturned), typeof(VillageFounded), typeof(SettlingFailed),
     };
 

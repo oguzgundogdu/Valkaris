@@ -53,6 +53,9 @@ public sealed class ClientGameSession : IGameSession
 
     public void Send(ICommand command) => _network.Send(WireCodec.Encode(new CommandMessage(command)));
 
+    /// <summary>The player leaves the match. An AI plays on for them.</summary>
+    public void Leave() => _network.Close();
+
     public void Tick(double deltaSeconds)
     {
         _network.Poll();

@@ -33,6 +33,9 @@ public sealed record PlayerEliminated(double Time, int PlayerId) : GameEvent(Tim
 
 public sealed record PlayerSurrendered(double Time, int PlayerId) : GameEvent(Time);
 
+/// <summary>A person lost their connection, and an AI plays on for them.</summary>
+public sealed record PlayerDisconnected(double Time, int PlayerId) : GameEvent(Time);
+
 public sealed record MatchEnded(double Time) : GameEvent(Time);
 
 public sealed record ResourcesDelivered(double Time, int VillageId, Resources Delivered, Resources Lost) : GameEvent(Time);

@@ -13,6 +13,8 @@ public sealed class HostGameSession : IGameSession
     private readonly INetworkHost _network;
     private readonly Dictionary<int, Client> _clients = new();
     private readonly double _snapshotInterval;
+    private const AiDifficulty TakeoverDifficulty = AiDifficulty.Normal;
+
     private double _sinceSnapshot;
 
     private readonly Func<LocalGameSession, int, IMatchAgent> _makeAgent;
@@ -26,6 +28,7 @@ public sealed class HostGameSession : IGameSession
         inner.EventRaised += OnEvent;
         inner.CommandRejected += rejection => CommandRejected?.Invoke(rejection);
         network.Received += OnReceived;
+        network.PeerDisconnected += OnPeerDisconnected;
     }
 
     public LocalGameSession Inner { get; }
@@ -56,6 +59,9 @@ public sealed class HostGameSession : IGameSession
         _clients[peer] = client;
         _network.Send(peer, WireCodec.Encode(new MatchStartMessage(playerId, Update(client))));
     }
+
+    /// <summary>The host leaves, which ends the match for everyone.</summary>
+    public void Stop() => _network.Stop();
 
     public void Tick(double deltaSeconds)
     {
@@ -119,6 +125,20 @@ public sealed class HostGameSession : IGameSession
             _network.Send(peer, WireCodec.Encode(new RejectionMessage(rejection)));
         else
             client.Dirty = true;
+    }
+
+    private void OnPeerDisconnected(int peer)
+    {
+        if (!_clients.Remove(peer, out var client) || State.IsMatchOver)
+            return;
+
+        var player = State.Players[client.PlayerId];
+        if (player.IsEliminated)
+            return;
+
+        player.TakeOverByAi(TakeoverDifficulty);
+        Inner.AddAgent(_makeAgent(Inner, player.Id));
+        OnEvent(new PlayerDisconnected(State.ElapsedTime, player.Id));
     }
 
     private sealed class Client

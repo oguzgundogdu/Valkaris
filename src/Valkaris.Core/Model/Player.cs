@@ -16,7 +16,7 @@ public sealed class Player
     public int Id { get; }
     public string Name { get; }
     public Nation Nation { get; }
-    public bool IsAi { get; }
+    public bool IsAi { get; private set; }
 
     /// <summary>True for anyone out of the match, whether beaten or by surrender.</summary>
     public bool IsEliminated { get; internal set; }
@@ -34,6 +34,13 @@ public sealed class Player
 
     /// <summary>Each village counts once for the score, however often it changes hands.</summary>
     public IReadOnlyCollection<int> CapturedVillageIds { get; }
+
+    /// <summary>A person left the match: an AI plays on for them.</summary>
+    internal void TakeOverByAi(AiDifficulty difficulty)
+    {
+        IsAi = true;
+        Difficulty = difficulty;
+    }
 
     internal void RecordCapture(int villageId) => _capturedVillageIds.Add(villageId);
 }

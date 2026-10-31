@@ -64,7 +64,7 @@ public static class PlayerView
             CapitalChoiceRequired e => e.PlayerId == playerId,
             CapitalChanged e => e.PlayerId == playerId,
             SettlingFailed e => e.OwnerId == playerId,
-            PlayerEliminated or PlayerSurrendered or MatchEnded => true,
+            PlayerEliminated or PlayerSurrendered or PlayerDisconnected or MatchEnded => true,
             _ => false,
         };
     }

@@ -35,6 +35,7 @@ public class WireCodecTests
         new CapitalChanged(1, 1, 2),
         new PlayerEliminated(1, 1),
         new PlayerSurrendered(1, 1),
+        new PlayerDisconnected(1, 2),
         new MatchEnded(1),
         new ResourcesDelivered(1, 1, new Resources(1, 0, 0), Resources.Zero),
         new CarriersReturned(1, 1, new Resources(1, 0, 0), Resources.Zero),
