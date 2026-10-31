@@ -28,6 +28,8 @@ public sealed record CapitalChanged(double Time, int PlayerId, int VillageId) : 
 
 public sealed record PlayerEliminated(double Time, int PlayerId) : GameEvent(Time);
 
+public sealed record PlayerSurrendered(double Time, int PlayerId) : GameEvent(Time);
+
 public sealed record MatchEnded(double Time) : GameEvent(Time);
 
 public sealed record ResourcesDelivered(double Time, int VillageId, Resources Delivered, Resources Lost) : GameEvent(Time);

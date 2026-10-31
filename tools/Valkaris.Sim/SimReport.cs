@@ -89,6 +89,9 @@ public sealed record SimReport(
     double AttackerLostPerDestroyed,
     double DefenderLostPerDestroyed,
     double EliminationShareOfMatches,
+    double SurrenderShareOfMatches,
+    double PlayerOutShareOfMatches,
+    Spread Surrenders,
     int Commands,
     int Rejected,
     double RejectedShare,
@@ -158,6 +161,9 @@ public sealed record SimReport(
             Safe(results.Sum(r => r.AttackerResourcesLost), results.Sum(r => r.DefenderResourcesLost)),
             Safe(results.Sum(r => r.DefenderResourcesLost), results.Sum(r => r.AttackerResourcesLost)),
             Share(r => r.Eliminations > 0),
+            Share(r => r.Surrenders > 0),
+            Share(r => r.Eliminations + r.Surrenders > 0),
+            Of(r => r.Surrenders),
             commands,
             rejected,
             Safe(rejected, commands),
@@ -324,7 +330,10 @@ public sealed record SimReport(
         Line("Player captures", Num(PlayerCaptures));
         Line("Capital captures", Num(CapitalCaptures));
         Line("Eliminations", Num(Eliminations));
+        Line("Surrenders", Num(Surrenders));
         Line("Matches with an elimination", Pct(EliminationShareOfMatches));
+        Line("Matches with a surrender", Pct(SurrenderShareOfMatches));
+        Line("Matches with either", Pct(PlayerOutShareOfMatches));
         Line("Lost per resource destroyed", $"attackers {AttackerLostPerDestroyed:0.00}, defenders {DefenderLostPerDestroyed:0.00}");
         text.AppendLine("Expansion and transfers");
         Line("Matches with a founded village", Pct(FoundedShareOfMatches));

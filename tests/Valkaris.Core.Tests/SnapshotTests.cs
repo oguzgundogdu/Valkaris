@@ -20,7 +20,7 @@ internal static class SnapshotAssert
 public class SnapshotTests
 {
     // Computed from other state, so deliberately absent from snapshots.
-    private static readonly HashSet<string> DerivedProperties = new() { $"{nameof(GameState)}.{nameof(GameState.IsMatchOver)}", $"{nameof(Village)}.{nameof(Village.IsBarbarian)}" };
+    private static readonly HashSet<string> DerivedProperties = new() { $"{nameof(GameState)}.{nameof(GameState.IsMatchOver)}", $"{nameof(Village)}.{nameof(Village.IsBarbarian)}", $"{nameof(Village)}.{nameof(Village.IsAbandoned)}" };
 
     private static bool IsRecord(Type type) =>
         type.GetProperty("EqualityContract", BindingFlags.NonPublic | BindingFlags.Instance) is not null;

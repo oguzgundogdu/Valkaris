@@ -34,6 +34,7 @@ public sealed class MatchRecorder
     private int _playerCaptures;
     private int _capitalCaptures;
     private int _eliminations;
+    private int _surrenders;
     private int _transfers;
     private double _moved;
     private double _lostInTransfer;
@@ -92,6 +93,9 @@ public sealed class MatchRecorder
                 break;
             case PlayerEliminated:
                 _eliminations++;
+                break;
+            case PlayerSurrendered:
+                _surrenders++;
                 break;
             case ResourcesDelivered delivered:
                 _transfers++;
@@ -233,7 +237,8 @@ public sealed class MatchRecorder
             _rejections.OrderBy(r => r.Key).ToDictionary(r => r.Key, r => r.Value),
             battles.Where(IsAttackOnPlayer).Sum(r => ValueOf(r.AttackerLost)),
             battles.Where(IsAttackOnPlayer).Sum(r => ValueOf(r.DefenderLost)),
-            _state.Outcome is null);
+            _state.Outcome is null,
+            _surrenders);
     }
 
     private SeatScouting ScoutingOf(Player player, IReadOnlyList<BattleReport> attacks)

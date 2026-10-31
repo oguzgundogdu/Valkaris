@@ -60,4 +60,5 @@ public sealed record MatchResult(
     IReadOnlyDictionary<string, int> Rejections,
     double AttackerResourcesLost = 0,
     double DefenderResourcesLost = 0,
-    bool Unfinished = false);
+    bool Unfinished = false,
+    int Surrenders = 0);

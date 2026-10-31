@@ -42,6 +42,7 @@ public static class SnapshotMapper
         player.Nation,
         player.IsAi,
         player.IsEliminated,
+        player.HasSurrendered,
         player.CapitalVillageId,
         player.CapitalChoiceDeadline,
         player.CapturedVillageIds.ToList(),
@@ -95,6 +96,7 @@ public static class SnapshotMapper
             var player = new Player(p.Id, p.Name, p.Nation, p.IsAi)
             {
                 IsEliminated = p.IsEliminated,
+                HasSurrendered = p.HasSurrendered,
                 CapitalVillageId = p.CapitalVillageId,
                 CapitalChoiceDeadline = p.CapitalChoiceDeadline,
                 Difficulty = p.Difficulty,

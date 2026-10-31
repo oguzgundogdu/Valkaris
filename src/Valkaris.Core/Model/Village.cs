@@ -42,6 +42,9 @@ public sealed class Village
 
     public bool IsBarbarian => OwnerId == BarbarianOwnerId;
 
+    /// <summary>Left behind by a surrender: barbarian, but with no tier, so nothing regenerates.</summary>
+    public bool IsAbandoned => IsBarbarian && BarbarianTier is null;
+
     public int BuildingLevel(BuildingType type) => _buildings.GetValueOrDefault(type);
 
     internal void SetBuildingLevel(BuildingType type, int level) => _buildings[type] = level;

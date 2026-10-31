@@ -25,6 +25,7 @@ public sealed record PlayerSnapshot(
     Nation Nation,
     bool IsAi,
     bool IsEliminated,
+    bool HasSurrendered,
     int? CapitalVillageId,
     double? CapitalChoiceDeadline,
     IReadOnlyList<int> CapturedVillageIds,

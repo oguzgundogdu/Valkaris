@@ -41,7 +41,7 @@ public sealed class LocalGameSession : IGameSession
             return;
         }
 
-        var result = _handler.Handle(LocalPlayerId, command);
+        var result = Handle(LocalPlayerId, command);
         if (result.Rejection is { } rejection)
             CommandRejected?.Invoke(rejection);
     }
@@ -51,7 +51,19 @@ public sealed class LocalGameSession : IGameSession
     /// Deliberately not on IGameSession, so the UI can never act as someone else.
     /// </summary>
     public CommandResult SendAs(int playerId, ICommand command) =>
-        IsPaused ? CommandResult.Rejected(CommandRejection.GamePaused) : _handler.Handle(playerId, command);
+        IsPaused ? CommandResult.Rejected(CommandRejection.GamePaused) : Handle(playerId, command);
+
+    private CommandResult Handle(int playerId, ICommand command)
+    {
+        var result = _handler.Handle(playerId, command);
+        foreach (var gameEvent in _handler.TakeEvents())
+        {
+            foreach (var agent in _agents)
+                agent.OnEvent(gameEvent);
+            EventRaised?.Invoke(gameEvent);
+        }
+        return result;
+    }
 
     public void AddAgent(IMatchAgent agent) => _agents.Add(agent);
 

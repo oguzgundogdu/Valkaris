@@ -66,7 +66,7 @@ public sealed class Simulation
         MoveTimeTo(end);
         if (_state.ElapsedTime >= _state.Settings.MatchDurationSeconds)
         {
-            EndMatch(MatchEndReason.TimeUp, end);
+            MatchRules.EndMatch(_state, _data, MatchEndReason.TimeUp, end, _followUps);
             events.AddRange(_followUps);
             _followUps.Clear();
         }
@@ -414,7 +414,7 @@ public sealed class Simulation
     {
         if (_state.Villages.Values.All(v => v.OwnerId != player.Id))
         {
-            Eliminate(player, now);
+            MatchRules.TakeOut(_state, _data, player, now, new PlayerEliminated(now, player.Id), _followUps);
             return;
         }
 
@@ -424,31 +424,6 @@ public sealed class Simulation
         player.CapitalVillageId = null;
         player.CapitalChoiceDeadline = now + _data.Villages.Capital.ChoiceSeconds;
         _followUps.Add(new CapitalChoiceRequired(now, player.Id, player.CapitalChoiceDeadline.Value));
-    }
-
-    /// <summary>Their movements go too, so an eliminated player can never regain a village from an attack still travelling.</summary>
-    private void Eliminate(Player player, double now)
-    {
-        player.IsEliminated = true;
-        player.CapitalVillageId = null;
-        player.CapitalChoiceDeadline = null;
-        foreach (var movement in _state.Movements.Where(m => m.OwnerId == player.Id).ToList())
-            _state.RemoveMovement(movement);
-
-        _followUps.Add(new PlayerEliminated(now, player.Id));
-        if (_state.Players.Values.Count(p => !p.IsEliminated) == 1)
-            EndMatch(MatchEndReason.LastPlayerStanding, now);
-    }
-
-    private void EndMatch(MatchEndReason reason, double now)
-    {
-        var scores = ScoreRules.Ranked(_state, _data);
-        var alive = scores.Where(s => !_state.Players[s.PlayerId].IsEliminated).ToList();
-        var best = alive.Max(s => s.Score);
-        var winners = alive.Where(s => s.Score == best).Select(s => s.PlayerId).OrderBy(id => id).ToList();
-
-        _state.Outcome = new MatchOutcome(reason, now, winners, scores);
-        _followUps.Add(new MatchEnded(now));
     }
 
     private CapitalChanged PickCapitalAutomatically(Player player, double now)
@@ -462,6 +437,9 @@ public sealed class Simulation
 
     private void RegenerateResources(Village village, double gameSeconds)
     {
+        if (village.IsAbandoned)
+            return;
+
         var gain = _data.Map.Barbarians.ResourceRegenPerSecond * gameSeconds;
         var cap = TierOf(village).Resources;
         village.Resources = new Resources(
@@ -472,7 +450,7 @@ public sealed class Simulation
 
     private void ScheduleTroopRegen(Village village, double now)
     {
-        if (village.NextTroopRegenTime is null && FirstUnitBelowCap(village) is not null)
+        if (!village.IsAbandoned && village.NextTroopRegenTime is null && FirstUnitBelowCap(village) is not null)
             village.NextTroopRegenTime = now + _data.Map.Barbarians.TroopRegenSeconds / _state.Settings.SpeedMultiplier;
     }
 

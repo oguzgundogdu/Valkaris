@@ -1,4 +1,5 @@
 using Valkaris.Core.Data;
+using Valkaris.Core.Events;
 using Valkaris.Core.Model;
 using Valkaris.Core.Systems;
 
@@ -9,6 +10,7 @@ public sealed class CommandHandler
 {
     private readonly GameState _state;
     private readonly GameData _data;
+    private readonly List<GameEvent> _events = new();
 
     public CommandHandler(GameState state, GameData data)
     {
@@ -29,8 +31,27 @@ public sealed class CommandHandler
             FoundVillageCommand found => HandleFound(issuerId, found),
             SetCapitalCommand capital => HandleSetCapital(issuerId, capital),
             SendResourcesCommand transfer => HandleSendResources(issuerId, transfer),
+            SurrenderCommand => HandleSurrender(issuerId),
             _ => CommandResult.Rejected(CommandRejection.UnknownCommand),
         };
+    }
+
+    /// <summary>What commands have caused since the last call. Most cause nothing that needs announcing.</summary>
+    public IReadOnlyList<GameEvent> TakeEvents()
+    {
+        var events = _events.ToList();
+        _events.Clear();
+        return events;
+    }
+
+    private CommandResult HandleSurrender(int issuerId)
+    {
+        var player = _state.Players[issuerId];
+        if (player.IsEliminated)
+            return CommandResult.Rejected(CommandRejection.AlreadyOutOfTheMatch);
+
+        MatchRules.Surrender(_state, _data, player, _events);
+        return CommandResult.Ok;
     }
 
     private CommandResult HandleBuild(int issuerId, BuildCommand command)

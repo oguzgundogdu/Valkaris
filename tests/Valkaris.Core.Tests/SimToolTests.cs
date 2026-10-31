@@ -338,6 +338,20 @@ public class SimToolTests
     }
 
     [Fact]
+    public void SurrendersAreCountedApartFromEliminations()
+    {
+        var match = new Recorded(players: 3);
+        match.Send(3, new SurrenderCommand());
+
+        var result = match.Finish();
+        var report = SimReport.Build(new[] { result }, Array.Empty<MatchFailure>());
+
+        Assert.Equal(1, result.Surrenders);
+        Assert.Equal(0, result.Eliminations);
+        Assert.Equal(1, report.PlayerOutShareOfMatches);
+    }
+
+    [Fact]
     public void RejectedCommandsAreCountedByReason()
     {
         var match = new Recorded();

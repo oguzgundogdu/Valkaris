@@ -17,7 +17,11 @@ public sealed class Player
     public string Name { get; }
     public Nation Nation { get; }
     public bool IsAi { get; }
+
+    /// <summary>True for anyone out of the match, whether beaten or by surrender.</summary>
     public bool IsEliminated { get; internal set; }
+
+    public bool HasSurrendered { get; internal set; }
 
     /// <summary>Null for human players.</summary>
     public AiDifficulty? Difficulty { get; internal set; }
