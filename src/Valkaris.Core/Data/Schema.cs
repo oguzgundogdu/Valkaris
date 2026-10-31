@@ -415,6 +415,12 @@ public sealed record AiProfile
 
     public required int MaxHomeScouts { get; init; }
 
+    /// <summary>How long a village stays on guard after a notice that it was scouted. While it does, it keeps its full home Scouts and more troops.</summary>
+    public required double AlertSeconds { get; init; }
+
+    /// <summary>Added to the garrison share of a village on guard.</summary>
+    public required double AlertGarrisonBonus { get; init; }
+
     /// <summary>Game seconds that news of a target stays good enough to attack on. Older than this, it scouts first.</summary>
     public required double ScoutMaxAgeSeconds { get; init; }
 }

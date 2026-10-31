@@ -512,6 +512,10 @@ internal static class GameDataValidator
                 Error($"{path}.homeScoutsPerMinute", "must not be negative.");
             if (profile.MaxHomeScouts < 0)
                 Error($"{path}.maxHomeScouts", "must not be negative.");
+            if (profile.AlertSeconds < 0)
+                Error($"{path}.alertSeconds", "must not be negative.");
+            if (profile.AlertGarrisonBonus is < 0 or > 1)
+                Error($"{path}.alertGarrisonBonus", "must be between 0 and 1.");
             if (profile.MaxWallLevel < 0)
                 Error($"{path}.maxWallLevel", "must not be negative.");
             if (profile.ScoutMaxAgeSeconds < 0)

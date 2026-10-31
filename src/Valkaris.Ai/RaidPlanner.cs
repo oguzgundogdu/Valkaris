@@ -17,7 +17,7 @@ public sealed class RaidPlanner
         _view = view;
         _memory = memory;
         _war = war;
-        _forces = new Forces(view);
+        _forces = new Forces(view, memory);
     }
 
     public void Plan(Village village)

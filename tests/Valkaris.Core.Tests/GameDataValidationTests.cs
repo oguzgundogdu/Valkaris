@@ -332,6 +332,8 @@ public class GameDataValidationTests
     [InlineData("homeScoutsAtStart", -1)]
     [InlineData("homeScoutsPerMinute", -1)]
     [InlineData("maxHomeScouts", -1)]
+    [InlineData("alertSeconds", -1)]
+    [InlineData("alertGarrisonBonus", 1.5)]
     public void InvalidScoutProfileValue(string field, double value) =>
         AssertAiInvalid(r => r["difficulties"]!["Normal"]![field] = value, field);
 

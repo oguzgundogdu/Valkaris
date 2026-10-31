@@ -17,7 +17,7 @@ public sealed class ScoutPlanner
         _view = view;
         _memory = memory;
         _war = war;
-        _forces = new Forces(view);
+        _forces = new Forces(view, memory);
     }
 
     public void Plan(Village village)
@@ -40,7 +40,7 @@ public sealed class ScoutPlanner
         _memory.ScoutsWanted = wanted;
 
         // A first look goes with what there is, since the army waits for it. After a failure, only the full force will do.
-        var scouts = Math.Min(wanted, village.TroopCount(UnitType.Scout) - _forces.HomeScouts());
+        var scouts = Math.Min(wanted, village.TroopCount(UnitType.Scout) - _forces.HomeScouts(village));
         if (scouts < 1 || (scouts < wanted && _memory.CaughtAt(target) is not null))
             return;
 

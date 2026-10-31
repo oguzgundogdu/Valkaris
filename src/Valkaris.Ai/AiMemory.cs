@@ -43,6 +43,7 @@ public sealed class AiMemory
     private readonly Dictionary<int, Sighting> _sightings = new();
     private readonly Dictionary<int, CaughtScouts> _caught = new();
     private readonly Dictionary<int, double> _strongestByPlayer = new();
+    private readonly Dictionary<int, double> _lastNoticed = new();
     private int _lastReportId;
 
     public AiMemory(AiView view) => _view = view;
@@ -70,6 +71,10 @@ public sealed class AiMemory
         _strongestByPlayer[enemy] = Math.Max(_strongestByPlayer.GetValueOrDefault(enemy), power);
     }
 
+    /// <summary>True for a while after a notice that someone scouted this village of its own.</summary>
+    public bool IsOnGuard(int villageId) =>
+        _lastNoticed.TryGetValue(villageId, out var noticed) && (_view.Now - noticed) * _view.GameSpeed < _view.Profile.AlertSeconds;
+
     /// <summary>The latest failure to scout this village under its current owner, unless something newer replaced it.</summary>
     public CaughtScouts? CaughtAt(KnownVillage village) =>
         _caught.TryGetValue(village.Id, out var caught) && caught.OwnerId == village.OwnerId ? caught : null;
@@ -83,6 +88,7 @@ public sealed class AiMemory
         var reports = _view.ReportsSince(_lastReportId)
             .Select(r => (r.Id, Learn: (Action)(() => Remember(r))))
             .Concat(_view.ScoutReportsSince(_lastReportId).Select(r => (r.Id, Learn: (Action)(() => Remember(r)))))
+            .Concat(_view.ScoutNoticesSince(_lastReportId).Select(n => (n.Id, Learn: (Action)(() => _lastNoticed[n.TargetVillageId] = n.Time))))
             .OrderBy(r => r.Id)
             .ToList();
 

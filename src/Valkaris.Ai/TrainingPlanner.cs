@@ -15,7 +15,7 @@ public sealed class TrainingPlanner
     {
         _view = view;
         _memory = memory;
-        _forces = new Forces(view);
+        _forces = new Forces(view, memory);
     }
 
     /// <summary>True while the army is smaller than the profile wants by now, across all villages.</summary>
@@ -77,7 +77,7 @@ public sealed class TrainingPlanner
     private bool TrainScouts(Village village, Resources available)
     {
         var isBase = village.Id == (_view.CapitalVillageId ?? _view.OwnVillages[0].Id);
-        var wanted = _forces.HomeScouts() + (isBase ? _memory.ScoutsWanted : 0);
+        var wanted = _forces.HomeScouts(village) + (isBase ? _memory.ScoutsWanted : 0);
         var count = Math.Min(Math.Min(wanted - Count(village, UnitType.Scout), Affordable(UnitType.Scout, available)), _view.Config.TrainingBatchMax);
         if (count < 1 || !_view.PreviewTrain(village.Id, UnitType.Scout, count).CanTrain)
             return false;
@@ -133,7 +133,7 @@ public sealed class TrainingPlanner
     {
         var total = Count(village, null);
         var spears = Count(village, UnitType.Spearman);
-        if (threatened || spears < total * _view.Profile.GarrisonShare)
+        if (threatened || spears < total * _forces.GarrisonShare(village))
             yield return UnitType.Spearman;
 
         var swords = Count(village, UnitType.Swordsman);

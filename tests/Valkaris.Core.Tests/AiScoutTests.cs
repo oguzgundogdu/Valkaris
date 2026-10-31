@@ -282,6 +282,74 @@ public class AiScoutTests
         Assert.True(village.TroopCount(UnitType.Scout) >= 3, $"{village.TroopCount(UnitType.Scout)} at home");
     }
 
+    // Reacting to notices.
+
+    private static (AiMatch Match, AiMemory Memory, Forces Forces) Noticed(double? noticedAt = 0)
+    {
+        var match = Match();
+        var view = match.Views[Ai];
+        var memory = new AiMemory(view);
+        if (noticedAt is { } time)
+            match.State.AddScoutNotice(new ScoutNotice(1000, time, Enemy, Ai, Ai, true, 3, 0));
+        memory.Update();
+        return (match, memory, new Forces(view, memory));
+    }
+
+    [Fact]
+    public void ANoticePutsThatVillageOnGuard()
+    {
+        var (match, memory, _) = Noticed();
+
+        Assert.True(memory.IsOnGuard(Ai));
+        Assert.False(memory.IsOnGuard(Enemy));
+        Assert.True(match.Data.Ai.Difficulties[AiDifficulty.Hard].AlertSeconds > 0);
+    }
+
+    [Fact]
+    public void WithoutANoticeNothingChanges()
+    {
+        var (_, memory, _) = Noticed(null);
+
+        Assert.False(memory.IsOnGuard(Ai));
+    }
+
+    [Fact]
+    public void TheGuardEnds()
+    {
+        var (match, memory, _) = Noticed();
+
+        match.Run(match.Data.Ai.Difficulties[AiDifficulty.Hard].AlertSeconds + 1);
+
+        Assert.False(memory.IsOnGuard(Ai));
+    }
+
+    [Fact]
+    public void OnGuardItKeepsMoreTroopsAndAllItsHomeScouts()
+    {
+        var (match, _, guarded) = Noticed();
+        var village = match.State.Villages[Ai];
+        SetGarrison(village, UnitType.Swordsman, 100);
+        var profile = match.Data.Ai.Difficulties[AiDifficulty.Hard];
+        var calm = new Forces(match.Views[Ai]);
+
+        Assert.True(guarded.Spare(village).Values.Sum() < calm.Spare(village).Values.Sum());
+        Assert.Equal(profile.GarrisonShare + profile.AlertGarrisonBonus, guarded.GarrisonShare(village), 6);
+        Assert.Equal(profile.MaxHomeScouts, guarded.HomeScouts(village));
+        Assert.True(calm.HomeScouts(village) < profile.MaxHomeScouts);
+    }
+
+    [Fact]
+    public void AProfileWithNoAlertIgnoresNotices()
+    {
+        var match = new AiMatch(new[] { AiDifficulty.Easy, AiDifficulty.Normal }, idle: new[] { Enemy });
+        var view = match.Views[Ai];
+        var memory = new AiMemory(view);
+        match.State.AddScoutNotice(new ScoutNotice(1000, 0, Enemy, Ai, Ai, true, 3, 0));
+        memory.Update();
+
+        Assert.False(memory.IsOnGuard(Ai));
+    }
+
     [Fact]
     public void TheAiCommandsAreAccepted()
     {

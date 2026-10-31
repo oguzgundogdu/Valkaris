@@ -19,7 +19,7 @@ public sealed class RivalPlanner
     {
         _view = view;
         _memory = memory;
-        _forces = new Forces(view);
+        _forces = new Forces(view, memory);
         _random = new AiRandom(view.Seed, view.PlayerId);
         Current = Assignment(view)[view.PlayerId];
     }

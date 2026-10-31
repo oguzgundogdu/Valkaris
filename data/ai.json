@@ -219,6 +219,8 @@
       "homeScoutsAtStart": 0,
       "homeScoutsPerMinute": 0.1,
       "maxHomeScouts": 2,
+      "alertSeconds": 0,
+      "alertGarrisonBonus": 0,
       "maxFightersPerMinute": 1.5
     },
     "Normal": {
@@ -248,7 +250,9 @@
       "maxWatchtowerLevel": 2,
       "homeScoutsAtStart": 1,
       "homeScoutsPerMinute": 0.2,
-      "maxHomeScouts": 10
+      "maxHomeScouts": 10,
+      "alertSeconds": 60,
+      "alertGarrisonBonus": 0.15
     },
     "Hard": {
       "decisionSeconds": 3,
@@ -277,7 +281,9 @@
       "maxWatchtowerLevel": 3,
       "homeScoutsAtStart": 1,
       "homeScoutsPerMinute": 0.25,
-      "maxHomeScouts": 12
+      "maxHomeScouts": 12,
+      "alertSeconds": 90,
+      "alertGarrisonBonus": 0.2
     }
   }
 }

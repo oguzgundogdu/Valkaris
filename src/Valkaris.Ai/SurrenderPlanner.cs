@@ -20,7 +20,7 @@ public sealed class SurrenderPlanner
     {
         _view = view;
         _memory = memory;
-        _forces = new Forces(view);
+        _forces = new Forces(view, memory);
     }
 
     public void NoteCapitalLost() => _lostCapital = true;

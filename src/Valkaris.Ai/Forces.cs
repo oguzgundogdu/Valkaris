@@ -6,11 +6,20 @@ namespace Valkaris.Ai;
 public sealed class Forces
 {
     private readonly AiView _view;
+    private readonly AiMemory? _memory;
 
-    public Forces(AiView view) => _view = view;
+    public Forces(AiView view, AiMemory? memory = null)
+    {
+        _view = view;
+        _memory = memory;
+    }
 
     public double AttackOf(IReadOnlyDictionary<UnitType, int> troops) =>
         troops.Sum(t => t.Value * _view.Units.Units[t.Key].Attack);
+
+    /// <summary>The share of its troops a village keeps home, which rises while it is on guard.</summary>
+    public double GarrisonShare(Village village) =>
+        _view.Profile.GarrisonShare + (_memory?.IsOnGuard(village.Id) == true ? _view.Profile.AlertGarrisonBonus : 0);
 
     /// <summary>Fighting troops beyond the garrison the profile keeps home. Spearmen stay first, and Swordsmen make up any shortfall.</summary>
     public Dictionary<UnitType, int> Spare(Village village)
@@ -18,7 +27,7 @@ public sealed class Forces
         var spears = village.TroopCount(UnitType.Spearman);
         var swords = village.TroopCount(UnitType.Swordsman);
         var cavalry = village.TroopCount(UnitType.Cavalry);
-        var keep = (int)Math.Ceiling((spears + swords + cavalry) * _view.Profile.GarrisonShare);
+        var keep = (int)Math.Ceiling((spears + swords + cavalry) * Math.Min(1, GarrisonShare(village)));
 
         var spare = new Dictionary<UnitType, int>
         {
@@ -29,9 +38,12 @@ public sealed class Forces
         return spare.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
     }
 
-    /// <summary>Scouts every village keeps home against scouting, by the profile. They don't go on missions.</summary>
-    public int HomeScouts()
+    /// <summary>Scouts a village keeps home against scouting, by the profile. They don't go on missions.</summary>
+    public int HomeScouts(Village village)
     {
+        if (_memory?.IsOnGuard(village.Id) == true)
+            return _view.Profile.MaxHomeScouts;
+
         var wanted = _view.Profile.HomeScoutsAtStart + _view.Profile.HomeScoutsPerMinute * _view.Now * _view.GameSpeed / 60;
         return Math.Min((int)wanted, _view.Profile.MaxHomeScouts);
     }
