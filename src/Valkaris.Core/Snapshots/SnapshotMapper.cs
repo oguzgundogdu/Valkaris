@@ -7,7 +7,7 @@ namespace Valkaris.Core.Snapshots;
 /// <summary>Converts between the encapsulated model and its wire format. The model is never serialized directly.</summary>
 public static class SnapshotMapper
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters = { new JsonStringEnumConverter(allowIntegerValues: false) },
