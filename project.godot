@@ -29,6 +29,11 @@ project/assembly_name="Valkaris"
 
 theme/custom="res://assets/theme/valkaris.tres"
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://locale/en.po", "res://locale/tr.po")
+locale/fallback="en"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

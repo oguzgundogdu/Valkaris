@@ -29,11 +29,13 @@ public partial class Main : Control
     public override void _Ready()
     {
         // Code states its culture wherever it matters. This is a safety net for players, and the tests turn it off to prove that.
-        var culture = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild()).Culture is { } name
+        var options = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
+        var culture = options.Culture is { } name
             ? CultureInfo.GetCultureInfo(name)
             : CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.CurrentCulture = culture;
+        Language.Apply(options.Language ?? Language.Load());
 
         DisplayServer.WindowSetMinSize(MinWindowSize);
         GetTree().AutoAcceptQuit = false;
@@ -65,11 +67,14 @@ public partial class Main : Control
         GetTree().Quit();
     }
 
-    private void ShowStartScreen()
+    private void ShowStartScreen() => ShowStartScreen(null);
+
+    private void ShowStartScreen(StartChoices? choices)
     {
         var screen = StartScene.Instantiate<StartScreen>();
-        screen.Init(_data);
+        screen.Init(_data, choices);
         screen.StartRequested += StartMatch;
+        screen.LanguageChanged += ShowStartScreen;
         SwitchTo(screen);
     }
 

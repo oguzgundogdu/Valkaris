@@ -36,6 +36,19 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
+[node name="LanguageRow" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/LanguageRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.language"
+
+[node name="Language" type="OptionButton" parent="Card/Box/LanguageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+
 [node name="DurationRow" type="HBoxContainer" parent="Card/Box"]
 layout_mode = 2
 

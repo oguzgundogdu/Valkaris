@@ -61,13 +61,51 @@ public partial class UiTest : Control
         Expect(culture != "tr-TR" || "i".ToUpper() == "\u0130", "tr-TR rules are in force");
     }
 
+    private async Task TestLanguage()
+    {
+        var language = Language.Current;
+
+        Expect(Language.Pick(null, "tr") == "tr", "A first launch follows a Turkish system");
+        Expect(Language.Pick(null, "de") == "en" && Language.Pick(null, "en") == "en", "A first launch on any other system is English");
+        Expect(Language.Pick("en", "tr") == "en" && Language.Pick("tr", "en") == "tr", "A saved language beats the system");
+        Expect(Language.Pick("xx", "en") == "en", "An unknown saved language is ignored");
+
+        var duration = Find<StartScreen>().GetNode<OptionButton>("%Duration");
+        duration.Select(1);
+        Find<StartScreen>().GetNode<OptionButton>("%Language").Select(Array.IndexOf(Language.Codes, "tr"));
+        Find<StartScreen>().GetNode<OptionButton>("%Language").EmitSignal(OptionButton.SignalName.ItemSelected, Array.IndexOf(Language.Codes, "tr"));
+        await Frames();
+
+        var start = Find<StartScreen>();
+        Expect(Language.Current == "tr" && TranslationServer.GetLocale().StartsWith("tr", StringComparison.Ordinal), "Choosing Turkish applies it");
+        Expect(Language.Load() == "tr", "The choice is remembered");
+        Expect(start.GetNode<Label>("Card/Box/LanguageRow/Label").Text == "ui.start.language" && start.GetNode<Label>("Card/Box/LanguageRow/Label").Tr("ui.start.language") == "Dil", "The start screen shows Turkish");
+        Expect(start.GetNode<OptionButton>("%Duration").Selected == 1, "Other choices survive the language change");
+        Expect(L.N("common.minutes", 1) == "1 dakika" && L.N("common.minutes", 2) == "2 dakika", $"Turkish has one plural form, got '{L.N("common.minutes", 2)}'");
+
+        start.GetNode<OptionButton>("%Language").EmitSignal(OptionButton.SignalName.ItemSelected, Array.IndexOf(Language.Codes, "en"));
+        await Frames();
+        Expect(Language.Load() == "en" && L.T("ui.start.language") == "Language", "Choosing English applies it");
+        Expect(L.N("common.minutes", 1) == "1 minute" && L.N("common.minutes", 2) == "2 minutes", $"English has two plural forms, got '{L.N("common.minutes", 1)}'");
+        Expect(L.T("language.tr") == "T\u00fcrk\u00e7e", "A language shows its own name");
+
+        Find<StartScreen>().GetNode<OptionButton>("%Duration").Select(0);
+        Find<StartScreen>().GetNode<OptionButton>("%Language").EmitSignal(OptionButton.SignalName.ItemSelected, Array.IndexOf(Language.Codes, language));
+        await Frames();
+    }
+
     private async Task Run()
     {
+        // Never touches the language saved for real play.
+        Language.SettingsPath = "user://uitest_settings.cfg";
+        DirAccess.RemoveAbsolute(Language.SettingsPath);
+
         _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
         _main.IdleOpponents = true;
         AddChild(_main);
         await Frames();
         TestCulture();
+        await TestLanguage();
 
         var start = Find<StartScreen>();
         await Shot("start");

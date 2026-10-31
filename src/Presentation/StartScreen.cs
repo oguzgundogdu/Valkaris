@@ -8,20 +8,31 @@ namespace Valkaris.Presentation;
 /// <summary>What the start screen asks for.</summary>
 public sealed record MatchSetup(GameSettings Settings, int Opponents, AiDifficulty Difficulty);
 
+/// <summary>What is selected on the start screen, kept when a language change rebuilds it.</summary>
+public sealed record StartChoices(int Duration, int Speed, int MapSize, int Opponents, int Difficulty);
+
 /// <summary>Match settings. The options come from data/game.json.</summary>
 public partial class StartScreen : CenterContainer
 {
     private GameData _data = null!;
+    private StartChoices? _choices;
 
     public event Action<MatchSetup>? StartRequested;
 
-    public void Init(GameData data) => _data = data;
+    /// <summary>The language changed, so the screen needs rebuilding with these choices.</summary>
+    public event Action<StartChoices>? LanguageChanged;
+
+    public void Init(GameData data, StartChoices? choices = null)
+    {
+        _data = data;
+        _choices = choices;
+    }
 
     public override void _Ready()
     {
         var duration = GetNode<OptionButton>("%Duration");
         foreach (var minutes in _data.Game.MatchDurationsMinutes)
-            duration.AddItem($"{Format.Whole(minutes)} minutes");
+            duration.AddItem(L.N("common.minutes", (int)minutes));
         if (_data.Game.UnlimitedMatches)
             duration.AddItem("Unlimited");
 
@@ -46,6 +57,25 @@ public partial class StartScreen : CenterContainer
         foreach (var level in difficulties)
             difficulty.AddItem(level.ToString());
         difficulty.Select(Array.IndexOf(difficulties, AiDifficulty.Normal));
+
+        if (_choices is { } choices)
+        {
+            duration.Select(choices.Duration);
+            speed.Select(choices.Speed);
+            mapSize.Select(choices.MapSize);
+            opponents.Select(choices.Opponents);
+            difficulty.Select(choices.Difficulty);
+        }
+
+        var language = GetNode<OptionButton>("%Language");
+        foreach (var code in Language.Codes)
+            language.AddItem(L.T($"language.{code}"));
+        language.Select(Array.IndexOf(Language.Codes, Language.Current));
+        language.ItemSelected += index =>
+        {
+            Language.Choose(Language.Codes[index]);
+            LanguageChanged?.Invoke(new StartChoices(duration.Selected, speed.Selected, mapSize.Selected, opponents.Selected, difficulty.Selected));
+        };
 
         GetNode<Button>("%Start").Pressed += () =>
         {
