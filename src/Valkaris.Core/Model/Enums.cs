@@ -20,6 +20,7 @@ public enum UnitType
     Catapult,
     Settler,
     Lord,
+    Scout,
 }
 
 public enum UnitClass

@@ -62,6 +62,8 @@ public static class SendPreview
 
         if (command.Type is MovementType.Attack or MovementType.Raid && command.Troops.GetValueOrDefault(UnitType.Settler) > 0)
             return CommandRejection.SettlersCannotFight;
+        if (command.Type is MovementType.Attack or MovementType.Raid && command.Troops.GetValueOrDefault(UnitType.Scout) > 0)
+            return CommandRejection.ScoutsCannotFight;
         if (command.Type == MovementType.Raid && command.Troops.GetValueOrDefault(UnitType.Lord) > 0)
             return CommandRejection.LordsCannotRaid;
 

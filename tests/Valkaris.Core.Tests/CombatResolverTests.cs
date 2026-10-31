@@ -97,10 +97,10 @@ public class CombatResolverTests
     }
 
     [Fact]
-    public void CavalryIsTheFastestUnitAndWeakDefendersAgainstItAreInfantryLight()
+    public void CavalryIsTheFastestFighterAndWeakDefendersAgainstItAreInfantryLight()
     {
         var units = Data.Units.Units;
-        Assert.All(units.Where(u => u.Key != UnitType.Cavalry), u => Assert.True(units[UnitType.Cavalry].Speed > u.Value.Speed));
+        Assert.All(units.Where(u => u.Key is not (UnitType.Cavalry or UnitType.Scout)), u => Assert.True(units[UnitType.Cavalry].Speed > u.Value.Speed));
         Assert.True(units[UnitType.Swordsman].DefenceVsCavalry < units[UnitType.Swordsman].DefenceVsInfantry);
     }
 

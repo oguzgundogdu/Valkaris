@@ -66,6 +66,17 @@
       "cost": { "wood": 400, "stone": 500, "food": 800 },
       "trainingSeconds": 60,
       "requiredBarracksLevel": 5
+    },
+    "Scout": {
+      "class": "Cavalry",
+      "attack": 1,
+      "defenceVsInfantry": 0,
+      "defenceVsCavalry": 0,
+      "speed": 1.2,
+      "lootCapacity": 0,
+      "cost": { "wood": 15, "stone": 10, "food": 25 },
+      "trainingSeconds": 4,
+      "requiredBarracksLevel": 1
     }
   }
 }

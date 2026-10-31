@@ -54,6 +54,7 @@ public enum CommandRejection
     NotEnoughTroops,
     CatapultsCannotRaid,
     SettlersCannotFight,
+    ScoutsCannotFight,
     LordsCannotRaid,
     NoSettlerHere,
     TileOutsideMap,

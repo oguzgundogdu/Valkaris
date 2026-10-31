@@ -39,6 +39,7 @@ public static class UiContent
         [UnitType.Catapult] = new("Catapult", "res://assets/icons/catapult.svg"),
         [UnitType.Settler] = new("Settler", "res://assets/icons/settler.svg"),
         [UnitType.Lord] = new("Lord", "res://assets/icons/lord.svg"),
+        [UnitType.Scout] = new("Scout", "res://assets/icons/scout.svg"),
     };
 
     private static readonly Color[] PlayerColours =
@@ -146,6 +147,7 @@ public static class UiContent
         CommandRejection.NotEnoughTroops => "You don't have that many troops here.",
         CommandRejection.CatapultsCannotRaid => "Catapults can't go on a raid.",
         CommandRejection.SettlersCannotFight => "Settlers can't go on an attack or raid.",
+        CommandRejection.ScoutsCannotFight => "Scouts can't go on an attack or raid.",
         CommandRejection.LordsCannotRaid => "Lords can't go on a raid.",
         CommandRejection.OnlyFightersCanScout => "Only Spearmen, Swordsmen and Cavalry can scout.",
         CommandRejection.NoSettlerHere => "Train a Settler in this village first.",

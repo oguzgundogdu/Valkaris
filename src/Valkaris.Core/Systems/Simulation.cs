@@ -320,7 +320,8 @@ public sealed class Simulation
     private BattleResolved ResolveBattle(Movement movement)
     {
         var target = _state.Villages[movement.ToVillageId!.Value];
-        var defenders = target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
+        // Scouts stay out of battles, and so out of battle reports.
+        var defenders = target.Troops.Where(t => t.Value > 0 && t.Key != UnitType.Scout).ToDictionary(t => t.Key, t => t.Value);
         var wallLevel = target.BuildingLevel(BuildingType.Wall);
 
         var result = CombatResolver.Resolve(_data, movement.Type, movement.Troops, defenders, wallLevel);
@@ -394,10 +395,11 @@ public sealed class Simulation
         return new LoyaltyChange(from, village.Loyalty, village.Loyalty <= 0);
     }
 
-    /// <summary>The garrison is already gone: only a won attack gets here. Stored resources and buildings stay.</summary>
+    /// <summary>The garrison is already gone: only a won attack gets here, and Scouts die rather than change sides. Stored resources and buildings stay.</summary>
     private void Capture(Village village, int newOwnerId, double now)
     {
         var previousOwnerId = village.OwnerId;
+        village.RemoveTroops(UnitType.Scout, village.TroopCount(UnitType.Scout));
         village.OwnerId = newOwnerId;
         village.Loyalty = _data.Villages.Loyalty.AfterCapture;
         village.ClearQueues();
