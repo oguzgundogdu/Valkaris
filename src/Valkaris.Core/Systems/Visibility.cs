@@ -60,10 +60,18 @@ public static class Visibility
             .Select(a => new PublicNotice(a.Time, a.FromVillageName, a.TargetVillageId, a.TargetVillageName));
 
     /// <summary>Battles this player saw happen after a given time, oldest first.</summary>
-    public static IEnumerable<Clash> Clashes(GameState state, GameData data, int playerId, double after) =>
-        state.BattleArrivals
-            .Where(a => a.Time > after && SeesClash(state, data, playerId, a))
-            .Select(a => new Clash(a.Time, a.TargetVillageId));
+    public static IReadOnlyList<Clash> Clashes(GameState state, GameData data, int playerId, double after)
+    {
+        // Runs every frame on the map, so it walks back from the newest and stops early.
+        var seen = new List<Clash>();
+        for (var i = state.BattleArrivals.Count - 1; i >= 0 && state.BattleArrivals[i].Time > after; i--)
+        {
+            if (SeesClash(state, data, playerId, state.BattleArrivals[i]))
+                seen.Add(new Clash(state.BattleArrivals[i].Time, state.BattleArrivals[i].TargetVillageId));
+        }
+        seen.Reverse();
+        return seen;
+    }
 
     /// <summary>Would this player see this battle happen: their own, or at a village in their sight.</summary>
     public static bool SeesClash(GameState state, GameData data, int playerId, BattleArrival arrival)

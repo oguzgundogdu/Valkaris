@@ -21,6 +21,15 @@ public interface IGameSession
     bool IsPaused { get; }
     void SetPaused(bool paused);
 
+    /// <summary>Other players' movements in the local player's sight now.</summary>
+    IReadOnlyList<SightedMovement> SightedMovements { get; }
+
+    /// <summary>Battles between other players, oldest first.</summary>
+    IReadOnlyList<PublicNotice> PublicNotices { get; }
+
+    /// <summary>Battles the local player saw happen after a given time, oldest first.</summary>
+    IReadOnlyList<Clash> Clashes(double after);
+
     void Send(ICommand command);
     void Tick(double deltaSeconds);
 

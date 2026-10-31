@@ -12,6 +12,8 @@ public sealed class LocalGameSession : IGameSession
     private readonly CommandHandler _handler;
     private readonly Simulation _simulation;
     private readonly List<IMatchAgent> _agents = new();
+    private IReadOnlyList<PublicNotice> _notices = Array.Empty<PublicNotice>();
+    private int _noticesFrom;
 
     public LocalGameSession(GameState state, GameData data, int localPlayerId)
     {
@@ -32,6 +34,23 @@ public sealed class LocalGameSession : IGameSession
     public event Action<CommandRejection>? CommandRejected;
 
     public void SetPaused(bool paused) => IsPaused = paused;
+
+    public IReadOnlyList<SightedMovement> SightedMovements => Visibility.SightedMovements(State, Data, LocalPlayerId);
+
+    public IReadOnlyList<PublicNotice> PublicNotices
+    {
+        get
+        {
+            if (_noticesFrom != State.BattleArrivals.Count)
+            {
+                _noticesFrom = State.BattleArrivals.Count;
+                _notices = Visibility.PublicNotices(State, LocalPlayerId).ToList();
+            }
+            return _notices;
+        }
+    }
+
+    public IReadOnlyList<Clash> Clashes(double after) => Visibility.Clashes(State, Data, LocalPlayerId, after);
 
 #if VALKARIS_DEV
     public bool IsGodMode => State.GodPlayerId == LocalPlayerId;

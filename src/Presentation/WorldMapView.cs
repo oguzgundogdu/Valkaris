@@ -23,6 +23,7 @@ public partial class WorldMapView : Control
     private MapTerrain _terrain = null!;
     private Control _markerLayer = null!;
     private MovementLayer _movements = null!;
+    private ClashLayer _clashes = null!;
     private Label _hoverLabel = null!;
     private bool _built;
     private float _zoom = 1;
@@ -80,6 +81,9 @@ public partial class WorldMapView : Control
         _markerLayer = new Control { Name = "Markers", MouseFilter = MouseFilterEnum.Ignore };
         _world.AddChild(_markerLayer);
 
+        _clashes = new ClashLayer { Name = "Clashes", MouseFilter = MouseFilterEnum.Ignore };
+        _world.AddChild(_clashes);
+
         _popup = GD.Load<PackedScene>("res://scenes/VillagePopup.tscn").Instantiate<VillagePopup>();
         _popup.Name = "Popup";
         AddChild(_popup);
@@ -120,6 +124,7 @@ public partial class WorldMapView : Control
             marker.Refresh(session, session.State.Villages[id], id == _selectedId, id == currentVillage?.Id);
 
         _movements.Refresh(session, _zoom);
+        _clashes.Refresh(session, _zoom);
         RefreshHoverLabel();
 
         if (currentVillage is null || currentVillage.TroopCount(UnitType.Settler) == 0)

@@ -13,6 +13,28 @@ public static class DevScenario
     /// <summary>For the UI test's pictures of every building stage.</summary>
     public static void SetLevel(Village village, BuildingType building, int level) => village.SetBuildingLevel(building, level);
 
+    /// <summary>For the UI test: someone passing through the player's sight, a battle between others, and one at the player's own village.</summary>
+    public static void AddThirdPartyActivity(GameState state, int playerId, int otherVillageId)
+    {
+        var near = state.Villages.Values.First(v => v.OwnerId == playerId);
+        var other = state.Villages[otherVillageId];
+        var passing = new TileCoord(near.Position.X + 1, near.Position.Y);
+        var troops = new Dictionary<UnitType, int> { [UnitType.Spearman] = 9 };
+        state.AddMovement(new Movement(state.NextMovementId++, other.OwnerId, other.Id, null, MovementType.Settle, troops, Resources.Zero,
+            state.ElapsedTime, state.ElapsedTime + 600, null, passing, passing));
+        state.AddMovement(new Movement(state.NextMovementId++, other.OwnerId, other.Id, near.Id, MovementType.Raid, troops, Resources.Zero,
+            state.ElapsedTime, state.ElapsedTime + 600, null));
+        state.AddBattleArrival(new BattleArrival(state.ElapsedTime, other.OwnerId, 99, other.Name, other.Id, other.Name));
+        state.AddBattleArrival(new BattleArrival(state.ElapsedTime, other.OwnerId, playerId, other.Name, near.Id, near.Name));
+    }
+
+    /// <summary>Takes back the movements added above.</summary>
+    public static void RemoveMovementsOf(GameState state, int ownerId)
+    {
+        foreach (var movement in state.Movements.Where(m => m.OwnerId == ownerId).ToList())
+            state.RemoveMovement(movement);
+    }
+
     public const string Villages = "villages";
     public const string Founding = "founding";
     public const string Endgame = "endgame";

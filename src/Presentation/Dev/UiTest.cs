@@ -475,6 +475,7 @@ public partial class UiTest : Control
         await TestPause();
         TestDevOptions();
         await TestViewSwitching();
+        await TestThirdParty();
         await TestCamera();
         await TestSelection();
         await TestSendFromMap();
@@ -529,6 +530,50 @@ public partial class UiTest : Control
         await Frames();
         Expect(game.CurrentView == GameScreen.MainView.Village, "M does nothing while typing in a number field");
         line.ReleaseFocus();
+    }
+
+    private async Task TestThirdParty()
+    {
+        var game = Find<GameScreen>();
+        var state = game.Session.State;
+        var layer = Find<MovementLayer>();
+        var effects = Find<ClashLayer>();
+        var other = state.Villages.Values.First(v => !v.IsBarbarian && v.OwnerId != game.Session.LocalPlayerId);
+        game.ShowView(GameScreen.MainView.World);
+
+        var marks = layer.Entries.Count;
+        Valkaris.Core.Dev.DevScenario.AddThirdPartyActivity(state, game.Session.LocalPlayerId, other.Id);
+        await Frames();
+        Expect(layer.Entries.Count == marks + 2, "A sighted movement and an incoming raid show on the map");
+        var sighted = layer.Entries.Single(e => e.MovementId < 0);
+        Expect(!sighted.ShowRoute && sighted.Description == UiContent.MissionName(MovementType.Settle), "A sighting shows its mission and no route");
+        var raid = layer.Entries.Single(e => e.MovementId > 0 && e.Description.Contains(UiContent.MissionName(MovementType.Raid)));
+        Expect(raid.IconPath.Contains("mission_"), "An incoming raid's icon shows the mission, not its troops");
+        Expect(effects.ClashesShowing == 1 && effects.NoticesShowing == 1, "Only a battle in sight shows a clash, and news shows a marker");
+        await Shot("clash");
+
+        await ToSignal(GetTree().CreateTimer(2), SceneTreeTimer.SignalName.Timeout);
+        Expect(effects.ClashesShowing == 0, "The clash effect ends");
+        Expect(effects.NoticesShowing == 1, "The notice marker outlasts the clash");
+        await ToSignal(GetTree().CreateTimer(7), SceneTreeTimer.SignalName.Timeout);
+        Expect(effects.NoticesShowing == 0, "The notice marker ends");
+        Valkaris.Core.Dev.DevScenario.RemoveMovementsOf(state, other.OwnerId);
+        await Frames();
+        Expect(layer.Entries.Count == marks, "The markers go when the movements end");
+
+        game.ShowTab(GameScreen.SideTab.Reports);
+        var panel = Find<ReportsPanel>();
+        panel.GetNode<Button>("%News").ButtonPressed = true;
+        await Frames();
+        var rows = panel.GetNode<VBoxContainer>("%NewsRows");
+        Expect(rows.Visible && rows.GetChildCount() == game.Session.PublicNotices.Count && game.Session.PublicNotices.Count > 0, "Reports has a news filter");
+        await Shot("news");
+        panel.GetNode<Button>("%Mine").ButtonPressed = true;
+        await Frames();
+        Expect(!rows.Visible, "The news filter switches back");
+        game.ShowView(GameScreen.MainView.Village);
+        game.ShowTab(GameScreen.SideTab.Village);
+        await Frames();
     }
 
     private async Task TestCamera()

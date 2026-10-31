@@ -15,6 +15,26 @@ layout_mode = 2
 theme_type_variation = &"HeadingLabel"
 text = "ui.reports.title"
 
+[node name="Filter" type="HBoxContainer" parent="Box"]
+layout_mode = 2
+
+[node name="Mine" type="Button" parent="Box/Filter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+toggle_mode = true
+button_pressed = true
+text = "ui.reports.mine"
+
+[node name="News" type="Button" parent="Box/Filter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+toggle_mode = true
+text = "ui.reports.news"
+
 [node name="None" type="Label" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -28,6 +48,13 @@ horizontal_scroll_mode = 0
 
 [node name="Rows" type="VBoxContainer" parent="Box/Scroll"]
 unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="NewsRows" type="VBoxContainer" parent="Box/Scroll"]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6

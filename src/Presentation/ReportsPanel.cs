@@ -13,7 +13,11 @@ public partial class ReportsPanel : PanelContainer
     private readonly HashSet<int> _read = new();
     private readonly Dictionary<int, Button> _rows = new();
     private VBoxContainer _list = null!;
+    private VBoxContainer _newsList = null!;
+    private Button _mine = null!;
+    private Button _news = null!;
     private Label _none = null!;
+    private int _newsShown;
 
     public event Action<BattleReport>? ReportOpened;
     public event Action<ScoutReport>? ScoutReportOpened;
@@ -23,6 +27,13 @@ public partial class ReportsPanel : PanelContainer
     {
         _list = GetNode<VBoxContainer>("%Rows");
         _none = GetNode<Label>("%None");
+        _newsList = GetNode<VBoxContainer>("%NewsRows");
+        _mine = GetNode<Button>("%Mine");
+        _news = GetNode<Button>("%News");
+
+        var group = new ButtonGroup();
+        _mine.ButtonGroup = group;
+        _news.ButtonGroup = group;
     }
 
     public int UnreadCount(IGameSession session) => MyReportIds(session).Count(id => !_read.Contains(id));
@@ -38,7 +49,19 @@ public partial class ReportsPanel : PanelContainer
         var battles = MyReports(session);
         var scouts = MyScoutReports(session);
         var notices = MyScoutNotices(session);
-        _none.Visible = battles.Count + scouts.Count + notices.Count == 0;
+        _list.Visible = _mine.ButtonPressed;
+        _newsList.Visible = _news.ButtonPressed;
+        _none.Text = _news.ButtonPressed ? L.T("ui.reports.no_news") : L.T("ui.reports.none");
+        _none.Visible = _news.ButtonPressed ? session.PublicNotices.Count == 0 : battles.Count + scouts.Count + notices.Count == 0;
+
+        for (; _newsShown < session.PublicNotices.Count; _newsShown++)
+        {
+            var notice = session.PublicNotices[_newsShown];
+            var text = L.T("notice.attacked", ("attacker", notice.FromVillageName), ("target", notice.TargetVillageName));
+            var row = new Label { Text = Format.Dotted(text, Format.Time(notice.Time)), AutowrapMode = TextServer.AutowrapMode.WordSmart };
+            _newsList.AddChild(row);
+            _newsList.MoveChild(row, 0);
+        }
 
         // Ids run in time order across both kinds, so each new row goes on top of the older ones.
         var rows = battles

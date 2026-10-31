@@ -921,3 +921,14 @@ msgstr "Kaynak gönder"
 msgid "ui.popup.settler"
 msgstr "Öncü gönder"
 
+msgid "ui.reports.mine"
+msgstr "Raporlarım"
+
+msgid "ui.reports.news"
+msgstr "Haberler"
+
+msgid "ui.reports.no_news"
+msgstr "Henüz haber yok."
+
+msgid "notice.attacked"
+msgstr "{attacker} köyü, {target} köyüne saldırdı"

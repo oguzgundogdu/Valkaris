@@ -15,16 +15,30 @@ public partial class MovementLayer : Control
 
     private static readonly Color Own = new(0.851f, 0.643f, 0.255f);
     private const string CarrierIconPath = "res://assets/icons/carrier.svg";
+    private const string SettlerIconPath = "res://assets/icons/settler.svg";
+    public const string SwordsIconPath = "res://assets/icons/mission_swords.svg";
+    private const string MarchIconPath = "res://assets/icons/mission_march.svg";
+
+    private static readonly Color Neutral = new(0.60f, 0.72f, 0.82f);
 
     private static readonly Color Hostile = new(0.90f, 0.30f, 0.25f);
     private static readonly Color Returning = new(0.72f, 0.70f, 0.64f);
 
-    public sealed record Entry(int MovementId, Vector2 From, Vector2 To, Vector2 Position, Color Colour, string IconPath, string Description);
+    public sealed record Entry(int MovementId, Vector2 From, Vector2 To, Vector2 Position, Color Colour, string IconPath, string Description, bool ShowRoute = true);
 
     private readonly List<Entry> _entries = new();
     private float _screenScale = 1;
 
     public IReadOnlyList<Entry> Entries => _entries;
+
+    /// <summary>Only ever the mission, since others' icons mustn't show what they're made of.</summary>
+    private static string MissionIcon(MovementType type) => type switch
+    {
+        MovementType.Attack or MovementType.Raid => SwordsIconPath,
+        MovementType.Settle => SettlerIconPath,
+        MovementType.Transfer or MovementType.CarrierReturn => CarrierIconPath,
+        _ => MarchIconPath,
+    };
 
     /// <summary>Where a movement is along its route at a given time.</summary>
     public static Vector2 PositionAt(Vector2 from, Vector2 to, Movement movement, double now)
@@ -51,7 +65,8 @@ public partial class MovementLayer : Control
             var colour = movement.OwnerId != session.LocalPlayerId ? Hostile
                 : movement.Type is MovementType.Return or MovementType.CarrierReturn ? Returning
                 : Own;
-            var icon = movement.Troops.Count == 0
+            var icon = movement.OwnerId != session.LocalPlayerId ? MissionIcon(movement.Type)
+                : movement.Troops.Count == 0
                 ? CarrierIconPath
                 : UiContent.Units[movement.Troops.Keys.OrderBy(u => session.Data.Units.Units[u].Speed).First()].IconPath;
             var description = Format.Dotted(UiContent.DescribeMovement(session, movement), Format.Time(movement.ArrivalTime - now));
@@ -59,9 +74,18 @@ public partial class MovementLayer : Control
             _entries.Add(new Entry(movement.Id, from, to, PositionAt(from, to, movement, now), colour, icon, description));
         }
 
+        foreach (var seen in session.SightedMovements)
+        {
+            var position = PointPosition(seen.X + seen.VelocityX * (now - seen.Time), seen.Y + seen.VelocityY * (now - seen.Time));
+            _entries.Add(new Entry(-seen.Id, position, position, position, Neutral, MissionIcon(seen.Type), UiContent.MissionName(seen.Type), ShowRoute: false));
+        }
+
         if (hadEntries || _entries.Count > 0)
             QueueRedraw();
     }
+
+    private static Vector2 PointPosition(double x, double y) =>
+        (new Vector2((float)x, (float)y) + new Vector2(0.5f, 0.5f)) * WorldMapView.TileSize;
 
     /// <summary>The marker within reach of a world position, or null.</summary>
     public Entry? EntryAt(Vector2 world, float zoom)
@@ -75,7 +99,7 @@ public partial class MovementLayer : Control
 
     public override void _Draw()
     {
-        foreach (var entry in _entries)
+        foreach (var entry in _entries.Where(e => e.ShowRoute))
             DrawDashedLine(entry.From, entry.To, new Color(entry.Colour, 0.8f), LineWidth * _screenScale, DashLength * _screenScale, aligned: false, antialiased: true);
 
         foreach (var entry in _entries)
