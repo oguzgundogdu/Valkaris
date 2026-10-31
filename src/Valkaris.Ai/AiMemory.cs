@@ -33,6 +33,7 @@ public sealed class AiMemory
     private readonly AiView _view;
     private readonly Dictionary<int, Sighting> _sightings = new();
     private readonly Dictionary<int, CaughtScouts> _caught = new();
+    private readonly Dictionary<int, double> _strongestByPlayer = new();
     private int _lastReportId;
 
     public AiMemory(AiView view) => _view = view;
@@ -42,12 +43,19 @@ public sealed class AiMemory
     /// <summary>The strongest player force in its own reports: an army that came for it, or a garrison it attacked.</summary>
     public double StrongestEnemySeen { get; private set; }
 
+    /// <summary>The strongest force of one player in its own reports. Zero if it has none.</summary>
+    public double StrongestSeenOf(int playerId) => _strongestByPlayer.GetValueOrDefault(playerId);
+
     private void NoteEnemyStrength(BattleReport report)
     {
-        if (report.DefenderId == _view.PlayerId)
-            StrongestEnemySeen = Math.Max(StrongestEnemySeen, report.AttackPower);
-        else if (report.DefenderId != Village.BarbarianOwnerId)
-            StrongestEnemySeen = Math.Max(StrongestEnemySeen, report.DefencePower);
+        var (enemy, power) = report.DefenderId == _view.PlayerId
+            ? (report.AttackerId, report.AttackPower)
+            : (report.DefenderId, report.DefencePower);
+        if (enemy == Village.BarbarianOwnerId)
+            return;
+
+        StrongestEnemySeen = Math.Max(StrongestEnemySeen, power);
+        _strongestByPlayer[enemy] = Math.Max(_strongestByPlayer.GetValueOrDefault(enemy), power);
     }
 
     /// <summary>The latest failure to scout this village under its current owner, unless something newer replaced it.</summary>

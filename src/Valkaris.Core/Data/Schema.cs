@@ -275,6 +275,15 @@ public sealed record AiConfig
 
     public required IReadOnlyList<AiBuildStep> BuildOrder { get; init; }
     public required AiBeliefs Beliefs { get; init; }
+    /// <summary>How strongly a rival is chosen for being near: chance falls with distance to this power.</summary>
+    public required double RivalDistanceExponent { get; init; }
+
+    /// <summary>Game seconds a new rival is kept before reports can make it switch again.</summary>
+    public required double RivalSwitchCooldownSeconds { get; init; }
+
+    /// <summary>A capital looks this many times as costly as a target, so outlying villages come first.</summary>
+    public required double CapitalTargetPenalty { get; init; }
+
     /// <summary>Game seconds it waits after scouts are caught before trying again, with twice as many.</summary>
     public required double ScoutRetrySeconds { get; init; }
 
@@ -347,6 +356,12 @@ public sealed record AiProfile
 
     /// <summary>...and that has lasted this many game seconds, so one bad moment doesn't end its match.</summary>
     public required double SurrenderHoldSeconds { get; init; }
+
+    /// <summary>Share of its attacks that go to its rival. The rest may go to other players.</summary>
+    public required double RivalFocusShare { get; init; }
+
+    /// <summary>It picks a new rival when its reports show this one is this many times its own attack power.</summary>
+    public required double RivalStrongerRatio { get; init; }
 
     /// <summary>The highest Wall it builds, in the build order or under attack.</summary>
     public required int MaxWallLevel { get; init; }

@@ -17,6 +17,9 @@
   "catapultsWanted": 10,
   "fightersBeforeSaving": 20,
   "scoutRetrySeconds": 80,
+  "rivalDistanceExponent": 2,
+  "rivalSwitchCooldownSeconds": 300,
+  "capitalTargetPenalty": 4,
   "buildOrder": [
     {
       "building": "Woodcutter",
@@ -200,6 +203,8 @@
       "surrenderVillageShare": 0.67,
       "surrenderStrengthRatio": 0.67,
       "surrenderHoldSeconds": 60,
+      "rivalFocusShare": 0.8,
+      "rivalStrongerRatio": 2.0,
       "maxWallLevel": 0,
       "maxFightersPerMinute": 1.5
     },
@@ -221,6 +226,8 @@
       "surrenderVillageShare": 0.5,
       "surrenderStrengthRatio": 0.5,
       "surrenderHoldSeconds": 120,
+      "rivalFocusShare": 0.8,
+      "rivalStrongerRatio": 2.5,
       "maxWallLevel": 5
     },
     "Hard": {
@@ -241,6 +248,8 @@
       "surrenderVillageShare": 0.34,
       "surrenderStrengthRatio": 0.34,
       "surrenderHoldSeconds": 180,
+      "rivalFocusShare": 0.8,
+      "rivalStrongerRatio": 3.0,
       "maxWallLevel": 5
     }
   }

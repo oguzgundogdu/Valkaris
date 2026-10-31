@@ -296,6 +296,12 @@ public class GameDataValidationTests
     [Fact]
     public void ArmyLimitBelowTheArmyWanted() => AssertAiInvalid(r => r["difficulties"]!["Easy"]!["maxFightersPerMinute"] = 0.01, "difficulties.Easy.maxFightersPerMinute");
 
+    [Theory]
+    [InlineData("rivalDistanceExponent", -1)]
+    [InlineData("rivalSwitchCooldownSeconds", -1)]
+    [InlineData("capitalTargetPenalty", 0.5)]
+    public void InvalidWarValue(string field, double value) => AssertAiInvalid(r => r[field] = value, field);
+
     [Fact]
     public void ScoutRetryNegative() => AssertAiInvalid(r => r["scoutRetrySeconds"] = -1, "scoutRetrySeconds");
 
@@ -328,6 +334,8 @@ public class GameDataValidationTests
     [InlineData("expansionDelaySeconds", -1)]
     [InlineData("scoutMaxAgeSeconds", -1)]
     [InlineData("maxWallLevel", -1)]
+    [InlineData("rivalFocusShare", 1.5)]
+    [InlineData("rivalStrongerRatio", 0.5)]
     [InlineData("surrenderVillageShare", 1.5)]
     [InlineData("surrenderStrengthRatio", -1)]
     [InlineData("surrenderHoldSeconds", -1)]

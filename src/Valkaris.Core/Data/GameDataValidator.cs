@@ -419,6 +419,12 @@ internal static class GameDataValidator
             Error("beliefs.playerPowerAtStart", "must not be negative.");
         if (beliefs.PlayerPowerPerMinute < 0)
             Error("beliefs.playerPowerPerMinute", "must not be negative.");
+        if (config.RivalDistanceExponent < 0)
+            Error("rivalDistanceExponent", "must not be negative.");
+        if (config.RivalSwitchCooldownSeconds < 0)
+            Error("rivalSwitchCooldownSeconds", "must not be negative.");
+        if (config.CapitalTargetPenalty < 1)
+            Error("capitalTargetPenalty", "must be at least 1.");
         if (config.ScoutRetrySeconds < 0)
             Error("scoutRetrySeconds", "must not be negative.");
         if (beliefs.AbandonedPower <= 0)
@@ -457,6 +463,10 @@ internal static class GameDataValidator
                 Error($"{path}.aggressionDelaySeconds", "must not be negative.");
             if (profile.MaxFightersPerMinute < profile.FightersPerMinute)
                 Error($"{path}.maxFightersPerMinute", "must not be below fightersPerMinute.");
+            if (profile.RivalFocusShare is < 0 or > 1)
+                Error($"{path}.rivalFocusShare", "must be between 0 and 1.");
+            if (profile.RivalStrongerRatio < 1)
+                Error($"{path}.rivalStrongerRatio", "must be at least 1.");
             if (profile.SurrenderVillageShare is < 0 or > 1)
                 Error($"{path}.surrenderVillageShare", "must be between 0 and 1.");
             if (profile.SurrenderStrengthRatio < 0)

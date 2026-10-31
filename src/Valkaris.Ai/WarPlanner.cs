@@ -4,17 +4,21 @@ using Valkaris.Core.Systems;
 
 namespace Valkaris.Ai;
 
-/// <summary>Sends armies at players, and Lords at anything worth capturing, when the margins hold.</summary>
+/// <summary>Sends armies at its rival, and Lords at anything worth capturing, when the margins hold.</summary>
 public sealed class WarPlanner
 {
     private readonly AiView _view;
     private readonly AiMemory _memory;
+    private readonly RivalPlanner _rival;
     private readonly Forces _forces;
+    private int _strikesOnRival;
+    private int _strikesElsewhere;
 
-    public WarPlanner(AiView view, AiMemory memory)
+    public WarPlanner(AiView view, AiMemory memory, RivalPlanner rival)
     {
         _view = view;
         _memory = memory;
+        _rival = rival;
         _forces = new Forces(view);
     }
 
@@ -33,8 +37,18 @@ public sealed class WarPlanner
             // The news is on its way, so the army waits for it rather than moving on to a worse target.
             if (scouting.Contains(target.Id))
                 return;
+
             if (Attack(village, target, spare))
+            {
+                if (!target.IsBarbarian)
+                {
+                    if (target.OwnerId == _rival.Current)
+                        _strikesOnRival++;
+                    else
+                        _strikesElsewhere++;
+                }
                 return;
+            }
         }
     }
 
@@ -45,14 +59,29 @@ public sealed class WarPlanner
         return Targets(village).FirstOrDefault(v => !v.IsBarbarian || hasLord);
     }
 
+    private double StrikeAttack(KnownVillage target) =>
+        Math.Max(_memory.EstimateDefence(target) * _view.Profile.AttackMargin, _view.Config.Beliefs.PlayerPowerAtStart);
+
+    /// <summary>Its rival first, unless it has had its share of attacks. Outlying villages come before capitals.</summary>
     private IEnumerable<KnownVillage> Targets(Village village)
     {
         var heading = _view.OwnMovements.Where(m => m.Type == MovementType.Attack).Select(m => m.ToVillageId).ToHashSet();
+        var total = _strikesOnRival + _strikesElsewhere + 1;
+        var mayGoElsewhere = (double)(_strikesElsewhere + 1) / total <= 1 - _view.Profile.RivalFocusShare;
         return _view.KnownVillages
             .Where(v => v.OwnerId != _view.PlayerId && !heading.Contains(v.Id))
+            .Where(v => v.IsBarbarian || v.OwnerId == _rival.Current || mayGoElsewhere)
             .OrderByDescending(CaptureUnderWay)
-            .ThenBy(v => _memory.EstimateDefence(v) * UnitRules.Distance(village.Position, v.Position))
+            .ThenByDescending(v => v.OwnerId == _rival.Current)
+            .ThenBy(v => Cost(village, v))
             .ThenBy(v => v.Id);
+    }
+
+    private double Cost(Village village, KnownVillage target)
+    {
+        var cost = _memory.EstimateDefence(target) * UnitRules.Distance(village.Position, target.Position);
+        var hasOthers = _view.KnownVillages.Any(v => v.OwnerId == target.OwnerId && v.Id != target.Id);
+        return target.IsCapital && hasOthers ? cost * _view.Config.CapitalTargetPenalty : cost;
     }
 
     /// <summary>Finish what was started: a target whose loyalty is already falling comes first.</summary>
@@ -85,7 +114,7 @@ public sealed class WarPlanner
             return false;
 
         // Scouts can report an empty village, and a token force is not worth the walk.
-        var army = _forces.Pick(spare, Math.Max(estimate * _view.Profile.AttackMargin, _view.Config.Beliefs.PlayerPowerAtStart));
+        var army = _forces.Pick(spare, StrikeAttack(target));
         return army is not null && Send(village, target, army, catapults);
     }
 

@@ -14,6 +14,7 @@ public sealed class AiPlayer : IMatchAgent
     private readonly TrainingPlanner _training;
     private readonly DefencePlanner _defence;
     private readonly RaidPlanner _raids;
+    private readonly RivalPlanner _rival;
     private readonly WarPlanner _war;
     private readonly ScoutPlanner _scouts;
     private readonly ExpansionPlanner _expansion;
@@ -28,7 +29,8 @@ public sealed class AiPlayer : IMatchAgent
         _training = new TrainingPlanner(view, _memory);
         _defence = new DefencePlanner(view);
         _raids = new RaidPlanner(view, _memory);
-        _war = new WarPlanner(view, _memory);
+        _rival = new RivalPlanner(view, _memory);
+        _war = new WarPlanner(view, _memory, _rival);
         _scouts = new ScoutPlanner(view, _memory, _war);
         _expansion = new ExpansionPlanner(view);
         _transfers = new TransferPlanner(view, _builds);
@@ -57,6 +59,7 @@ public sealed class AiPlayer : IMatchAgent
             return;
         }
 
+        _rival.Update();
         _expansion.ChooseCapital();
         _defence.Plan();
         _transfers.Plan();
