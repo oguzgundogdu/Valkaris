@@ -62,7 +62,7 @@ public partial class BuildingPanel : PanelContainer
 
         _icon.Texture = GD.Load<Texture2D>(info.IconPath);
         _name.Text = info.Name;
-        _level.Text = level == 0 ? "Not built" : $"Level {level}";
+        _level.Text = level == 0 ? L.T("common.not_built") : L.T("common.level", ("level", Format.Whole(level)));
         _description.Text = info.Description;
 
         // A rejection such as "match over" comes with no target level at all.
@@ -77,10 +77,10 @@ public partial class BuildingPanel : PanelContainer
         _time.Text = Format.Time(option.DurationSeconds);
 
         _upgrade.Disabled = !option.CanBuild;
-        _upgrade.Text = atMax ? "Max level"
-            : !hasNext ? "Unavailable"
-            : option.TargetLevel == 1 ? "Build"
-            : $"Upgrade to level {option.TargetLevel}";
+        _upgrade.Text = atMax ? L.T("upgrade.max")
+            : !hasNext ? L.T("upgrade.unavailable")
+            : option.TargetLevel == 1 ? L.T("upgrade.build")
+            : L.T("upgrade.to_level", ("level", Format.Whole(option.TargetLevel)));
 
         _openTraining.Visible = building == BuildingType.Barracks;
         GetNode<Button>("%OpenTransfer").Visible = building == BuildingType.Marketplace;
@@ -96,7 +96,9 @@ public partial class BuildingPanel : PanelContainer
         var definition = data.Buildings.Buildings[building];
 
         string Compare(Func<int, string> describe) =>
-            hasNext ? $"Now {describe(level)}   ›   Level {nextLevel}: {describe(nextLevel)}" : $"Now {describe(level)}";
+            hasNext
+                ? L.T("effect.compare", ("now", describe(level)), ("level", Format.Whole(nextLevel)), ("next", describe(nextLevel)))
+                : L.T("effect.now", ("value", describe(level)));
 
         if (definition.Production is { } production)
         {
@@ -105,21 +107,21 @@ public partial class BuildingPanel : PanelContainer
         }
 
         if (building == BuildingType.Warehouse)
-            return Compare(l => $"holds {Format.Amount(BuildingRules.WarehouseCapacity(data, l))}");
+            return Compare(l => L.T("effect.holds", ("amount", Format.Amount(BuildingRules.WarehouseCapacity(data, l)))));
 
         if (building == BuildingType.MainBuilding)
-            return Compare(l => $"others up to level {BuildingRules.MaxOtherBuildingLevel(data, l)}");
+            return Compare(l => L.T("effect.others", ("level", Format.Whole(BuildingRules.MaxOtherBuildingLevel(data, l)))));
 
         if (building == BuildingType.Marketplace)
         {
             var carriers = data.Buildings.CarriersByMarketplaceLevel;
             var capacity = data.Villages.Carriers.Capacity;
-            return Compare(l => $"{carriers[l]} carriers")
-                + $"\n{CarrierRules.Free(session.State, data, village)} free now, each carrying {capacity}";
+            return Compare(l => L.N("effect.carriers", carriers[l]))
+                + "\n" + L.T("effect.carriers_free", ("free", Format.Whole(CarrierRules.Free(session.State, data, village))), ("capacity", Format.Whole(capacity)));
         }
 
         if (building == BuildingType.Watchtower)
-            return Compare(l => $"Scouts at home × {Format.Trimmed(1 + data.Combat.Scouting.WatchtowerBonusPerLevel * l)}");
+            return Compare(l => L.T("effect.watchtower", ("value", Format.Trimmed(1 + data.Combat.Scouting.WatchtowerBonusPerLevel * l))));
 
         return "";
     }
@@ -128,7 +130,7 @@ public partial class BuildingPanel : PanelContainer
     {
         null or CommandRejection.MaxLevelReached => "",
         CommandRejection.InsufficientResources when option.CostExceedsCapacity =>
-            "This costs more than your Warehouse can hold. Upgrade the Warehouse first.",
+            L.T("upgrade.warehouse_small"),
         { } rejection => UiContent.RejectionText(rejection),
     };
 }

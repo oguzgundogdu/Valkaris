@@ -37,19 +37,19 @@ public partial class VillagePopup : PanelContainer
         var owner = UiContent.OwnerName(session, village.OwnerId);
         var ownerLabel = GetNode<Label>("%Owner");
         ownerLabel.Visible = true;
-        ownerLabel.Text = village.BarbarianTier is { } tier ? $"{owner}  ·  {UiContent.TierName(session, tier)}"
-            : village.IsAbandoned ? $"{owner}  ·  Abandoned"
-            : LoyaltyRules.IsCapital(session.State, village) ? $"{owner}  ·  Capital"
+        ownerLabel.Text = village.BarbarianTier is { } tier ? Format.Dotted(owner, UiContent.TierName(session, tier))
+            : village.IsAbandoned ? Format.Dotted(owner, L.T("popup.abandoned"))
+            : LoyaltyRules.IsCapital(session.State, village) ? Format.Dotted(owner, L.T("popup.capital"))
             : owner;
 
         var distance = GetNode<Label>("%Distance");
         distance.Visible = currentVillage is not null && !isCurrent;
         if (currentVillage is not null)
-            distance.Text = $"{Format.OneDecimal(UnitRules.Distance(currentVillage.Position, village.Position))} tiles away";
+            distance.Text = L.T("common.tiles_away", ("distance", Format.OneDecimal(UnitRules.Distance(currentVillage.Position, village.Position))));
 
         var reason = GetNode<Label>("%Reason");
         reason.Visible = isOwn;
-        reason.Text = isOwn ? $"Loyalty {Format.Amount(village.Loyalty)}" : "";
+        reason.Text = isOwn ? L.T("scout.loyalty", ("value", Format.Amount(village.Loyalty))) : "";
 
         GetNode<Button>("%Send").Visible = !isOwn && currentVillage is not null;
         GetNode<Button>("%Enter").Visible = isOwn;
@@ -69,11 +69,11 @@ public partial class VillagePopup : PanelContainer
 
         var distance = GetNode<Label>("%Distance");
         distance.Visible = true;
-        distance.Text = $"{Format.OneDecimal(UnitRules.Distance(currentVillage.Position, tile))} tiles away";
+        distance.Text = L.T("common.tiles_away", ("distance", Format.OneDecimal(UnitRules.Distance(currentVillage.Position, tile))));
 
         var reason = GetNode<Label>("%Reason");
         reason.Visible = true;
-        reason.Text = option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : $"A Settler arrives in {Format.Time(option.DurationSeconds)}";
+        reason.Text = option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : L.T("popup.settler_arrives", ("time", Format.Time(option.DurationSeconds)));
 
         GetNode<Button>("%Send").Visible = false;
         GetNode<Button>("%Enter").Visible = false;

@@ -28,7 +28,7 @@ public partial class QueuePanel : PanelContainer
             _rows.Add(AddRow(_rows.Count));
 
         _title.Text = title;
-        _count.Text = $"{items.Count} / {slots}";
+        _count.Text = Format.OutOf(items.Count, slots);
 
         for (var i = 0; i < _rows.Count; i++)
         {
@@ -47,7 +47,7 @@ public partial class QueuePanel : PanelContainer
         row.Icon.Modulate = Colors.White;
         row.Title.Text = item.Title;
         row.Title.ThemeTypeVariation = "StrongLabel";
-        row.Time.Text = running ? Format.Time(item.FinishTime - now) : $"starts in {Format.Time(item.StartTime - now)}";
+        row.Time.Text = running ? Format.Time(item.FinishTime - now) : L.T("queue.starts_in", ("time", Format.Time(item.StartTime - now)));
         row.Bar.Value = running ? (now - item.StartTime) / (item.FinishTime - item.StartTime) : 0;
         row.Bar.Modulate = running ? Colors.White : new Color(1, 1, 1, 0.35f);
     }
@@ -55,7 +55,7 @@ public partial class QueuePanel : PanelContainer
     private static void ShowEmpty(Row row)
     {
         row.Icon.Texture = null;
-        row.Title.Text = "Empty slot";
+        row.Title.Text = L.T("queue.empty");
         row.Title.ThemeTypeVariation = "MutedLabel";
         row.Time.Text = "";
         row.Bar.Value = 0;

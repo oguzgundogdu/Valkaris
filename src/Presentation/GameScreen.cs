@@ -124,32 +124,36 @@ public partial class GameScreen : Control
         };
         _sendPanel.MapRequested += () => ShowView(MainView.World);
 
-        _pauseOverlay.Configure("Paused", "The match is on hold. Press P to resume.", "Resume", "Leave match");
+        _pauseOverlay.Configure(L.T("overlay.paused.title"), L.T("overlay.paused.message"), L.T("overlay.resume"), L.T("overlay.leave"));
         _pauseOverlay.ActionPressed += TogglePause;
         _pauseOverlay.SecondaryPressed += () => _confirmingLeave = true;
 
-        _leaveOverlay.Configure("Leave match?", "Your progress in this match will be lost.", "Leave match", "Keep playing");
+        _leaveOverlay.Configure(L.T("overlay.leave.title"), L.T("overlay.leave.message"), L.T("overlay.leave"), L.T("overlay.keep_playing"));
         _leaveOverlay.ActionPressed += () => ExitRequested?.Invoke();
         _leaveOverlay.SecondaryPressed += () => _confirmingLeave = false;
 
         _pauseOverlay.TertiaryPressed += () => _confirmingSurrender = true;
         _surrenderOverlay.Configure(
-            "Surrender?",
-            "You lose this match. Your villages stay on the map as barbarian villages, with their troops and resources, for others to raid or capture. Troops on the way are lost.",
-            "Surrender",
-            "Keep playing");
+            L.T("overlay.surrender.title"),
+            L.T("overlay.surrender.message"),
+            L.T("overlay.surrender"),
+            L.T("overlay.keep_playing"));
         _surrenderOverlay.ActionPressed += Surrender;
         _surrenderOverlay.SecondaryPressed += () => _confirmingSurrender = false;
 
         _matchEndScreen.BackRequested += () => ExitRequested?.Invoke();
 
-        _eliminatedOverlay.Configure("You were eliminated", "You have no villages left. The match goes on without you.", "Keep watching", "Leave match");
+        _eliminatedOverlay.Configure(L.T("overlay.eliminated.title"), L.T("overlay.eliminated.message"), L.T("overlay.keep_watching"), L.T("overlay.leave"));
         _eliminatedOverlay.ActionPressed += () => _watching = true;
         _eliminatedOverlay.SecondaryPressed += () => ExitRequested?.Invoke();
 
         _capitalDialog.CapitalChosen += villageId => Session.Send(new SetCapitalCommand(villageId));
         _capitalDialog.Dismissed += () => _capitalSetAside = true;
         _resourceBar.CapitalWarningPressed += () => _capitalSetAside = false;
+
+        _tabs.SetTabTitle((int)SideTab.Village, L.T("tab.village"));
+        _tabs.SetTabTitle((int)SideTab.Troops, L.T("tab.troops"));
+        _tabs.SetTabTitle((int)SideTab.Send, L.T("tab.send"));
 
         Session.EventRaised += OnGameEvent;
         Session.CommandRejected += rejection => _toast.ShowMessage(UiContent.RejectionText(rejection));
@@ -169,7 +173,7 @@ public partial class GameScreen : Control
         RefreshActiveTab(village);
 
         _pauseOverlay.Visible = Session.IsPaused && !_confirmingLeave && !_confirmingSurrender;
-        _pauseOverlay.SetTertiary(Session.State.Players[Session.LocalPlayerId].IsEliminated ? null : "Surrender");
+        _pauseOverlay.SetTertiary(Session.State.Players[Session.LocalPlayerId].IsEliminated ? null : L.T("overlay.surrender"));
         _leaveOverlay.Visible = _confirmingLeave;
         _surrenderOverlay.Visible = _confirmingSurrender;
         RefreshDialogs();
@@ -198,7 +202,7 @@ public partial class GameScreen : Control
 
         _eliminatedOverlay.Visible = player.IsEliminated && !_watching && !state.IsMatchOver;
         if (_eliminatedOverlay.Visible && player.HasSurrendered)
-            _eliminatedOverlay.Configure("You surrendered", "Your villages now belong to the barbarians. The match goes on without you.", "Keep watching", "Leave match");
+            _eliminatedOverlay.Configure(L.T("overlay.surrendered.title"), L.T("overlay.surrendered.message"), L.T("overlay.keep_watching"), L.T("overlay.leave"));
 
         if (state.Outcome is { } outcome && !_matchEndScreen.Visible)
             _matchEndScreen.ShowOutcome(Session, outcome);
@@ -322,13 +326,11 @@ public partial class GameScreen : Control
 
     private void RefreshVillageInfo(Village village)
     {
-        var text = $"{village.Name}  ·  Loyalty {Format.Amount(village.Loyalty)}";
+        var text = L.T("village.info", ("village", village.Name), ("loyalty", Format.Amount(village.Loyalty)));
         if (LoyaltyRules.IsCapital(Session.State, village))
         {
             var threshold = Session.Data.Villages.Capital.LockedAboveMainLevel;
-            text += LoyaltyRules.IsLocked(Session.State, Session.Data, village)
-                ? $"\nCapital: protected while its Main Building is above level {threshold}"
-                : $"\nCapital: not protected until its Main Building is above level {threshold}";
+            text += "\n" + L.T(LoyaltyRules.IsLocked(Session.State, Session.Data, village) ? "village.capital_protected" : "village.capital_unprotected", ("level", Format.Whole(threshold)));
         }
         _villageInfo.Text = text;
     }
@@ -336,7 +338,7 @@ public partial class GameScreen : Control
     private void RefreshActiveTab(Village? village)
     {
         var unread = _reportsPanel.UnreadCount(Session);
-        _tabs.SetTabTitle((int)SideTab.Reports, unread > 0 ? $"Reports ({unread})" : "Reports");
+        _tabs.SetTabTitle((int)SideTab.Reports, unread > 0 ? L.T("tab.reports_unread", ("count", Format.Whole(unread))) : L.T("tab.reports"));
 
         if (village is null)
         {
@@ -350,10 +352,10 @@ public partial class GameScreen : Control
             case SideTab.Village:
                 RefreshVillageInfo(village);
                 _buildingPanel.Refresh(Session, village, _selected);
-                _queuePanel.Refresh("Build queue", Session.Data.Game.MaxBuildQueueLength, Session.State.ElapsedTime, village.BuildQueue
+                _queuePanel.Refresh(L.T("queue.build"), Session.Data.Game.MaxBuildQueueLength, Session.State.ElapsedTime, village.BuildQueue
                     .Select(item => new QueueRow(
                         UiContent.Buildings[item.Building].IconPath,
-                        $"{UiContent.Buildings[item.Building].Name} › level {item.TargetLevel}",
+                        L.T("queue.build_item", ("building", UiContent.Buildings[item.Building].Name), ("level", Format.Whole(item.TargetLevel))),
                         item.StartTime,
                         item.FinishTime))
                     .ToList());

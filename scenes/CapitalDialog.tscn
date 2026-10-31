@@ -32,7 +32,7 @@ theme_override_constants/separation = 12
 [node name="Title" type="Label" parent="Center/Card/Box"]
 layout_mode = 2
 theme_type_variation = &"HeadingLabel"
-text = "Your capital has fallen"
+text = "ui.capital.title"
 horizontal_alignment = 1
 
 [node name="Message" type="Label" parent="Center/Card/Box"]
@@ -58,4 +58,4 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 theme_type_variation = &"SecondaryButton"
-text = "Decide later"
+text = "ui.capital.later"

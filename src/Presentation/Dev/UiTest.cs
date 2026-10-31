@@ -61,6 +61,16 @@ public partial class UiTest : Control
         Expect(culture != "tr-TR" || "i".ToUpper() == "\u0130", "tr-TR rules are in force");
     }
 
+    /// <summary>The text is this key's translation, with anything in its placeholders.</summary>
+    private static bool Shows(string text, string key)
+    {
+        var pattern = System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Escape(L.T(key)), @"\\\{\w+}", ".*");
+        return System.Text.RegularExpressions.Regex.IsMatch(text, $"^{pattern}$", System.Text.RegularExpressions.RegexOptions.Singleline);
+    }
+
+    private static string RaidOnBarbarians() =>
+        L.T("report.headline_attacker", ("result", ""), ("mission", UiContent.MissionName(MovementType.Raid)), ("target", L.T("player.barbarians"))).TrimStart(' ', ':');
+
     private async Task TestLanguage()
     {
         var language = Language.Current;
@@ -79,7 +89,7 @@ public partial class UiTest : Control
         var start = Find<StartScreen>();
         Expect(Language.Current == "tr" && TranslationServer.GetLocale().StartsWith("tr", StringComparison.Ordinal), "Choosing Turkish applies it");
         Expect(Language.Load() == "tr", "The choice is remembered");
-        Expect(start.GetNode<Label>("Card/Box/LanguageRow/Label").Text == "ui.start.language" && start.GetNode<Label>("Card/Box/LanguageRow/Label").Tr("ui.start.language") == "Dil", "The start screen shows Turkish");
+        Expect(start.GetNode<Label>("Card/Box/LanguageRow/Label").Tr("ui.start.language") == "Dil", "The start screen shows Turkish");
         Expect(start.GetNode<OptionButton>("%Duration").Selected == 1, "Other choices survive the language change");
         Expect(L.N("common.minutes", 1) == "1 dakika" && L.N("common.minutes", 2) == "2 dakika", $"Turkish has one plural form, got '{L.N("common.minutes", 2)}'");
 
@@ -135,9 +145,9 @@ public partial class UiTest : Control
 
         SelectTile(BuildingType.Woodcutter);
         await Frames();
-        Expect(panel.GetNode<Label>("%Name").Text == "Woodcutter", "Selecting shows the building");
-        Expect(panel.GetNode<Label>("%Level").Text == "Level 1", "Starts at level 1");
-        Expect(upgrade.Text == "Upgrade to level 2", $"Button names the next level, got '{upgrade.Text}'");
+        Expect(panel.GetNode<Label>("%Name").Text == UiContent.Buildings[BuildingType.Woodcutter].Name, "Selecting shows the building");
+        Expect(panel.GetNode<Label>("%Level").Text == L.T("common.level", ("level", "1")), "Starts at level 1");
+        Expect(upgrade.Text == L.T("upgrade.to_level", ("level", "2")), $"Button names the next level, got '{upgrade.Text}'");
         await Shot("game");
 
         var woodBefore = village.Resources.Wood;
@@ -149,7 +159,7 @@ public partial class UiTest : Control
 
         session.Tick(BuildingRules.BuildTimeSeconds(session.Data, BuildingType.Woodcutter, 2));
         await Frames();
-        Expect(panel.GetNode<Label>("%Level").Text == "Level 2", "Level changes when the build completes");
+        Expect(panel.GetNode<Label>("%Level").Text == L.T("common.level", ("level", "2")), "Level changes when the build completes");
 
         var woodLabel = Find<ResourceBar>().GetNode<Label>("Box/Chips/Wood/Amount");
         var shownWood = woodLabel.Text;
@@ -172,7 +182,7 @@ public partial class UiTest : Control
 
         session.Tick(120);
         await Frames();
-        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Empty slot", "Queue starts empty");
+        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == L.T("queue.empty"), "Queue starts empty");
 
         SelectTile(BuildingType.Quarry);
         await Frames();
@@ -183,10 +193,10 @@ public partial class UiTest : Control
         await Frames();
 
         Expect(queue.GetNode<Label>("%Count").Text == "2 / 2", "Queue count updates");
-        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Quarry › level 2", "First row names the build");
-        Expect(queue.GetNode<Label>("Box/Rows/Row1/Top/Time").Text.StartsWith("starts in"), "Second row is waiting");
+        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == L.T("queue.build_item", ("building", UiContent.Buildings[BuildingType.Quarry].Name), ("level", "2")), "First row names the build");
+        Expect(Shows(queue.GetNode<Label>("Box/Rows/Row1/Top/Time").Text, "queue.starts_in"), "Second row is waiting");
         Expect(upgrade.Disabled, "A full queue disables the button");
-        Expect(panel.GetNode<Label>("%Reason").Text == "The queue is full.", "The button says why it is disabled");
+        Expect(panel.GetNode<Label>("%Reason").Text == UiContent.RejectionText(CommandRejection.QueueFull), "The button says why it is disabled");
 
         var firstBuild = session.State.Villages[1].BuildQueue[0];
         session.Tick((firstBuild.FinishTime - firstBuild.StartTime) / 2);
@@ -198,7 +208,7 @@ public partial class UiTest : Control
         session.Tick((firstBuild.FinishTime - firstBuild.StartTime) / 2 + 0.01);
         await Frames();
         Expect(queue.GetNode<Label>("%Count").Text == "1 / 2", "Completed item leaves the queue");
-        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Farm › level 2", "Waiting item moves up");
+        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == L.T("queue.build_item", ("building", UiContent.Buildings[BuildingType.Farm].Name), ("level", "2")), "Waiting item moves up");
         Expect(!upgrade.Disabled, "A free slot enables the button again");
 
         session.Tick(60);
@@ -218,7 +228,7 @@ public partial class UiTest : Control
         }
 
         var wall = Find<VillageView>().GetNode<BuildingTile>(nameof(BuildingType.Wall));
-        Expect(wall.GetNode<Label>("%Level").Text == "Not built", "Unbuilt building says so");
+        Expect(wall.GetNode<Label>("%Level").Text == L.T("common.not_built"), "Unbuilt building says so");
         Expect(wall.GetNode<TextureRect>("%Icon").Modulate.A < 1, "Unbuilt building is dimmed");
 
         var tiles = Find<VillageView>().GetChildren().OfType<BuildingTile>().ToList();
@@ -226,8 +236,8 @@ public partial class UiTest : Control
         Expect(!tiles.Any(t => tiles.Any(o => o != t && t.GetRect().Intersects(o.GetRect()))), "No building tiles overlap");
         SelectTile(BuildingType.Watchtower);
         await Frames();
-        Expect(panel.GetNode<Label>("%Name").Text == "Watchtower", "The Watchtower can be selected");
-        Expect(panel.GetNode<Button>("%Upgrade").Text == "Build", $"The Watchtower can be built, got '{panel.GetNode<Button>("%Upgrade").Text}'");
+        Expect(panel.GetNode<Label>("%Name").Text == UiContent.Buildings[BuildingType.Watchtower].Name, "The Watchtower can be selected");
+        Expect(panel.GetNode<Button>("%Upgrade").Text == L.T("upgrade.build"), $"The Watchtower can be built, got '{panel.GetNode<Button>("%Upgrade").Text}'");
 
         SelectTile(BuildingType.Wall);
         await Frames();
@@ -382,16 +392,16 @@ public partial class UiTest : Control
         await Click(At(camp));
         Expect(world.SelectedVillageId == camp.Id && popup.Visible, "Clicking a marker selects it");
         Expect(popup.GetNode<Label>("%Name").Text == camp.Name, "The popup names the village");
-        var tier = session.Data.Map.Barbarians.Tiers[camp.BarbarianTier!.Value].Name;
-        Expect(popup.GetNode<Label>("%Owner").Text == $"Barbarians  ·  {tier}", $"The popup shows the owner and tier, got '{popup.GetNode<Label>("%Owner").Text}'");
-        Expect(popup.GetNode<Label>("%Distance").Text.EndsWith("tiles away"), "The popup shows the distance");
+        var tier = UiContent.TierName(session, camp.BarbarianTier!.Value);
+        Expect(popup.GetNode<Label>("%Owner").Text == Format.Dotted(L.T("player.barbarians"), tier), $"The popup shows the owner and tier, got '{popup.GetNode<Label>("%Owner").Text}'");
+        Expect(Shows(popup.GetNode<Label>("%Distance").Text, "common.tiles_away"), "The popup shows the distance");
         Expect(popup.GetNode<Button>("%Send").Visible && !popup.GetNode<Button>("%Enter").Visible, "An enemy village offers Send");
         Expect(new Rect2(Vector2.Zero, world.Size).Encloses(popup.GetRect()), "The popup stays inside the view");
         await Shot("map-popup");
 
         // No garrison numbers anywhere in the popup.
         var texts = new[] { "%Name", "%Owner", "%Distance" }.Select(n => popup.GetNode<Label>(n).Text);
-        Expect(!texts.Any(t => t.Contains("Spearman") || t.Contains("troops") || t.Contains("×")), "The popup doesn't reveal the garrison");
+        Expect(!texts.Any(t => t.Contains(UiContent.Units[UnitType.Spearman].Name) || t.Contains("×")), "The popup doesn't reveal the garrison");
 
         await Click(At(own));
         Expect(world.SelectedVillageId == own.Id, "Clicking another marker moves the selection");
@@ -474,7 +484,7 @@ public partial class UiTest : Control
         world.GetNode<VillagePopup>("Popup").GetNode<Button>("%Send").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
         Expect(send.IsVisibleInTree(), "The popup opens the Send tab");
-        Expect(send.GetNode<Label>("%TargetLine").Text.StartsWith($"{camp.Name}  ·  Barbarians"), $"The popup sets the target, got '{send.GetNode<Label>("%TargetLine").Text}'");
+        Expect(send.GetNode<Label>("%TargetLine").Text.StartsWith(Format.Dotted(camp.Name, L.T("player.barbarians"))), $"The popup sets the target, got '{send.GetNode<Label>("%TargetLine").Text}'");
 
         // The filled form survives a trip to the village view.
         var amount = send.GetNode<VBoxContainer>("%Units").GetNode(nameof(UnitType.Spearman)).GetNode<SpinBox>("Amount");
@@ -547,7 +557,7 @@ public partial class UiTest : Control
         var hoverAt = world.WorldToView(midpoint.Position);
         world._GuiInput(new InputEventMouseMotion { Position = hoverAt });
         await Frames();
-        Expect(hover.Visible && hover.Text.StartsWith("Attack from Rival"), $"Hovering shows the mission, got '{hover.Text}'");
+        Expect(hover.Visible && hover.Text.StartsWith(L.T("movement.from", ("mission", UiContent.MissionName(MovementType.Attack)), ("owner", "Rival"))), $"Hovering shows the mission, got '{hover.Text}'");
         world._GuiInput(new InputEventMouseMotion { Position = new Vector2(1, 1) });
         await Frames();
         Expect(!hover.Visible, "Moving away hides it");
@@ -694,7 +704,7 @@ public partial class UiTest : Control
         var spearman = Row(UnitType.Spearman);
         var before = village.TroopCount(UnitType.Spearman);
         Expect(spearman.GetNode<Label>("Header/Count").Text == $"× {before}", "Garrison count is shown");
-        Expect(Row(UnitType.Catapult).GetNode<Label>("Note").Text == "Requires Barracks level 5", "A locked unit states its requirement");
+        Expect(Row(UnitType.Catapult).GetNode<Label>("Note").Text == L.T("troops.requires", ("level", "5")), "A locked unit states its requirement");
         Expect(!Row(UnitType.Catapult).GetNode<Control>("Controls").Visible, "A locked unit can't be trained");
         await Shot("troops");
 
@@ -739,12 +749,12 @@ public partial class UiTest : Control
         await Frames();
         Expect(send.IsVisibleInTree(), "The Send tab opens");
         Expect(mission.ItemCount == 3, "Attack, Raid and Scout are offered, and Reinforce isn't without a second village");
-        Expect(button.Disabled && reason.Text == "Pick a target on the world map.", "No target disables Send and says why");
+        Expect(button.Disabled && reason.Text == L.T("send.pick_target"), "No target disables Send and says why");
         Expect(send.GetNode<Button>("%PickTarget").Visible, "The form offers a way to the map");
         send.SetTarget(2);
         await Frames();
         var line = send.GetNode<Label>("%TargetLine").Text;
-        Expect(line.StartsWith($"{session.State.Villages[2].Name}  ·  Vargas  ·  "), $"The target line names the village, got '{line}'");
+        Expect(line.StartsWith(Format.Dotted(session.State.Villages[2].Name, "Vargas", "")), $"The target line names the village, got '{line}'");
         Expect(button.Disabled && reason.Text == UiContent.RejectionText(CommandRejection.NoTroopsSelected), "No troops selected disables Send and says why");
         Expect(send.GetNode<Label>("%None").Visible, "Nothing on the move yet");
 
@@ -752,7 +762,7 @@ public partial class UiTest : Control
         await Frames();
         var present = village.TroopCount(UnitType.Spearman);
         Expect((int)spearmen.GetNode<SpinBox>("Amount").Value == present, "Max selects the whole garrison");
-        Expect(send.GetNode<Label>("%Arrival").Text.StartsWith("Arrives in"), "The arrival time is previewed");
+        Expect(Shows(send.GetNode<Label>("%Arrival").Text, "send.arrives"), "The arrival time is previewed");
         Expect(!send.GetNode<Control>("%CatapultRow").Visible, "No catapult target without catapults");
         await Shot("send");
 
@@ -764,7 +774,7 @@ public partial class UiTest : Control
         Expect(session.State.Movements.Count == 1 && session.State.Movements[0].Type == MovementType.Raid, "The chosen mission is sent");
         Expect((int)spearmen.GetNode<SpinBox>("Amount").Value == 0, "The form resets after sending");
         var row = send.GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
-        Expect(row.GetNode<Label>("Title").Text == $"Raid › {session.State.Villages[2].Name}", "The movement is listed");
+        Expect(row.GetNode<Label>("Title").Text == L.T("movement.to", ("mission", UiContent.MissionName(MovementType.Raid)), ("target", session.State.Villages[2].Name)), "The movement is listed");
         await Shot("moving");
 
         session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
@@ -772,7 +782,7 @@ public partial class UiTest : Control
         Expect(session.State.Reports.Count == 1, "The raid is fought on arrival");
         if (session.State.Movements.Count > 0)
         {
-            Expect(row.GetNode<Label>("Title").Text.StartsWith("Returning"), "Survivors are listed as returning");
+            Expect(row.GetNode<Label>("Title").Text.StartsWith(L.T("movement.returning")), "Survivors are listed as returning");
             session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
             await Frames();
         }
@@ -790,21 +800,21 @@ public partial class UiTest : Control
         var reportsTab = (int)GameScreen.SideTab.Reports;
 
         await Frames();
-        Expect(tabs.GetTabTitle(reportsTab) == "Reports (1)", $"An unread report is counted, got '{tabs.GetTabTitle(reportsTab)}'");
+        Expect(tabs.GetTabTitle(reportsTab) == L.T("tab.reports_unread", ("count", "1")), $"An unread report is counted, got '{tabs.GetTabTitle(reportsTab)}'");
 
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
-        Expect(tabs.GetTabTitle(reportsTab) == "Reports", "Opening the tab clears the unread count");
+        Expect(tabs.GetTabTitle(reportsTab) == L.T("tab.reports"), "Opening the tab clears the unread count");
         var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
-        Expect(row.Text.StartsWith("Lost: Raid on Vargas"), $"The lost raid is listed, got '{row.Text}'");
+        Expect(row.Text.StartsWith(L.T("report.headline_attacker", ("result", L.T("report.lost")), ("mission", UiContent.MissionName(MovementType.Raid)), ("target", "Vargas"))), $"The lost raid is listed, got '{row.Text}'");
         await Shot("reports");
 
         row.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
-        Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == "Defeat", "The report opens as a defeat");
+        Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == L.T("report.defeat"), "The report opens as a defeat");
         Expect(dialog.GetNode<VBoxContainer>("%Attacker").GetChildCount() == 2, "The report lists the attacking side");
         Expect(!dialog.GetNode<Label>("%Loot").Visible, "A lost raid shows no loot");
-        Expect(dialog.GetNode<Label>("%Powers").Text.Contains("vs  defence 180"), $"The report shows the weighted defence, got '{dialog.GetNode<Label>("%Powers").Text}'");
+        Expect(dialog.GetNode<Label>("%Powers").Text.Contains("180"), $"The report shows the weighted defence, got '{dialog.GetNode<Label>("%Powers").Text}'");
         await Shot("report-defeat");
 
         dialog.GetNode<Button>("%Close").EmitSignal(BaseButton.SignalName.Pressed);
@@ -856,13 +866,13 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
         var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
-        Expect(row.Text.StartsWith("Won: Attack on Rival"), $"The won attack is listed, got '{row.Text}'");
+        Expect(row.Text.StartsWith(L.T("report.headline_attacker", ("result", L.T("report.won")), ("mission", UiContent.MissionName(MovementType.Attack)), ("target", "Rival"))), $"The won attack is listed, got '{row.Text}'");
         row.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
         var dialog = game.GetNode<ReportDialog>("%ReportDialog");
-        Expect(dialog.GetNode<Label>("%Result").Text == "Victory", "The report opens as a victory");
+        Expect(dialog.GetNode<Label>("%Result").Text == L.T("report.victory"), "The report opens as a victory");
         Expect(dialog.GetNode<Label>("%Loot").Visible, "A won battle shows loot");
-        Expect(dialog.GetNode<Label>("%Damage").Text == "Catapults hit the Woodcutter: level 1 › 0", $"The report shows the damage, got '{dialog.GetNode<Label>("%Damage").Text}'");
+        Expect(dialog.GetNode<Label>("%Damage").Text == L.T("report.catapults", ("building", UiContent.Buildings[BuildingType.Woodcutter].Name), ("from", "1"), ("to", "0")), $"The report shows the damage, got '{dialog.GetNode<Label>("%Damage").Text}'");
         await Shot("report-victory");
         dialog.GetNode<Button>("%Close").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -883,12 +893,12 @@ public partial class UiTest : Control
 
         Expect(session.State.Movements.Count == 1, "The rival sends its garrison");
         var incoming = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Button>("%Incoming");
-        Expect(incoming.Visible && incoming.Text.StartsWith("Attack arriving in"), $"The top bar warns of the attack, got '{incoming.Text}'");
+        Expect(incoming.Visible && Shows(incoming.Text, "bar.incoming"), $"The top bar warns of the attack, got '{incoming.Text}'");
 
         game.ShowTab(GameScreen.SideTab.Send);
         await Frames();
         var row = game.GetNode<SendPanel>("%Send").GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
-        Expect(row.GetNode<Label>("Title").Text == "Attack from Rival", "The hostile movement is listed");
+        Expect(row.GetNode<Label>("Title").Text == L.T("movement.from", ("mission", UiContent.MissionName(MovementType.Attack)), ("owner", "Rival")), "The hostile movement is listed");
         await Shot("incoming");
 
         await TestMovementsOnMap(game, incoming);
@@ -898,12 +908,12 @@ public partial class UiTest : Control
 
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
-        var report = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetChildren().OfType<Button>().First(b => b.Text.Contains("by Rival"));
-        Expect(report.Text.StartsWith("Won: Attack by Rival"), $"The defender's report says they won, got '{report.Text}'");
+        var report = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetChildren().OfType<Button>().First(b => b.Text.StartsWith(L.T("report.headline_defender", ("result", L.T("report.won")), ("mission", UiContent.MissionName(MovementType.Attack)), ("attacker", "Rival"))));
+        Expect(report.Text.StartsWith(L.T("report.headline_defender", ("result", L.T("report.won")), ("mission", UiContent.MissionName(MovementType.Attack)), ("attacker", "Rival"))), $"The defender's report says they won, got '{report.Text}'");
         report.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
         var dialog = game.GetNode<ReportDialog>("%ReportDialog");
-        Expect(dialog.GetNode<Label>("%Result").Text == "Victory", "A successful defence is a victory");
+        Expect(dialog.GetNode<Label>("%Result").Text == L.T("report.victory"), "A successful defence is a victory");
         await Shot("report-defended");
         dialog.GetNode<Button>("%Close").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -916,11 +926,11 @@ public partial class UiTest : Control
         await Frames();
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
-        var barbarian = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetChildren().OfType<Button>().First(b => b.Text.Contains("Raid on Barbarians"));
-        Expect(barbarian.Text.Contains("Raid on Barbarians"), $"The barbarian battle is listed, got '{barbarian.Text}'");
+        var barbarian = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetChildren().OfType<Button>().First(b => b.Text.Contains(RaidOnBarbarians()));
+        Expect(barbarian.Text.Contains(RaidOnBarbarians()), $"The barbarian battle is listed, got '{barbarian.Text}'");
         barbarian.EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
-        Expect(dialog.Visible && dialog.GetNode<VBoxContainer>("%Defender").GetChild<Label>(0).Text == "Barbarians (defending)", "The report names the barbarians");
+        Expect(dialog.Visible && dialog.GetNode<VBoxContainer>("%Defender").GetChild<Label>(0).Text == L.T("report.defending", ("owner", L.T("player.barbarians"))), "The report names the barbarians");
         await Shot("report-barbarian");
     }
 
@@ -939,7 +949,7 @@ public partial class UiTest : Control
         session.Tick(300);
         await Frames();
         Expect(toast.Visible, "Completing a build shows a toast");
-        Expect(toast.GetNode<Label>("Label").Text == "Farm reached level 3", "Toast names the building and level");
+        Expect(toast.GetNode<Label>("Label").Text == L.T("toast.building_done", ("building", UiContent.Buildings[BuildingType.Farm].Name), ("level", "3")), "Toast names the building and level");
 
         session.Send(new BuildCommand(2, BuildingType.Wall));
         await Frames();
@@ -1013,8 +1023,8 @@ public partial class UiTest : Control
         SelectTile(BuildingType.Woodcutter);
         await Frames();
         var panel = game.GetNode<BuildingPanel>("%BuildingPanel");
-        Expect(panel.GetNode<Button>("%Upgrade").Text == "Unavailable", "A finished match offers no upgrade");
-        Expect(!panel.GetNode<Label>("%Effect").Text.Contains("Level 0"), "A finished match shows no next level");
+        Expect(panel.GetNode<Button>("%Upgrade").Text == L.T("upgrade.unavailable"), "A finished match offers no upgrade");
+        Expect(!panel.GetNode<Label>("%Effect").Text.Contains(L.T("common.level", ("level", "0"))), "A finished match shows no next level");
         await Shot("match-over");
 
         game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
@@ -1073,7 +1083,7 @@ public partial class UiTest : Control
         UpgradeTo(BuildingType.Woodcutter, 7);
         session.Tick(60);
         await Select(BuildingType.Woodcutter);
-        Expect(upgrade.Disabled && reason.Text.Contains("Warehouse"), $"Unaffordable cost points to the Warehouse, got '{reason.Text}'");
+        Expect(upgrade.Disabled && reason.Text == L.T("upgrade.warehouse_small"), $"Unaffordable cost points to the Warehouse, got '{reason.Text}'");
         await Shot("warehouse-hint");
 
         // With storage out of the way, the Main Building table blocks the next level until it grows.
@@ -1082,7 +1092,7 @@ public partial class UiTest : Control
         UpgradeTo(BuildingType.Quarry, limit);
         session.Tick(60);
         await Select(BuildingType.Quarry);
-        Expect(reason.Text == "Upgrade the Main Building to go higher.", $"Main Building limit is explained, got '{reason.Text}'");
+        Expect(reason.Text == UiContent.RejectionText(CommandRejection.MainBuildingLevelTooLow), $"Main Building limit is explained, got '{reason.Text}'");
 
         // Upgrades queued up to the max level, in a full queue, must not break the panel.
         UpgradeTo(BuildingType.MainBuilding, 8);
@@ -1090,12 +1100,12 @@ public partial class UiTest : Control
         session.Send(new BuildCommand(village.Id, BuildingType.MainBuilding));
         session.Send(new BuildCommand(village.Id, BuildingType.MainBuilding));
         await Select(BuildingType.MainBuilding);
-        Expect(upgrade.Text == "Max level" && upgrade.Disabled, $"Queued to max shows max level, got '{upgrade.Text}'");
+        Expect(upgrade.Text == L.T("upgrade.max") && upgrade.Disabled, $"Queued to max shows max level, got '{upgrade.Text}'");
 
         session.Tick(60);
         await Frames();
         Expect(village.BuildingLevel(BuildingType.MainBuilding) == 10, "Main Building reaches max level");
-        Expect(upgrade.Text == "Max level" && upgrade.Disabled && !reason.Visible, "Max level needs no reason text");
+        Expect(upgrade.Text == L.T("upgrade.max") && upgrade.Disabled && !reason.Visible, "Max level needs no reason text");
         await Shot("max-level");
 
         await TestVictory(game, UpgradeTo);
@@ -1226,7 +1236,7 @@ public partial class UiTest : Control
         await Frames();
         Expect(session.State.IsMatchOver, $"The AIs finish an Unlimited match by themselves, at {session.State.ElapsedTime:0} s");
         var end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
-        Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Defeat", "The player who left has lost");
+        Expect(end.Visible && end.GetNode<Label>("%Title").Text == L.T("report.defeat"), "The player who left has lost");
         Expect(session.State.Outcome is { WinnerIds.Count: 1 }, "One player is left");
         await Shot("live-unlimited-end");
         Press(end.GetNode<Button>("%Back"));
@@ -1239,8 +1249,8 @@ public partial class UiTest : Control
     {
         var start = Find<StartScreen>();
         var durations = start.GetNode<OptionButton>("%Duration");
-        Expect(durations.GetItemText(durations.ItemCount - 1) == "Unlimited", "Unlimited is the last duration");
-        Expect(durations.ItemCount == 4 && durations.GetItemText(0) == "30 minutes", $"Durations start at 30 minutes, got {durations.GetItemText(0)}");
+        Expect(durations.GetItemText(durations.ItemCount - 1) == L.T("start.unlimited"), "Unlimited is the last duration");
+        Expect(durations.ItemCount == 4 && durations.GetItemText(0) == L.N("common.minutes", 30), $"Durations start at 30 minutes, got {durations.GetItemText(0)}");
         durations.Select(durations.ItemCount - 1);
         start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -1380,7 +1390,7 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         Press(chips[1]);
         await Frames();
-        Expect(send.GetNode<Label>("%FromLine").Text == $"From {own[1].Name}", "The Send form names the village");
+        Expect(send.GetNode<Label>("%FromLine").Text == L.T("send.from", ("village", own[1].Name)), "The Send form names the village");
         var amount = send.GetNode<SpinBox>("%Units/Swordsman/Amount");
         amount.Value = 50;
         await Frames();
@@ -1479,7 +1489,7 @@ public partial class UiTest : Control
         await Frames();
         var send = game.GetNode<SendPanel>("%Send");
         Expect(game.GetNode<TabContainer>("%Side").CurrentTab == (int)GameScreen.SideTab.Send, "Reinforce opens the Send tab");
-        Expect(send.GetNode<OptionButton>("%Mission").GetItemText(0) == "Reinforce", "The mission is Reinforce");
+        Expect(send.GetNode<OptionButton>("%Mission").GetItemText(0) == UiContent.MissionName(MovementType.Reinforce), "The mission is Reinforce");
 
         send.GetNode<SpinBox>("%Units/Swordsman/Amount").Value = 40;
         await Frames();
@@ -1516,7 +1526,7 @@ public partial class UiTest : Control
         await Frames();
         var openForm = panel.GetNode<Button>("%OpenTransfer");
         Expect(openForm.Visible, "The Marketplace offers Send resources");
-        Expect(panel.GetNode<Label>("%Effect").Text.Contains("6 free now"), $"The Marketplace shows free carriers, got '{panel.GetNode<Label>("%Effect").Text}'");
+        Expect(panel.GetNode<Label>("%Effect").Text.Contains(L.T("effect.carriers_free", ("free", "6"), ("capacity", Format.Whole(data.Villages.Carriers.Capacity)))), $"The Marketplace shows free carriers, got '{panel.GetNode<Label>("%Effect").Text}'");
         await Shot("marketplace");
         Press(openForm);
         await Frames();
@@ -1527,7 +1537,7 @@ public partial class UiTest : Control
         var warning = send.GetNode<Label>("%Warning");
         Expect(game.GetNode<TabContainer>("%Side").CurrentTab == (int)GameScreen.SideTab.Send, "The Marketplace opens the Send tab");
         Expect(send.GetNode<Control>("%ResourceRows").Visible && !send.GetNode<Control>("%Units").Visible, "The form shows resources instead of troops");
-        Expect(button.Disabled && reason.Text == "Pick one of your villages on the map.", $"With no target the form says why, got '{reason.Text}'");
+        Expect(button.Disabled && reason.Text == L.T("send.pick_own"), $"With no target the form says why, got '{reason.Text}'");
 
         // From the map popup.
         game.ShowView(GameScreen.MainView.World);
@@ -1541,7 +1551,7 @@ public partial class UiTest : Control
         Press(popup.GetNode<Button>("%SendResources"));
         world.ClearSelection();
         await Frames();
-        Expect(send.GetNode<OptionButton>("%Mission").GetItemText(send.GetNode<OptionButton>("%Mission").Selected) == "Send resources", "The popup selects the resource form");
+        Expect(send.GetNode<OptionButton>("%Mission").GetItemText(send.GetNode<OptionButton>("%Mission").Selected) == UiContent.MissionName(MovementType.Transfer), "The popup selects the resource form");
         Expect(send.GetNode<Label>("%TargetLine").Text.StartsWith(to.Name), "The popup sets the target");
 
         var wood = send.GetNode<SpinBox>("%ResourceRows/Wood/Amount");
@@ -1565,7 +1575,7 @@ public partial class UiTest : Control
         stone.Value = Math.Floor(from.Resources.Stone);
         await Frames();
         Expect(wood.Value + stone.Value > free * capacity, "This load is more than the carriers can hold");
-        Expect(button.Disabled && reason.Text == $"This needs {CarrierRules.Needed(data, (int)(wood.Value + stone.Value))} carriers, and {free} are free.", $"Too large a load names the carriers, got '{reason.Text}'");
+        Expect(button.Disabled && reason.Text == L.T("send.needs_carriers", ("needed", Format.Whole(CarrierRules.Needed(data, (int)(wood.Value + stone.Value)))), ("free", Format.Whole(free))), $"Too large a load names the carriers, got '{reason.Text}'");
         await Shot("transfer-too-many");
 
         // A real send, with the preview matching the shared rules.
@@ -1575,7 +1585,7 @@ public partial class UiTest : Control
         var command = new SendResourcesCommand(from.Id, to.Id, capacity + 1, 0, 0);
         var option = SendResourcesPreview.Evaluate(session.State, data, 1, command);
         Expect(!button.Disabled, "A valid load can be sent");
-        Expect(arrival.Text == $"Uses {option.CarriersUsed} of {option.CarriersFree} free carriers  ·  Arrives in {Format.Time(option.DurationSeconds)}", $"The preview matches the rules, got '{arrival.Text}'");
+        Expect(arrival.Text == L.T("send.carriers_preview", ("used", Format.Whole(option.CarriersUsed)), ("free", Format.Whole(option.CarriersFree)), ("time", Format.Time(option.DurationSeconds))), $"The preview matches the rules, got '{arrival.Text}'");
         Expect(option.CarriersUsed == 2, "One over a carrier's load needs two");
         await Shot("transfer-form");
 
@@ -1586,8 +1596,8 @@ public partial class UiTest : Control
         Expect(from.Resources.Wood < stock, "Sending takes the resources");
         Expect(wood.Value == 0, "Sending clears the form");
         var layer = world.GetNode<MovementLayer>("World/Movements");
-        Expect(layer.Entries.Any(e => e.Description.StartsWith("Carrying")), "The transfer is on the map");
-        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == $"Carrying {capacity + 1} › {to.Name}", "The transfer is in the list");
+        Expect(layer.Entries.Any(e => Shows(e.Description.Split("  ·  ")[0], "movement.carrying")), "The transfer is on the map");
+        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == L.T("movement.carrying", ("amount", Format.Whole(capacity + 1)), ("target", to.Name)), "The transfer is in the list");
         await Shot("transfer-moving");
 
         // The overflow warning.
@@ -1596,7 +1606,7 @@ public partial class UiTest : Control
         Expect(fill > room, $"This load overflows the target: fill {fill}, room {room}");
         stone.Value = fill;
         await Frames();
-        Expect(warning.Visible && warning.Text.Contains("will be lost"), $"An overflow warns, got '{warning.Text}'");
+        Expect(warning.Visible && Shows(warning.Text, "send.warning"), $"An overflow warns, got '{warning.Text}'");
         Expect(!button.Disabled, "A warning does not block sending");
         await Shot("transfer-warning");
         stone.Value = 0;
@@ -1610,7 +1620,7 @@ public partial class UiTest : Control
         await Frames();
         Expect(delivery is not null && delivery.Delivered + delivery.Lost == movement.Loot, "The whole load is accounted for on delivery");
         Expect(session.State.Movements.Any(m => m.Type == MovementType.CarrierReturn), "The carriers walk home");
-        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == "Carriers returning", "The list shows them returning");
+        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == L.T("movement.carriers_returning"), "The list shows them returning");
         await RunUntilArrived(session);
         Expect(CarrierRules.Free(session.State, data, from) == free, "The carriers are free again");
 
@@ -1635,7 +1645,7 @@ public partial class UiTest : Control
         Press(popup.GetNode<Button>("%Reinforce"));
         await Frames();
         Expect(send.GetNode<Control>("%Units").Visible, "Reinforce shows the troops again");
-        Expect(button.Text == "Send troops", "The button follows the form");
+        Expect(button.Text == L.T("send.troops"), "The button follows the form");
     }
 
     private static void SelectGameTile(GameScreen game, BuildingType building) =>
@@ -1671,7 +1681,7 @@ public partial class UiTest : Control
         mission.Select(2);
         await Frames();
         Expect(!intel.Visible, "No intel before any scouting");
-        Expect(rule.Visible && rule.Text.Contains("Scouts at home"), $"The form states the scouting rule, got '{rule.Text}'");
+        Expect(rule.Visible && rule.Text == L.T("send.scout_rule"), $"The form states the scouting rule, got '{rule.Text}'");
         Expect(scoutRow.Visible && !unitRows.GetNode<Control>(nameof(UnitType.Spearman)).Visible, "A Scout mission offers only Scouts");
         mission.Select(0);
         await Frames();
@@ -1693,20 +1703,20 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         send.SetTarget(2);
         await Frames();
-        Expect(intel.Visible && intel.Text.Contains("5 troops") && intel.Text.Contains("Wall 2"), $"The form shows the latest intel, got '{intel.Text}'");
+        Expect(intel.Visible && intel.Text.Contains(L.N("intel.troops", 5)) && intel.Text.Contains(L.T("intel.wall", ("level", "2"))), $"The form shows the latest intel, got '{intel.Text}'");
         await Shot("scout-intel");
 
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
         var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutReports.Single().Id}");
-        Expect(row.Text.StartsWith($"Scouted {rival.Name}"), $"The scout report is listed, got '{row.Text}'");
+        Expect(row.Text.StartsWith(L.T("scout.headline_seen", ("target", rival.Name))), $"The scout report is listed, got '{row.Text}'");
         Press(row);
         await Frames();
-        Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == "Scouted in full", "An undefended village gives the full report");
-        Expect(dialog.GetNode<Label>("%Powers").Text.StartsWith("Wall level 2"), "The report gives the Wall level");
-        Expect(dialog.GetNode<Label>("%Loot").Text.StartsWith("Resources:"), "The report gives the resources");
-        Expect(dialog.GetNode<Label>("%Damage").Visible && dialog.GetNode<Label>("%Damage").Text.Contains("Wall 2"), "The full report gives the buildings");
-        Expect(dialog.GetNode<Label>("%Loyalty").Text.StartsWith("Loyalty"), "The full report gives the loyalty");
+        Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == L.T("scout.result_full"), "An undefended village gives the full report");
+        Expect(dialog.GetNode<Label>("%Powers").Text.StartsWith(L.T("scout.wall_level", ("level", "2"))), "The report gives the Wall level");
+        Expect(Shows(dialog.GetNode<Label>("%Loot").Text, "scout.resources"), "The report gives the resources");
+        Expect(dialog.GetNode<Label>("%Damage").Visible && dialog.GetNode<Label>("%Damage").Text.Contains(L.T("scout.building_level", ("building", UiContent.Buildings[BuildingType.Wall].Name), ("level", "2"))), "The full report gives the buildings");
+        Expect(Shows(dialog.GetNode<Label>("%Loyalty").Text, "scout.loyalty"), "The full report gives the loyalty");
         await Shot("scout-report");
         Press(dialog.GetNode<Button>("%Close"));
 
@@ -1719,7 +1729,7 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         send.SetTarget(2);
         await Frames();
-        Expect(intel.Text.Contains("Scouts lost"), $"The form shows the failure, got '{intel.Text}'");
+        Expect(Shows(intel.Text, "intel.lost_only") || Shows(intel.Text, "intel.seen_then_lost"), $"The form shows the failure, got '{intel.Text}'");
 
         // Both directions, seen from the side being scouted. With no Watchtower, a success goes unnoticed.
         Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "The rival sends a Scout");
@@ -1744,10 +1754,10 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
         var seen = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutNotices[^1].Id}");
-        Expect(seen.Text.StartsWith("Rival scouted"), $"The notice names the sender, got '{seen.Text}'");
+        Expect(seen.Text.StartsWith(L.T("notice.seen", ("sender", "Rival"), ("target", "")).TrimEnd()), $"The notice names the sender, got '{seen.Text}'");
         Press(seen);
         await Frames();
-        Expect(dialog.GetNode<Label>("%Result").Text == "Scouted by an enemy", "The Watchtower's notice opens");
+        Expect(dialog.GetNode<Label>("%Result").Text == L.T("notice.result_seen"), "The Watchtower's notice opens");
         Press(dialog.GetNode<Button>("%Close"));
 
         game.ShowTab(GameScreen.SideTab.Send);
@@ -1761,10 +1771,10 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
         var notice = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutNotices[^1].Id}");
-        Expect(notice.Text.StartsWith("Caught scouts from Rival"), $"The notice names the sender, got '{notice.Text}'");
+        Expect(Shows(notice.Text.Split("  ·  ")[0], "notice.caught") && notice.Text.Contains("Rival"), $"The notice names the sender, got '{notice.Text}'");
         Press(notice);
         await Frames();
-        Expect(dialog.GetNode<Label>("%Result").Text == "Scouts caught", "The notice opens");
+        Expect(dialog.GetNode<Label>("%Result").Text == L.T("notice.result_caught"), "The notice opens");
         await Shot("scout-caught");
         Press(dialog.GetNode<Button>("%Close"));
 
@@ -1791,11 +1801,11 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         send.SetTarget(2);
         await Frames();
-        Expect(intel.Text.Contains($"{narrow.TroopRange!.Low}-{narrow.TroopRange.High} troops") && intel.Text.Contains($"Wall {narrow.WallRange!.Low}-{narrow.WallRange.High}"), $"The form shows the ranges, got '{intel.Text}'");
+        Expect(intel.Text.Contains(L.T("intel.narrow", ("troops", UiContent.RangeText(narrow.TroopRange!)), ("wall", UiContent.RangeText(narrow.WallRange!)))), $"The form shows the ranges, got '{intel.Text}'");
         Expect(narrow.TroopRange!.Low <= 5 && 5 <= narrow.TroopRange.High && narrow.WallRange!.Low <= 2 && 2 <= narrow.WallRange.High, "The ranges contain the truth");
         dialog.ShowScoutReport(session, narrow);
         await Frames();
-        Expect(dialog.GetNode<Label>("%Result").Text == "Scouted: a rough look", "The report names a narrow success");
+        Expect(dialog.GetNode<Label>("%Result").Text == L.T("scout.result_narrow"), "The report names a narrow success");
         Expect(dialog.GetNode<Label>("%Powers").Text.Contains($"{narrow.WallRange!.Low}-{narrow.WallRange.High}") && !dialog.GetNode<Label>("%Loot").Visible, "The narrow report gives a range and no resources");
         await Shot("scout-narrow");
         Press(dialog.GetNode<Button>("%Close"));
@@ -1803,7 +1813,7 @@ public partial class UiTest : Control
         var clear = await ScoutedAt(3);
         Expect(clear.Quality == ScoutQuality.Clear && clear.Buildings is null && clear.Garrison![UnitType.Spearman] == 3, "A clear success gives exact troops, without buildings");
         await Frames();
-        Expect(intel.Text.Contains("5 troops") && intel.Text.Contains("Wall 2"), $"The form shows the exact numbers, got '{intel.Text}'");
+        Expect(intel.Text.Contains(L.N("intel.troops", 5)) && intel.Text.Contains(L.T("intel.wall", ("level", "2"))), $"The form shows the exact numbers, got '{intel.Text}'");
     }
 
     private async Task TestGodMode(GameData data)
@@ -1888,7 +1898,7 @@ public partial class UiTest : Control
 
         game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
         await Frames();
-        Expect(surrender.Visible && surrender.Text == "Surrender", "The pause menu offers surrender");
+        Expect(surrender.Visible && surrender.Text == L.T("overlay.surrender"), "The pause menu offers surrender");
         await Shot("pause-surrender");
 
         Press(surrender);
@@ -1911,7 +1921,7 @@ public partial class UiTest : Control
         Expect(state.Players[1].HasSurrendered && !session.IsPaused, "Confirming surrenders and resumes");
         Expect(state.Villages[1].IsAbandoned, "The village is abandoned");
         Expect(!state.IsMatchOver && eliminated.Visible, "With two left the match goes on");
-        Expect(eliminated.GetNode<Label>("%Title").Text == "You surrendered", "The message says you surrendered");
+        Expect(eliminated.GetNode<Label>("%Title").Text == L.T("overlay.surrendered.title"), "The message says you surrendered");
         await Shot("surrendered");
 
         Press(eliminated.GetNode<Button>("%Action"));
@@ -1932,7 +1942,7 @@ public partial class UiTest : Control
         var popup = world.GetNode<VillagePopup>("Popup");
         popup.Refresh(otherSession, otherSession.State.Villages[2], otherSession.State.Villages[1]);
         await Frames();
-        Expect(popup.GetNode<Label>("%Owner").Text.EndsWith("Abandoned"), $"The popup says it is abandoned, got '{popup.GetNode<Label>("%Owner").Text}'");
+        Expect(popup.GetNode<Label>("%Owner").Text.EndsWith(L.T("popup.abandoned")), $"The popup says it is abandoned, got '{popup.GetNode<Label>("%Owner").Text}'");
         await Shot("abandoned");
 
         // Two players: it ends at once, as a defeat, with the score table.
@@ -1945,8 +1955,8 @@ public partial class UiTest : Control
         await Frames();
         Expect(lastSession.State.IsMatchOver, "With one left the match ends at once");
         var end = last.GetNode<MatchEndScreen>("%MatchEndScreen");
-        Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Defeat", "Surrendering is a defeat");
-        Expect(FindAll<Label>(end).Any(l => l.Text.Contains("(surrendered)")), "The table shows who surrendered");
+        Expect(end.Visible && end.GetNode<Label>("%Title").Text == L.T("report.defeat"), "Surrendering is a defeat");
+        Expect(FindAll<Label>(end).Any(l => l.Text.EndsWith(L.T("end.surrendered", ("name", "")))), "The table shows who surrendered");
         await Shot("surrender-defeat");
     }
 
@@ -1961,7 +1971,7 @@ public partial class UiTest : Control
         session.Send(new SendTroopsCommand(army.Id, 2, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 40, [UnitType.Lord] = 1 }));
         await RunUntilArrived(session);
         dialog.ShowReport(session, session.State.Reports[^1]);
-        Expect(label.Visible && label.Text == "Capital protected: loyalty unchanged", $"A locked capital is reported, got '{label.Text}'");
+        Expect(label.Visible && label.Text == L.T("report.capital_protected"), $"A locked capital is reported, got '{label.Text}'");
         await Shot("report-protected");
         dialog.Visible = false;
 
@@ -1970,7 +1980,7 @@ public partial class UiTest : Control
         session.Send(new SendTroopsCommand(army.Id, camp.Id, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 100, [UnitType.Lord] = 2 }));
         await RunUntilArrived(session);
         dialog.ShowReport(session, session.State.Reports[^1]);
-        Expect(label.Visible && label.Text.StartsWith("Loyalty: "), $"A lowered loyalty is reported, got '{label.Text}'");
+        Expect(label.Visible && Shows(label.Text, "report.loyalty_change"), $"A lowered loyalty is reported, got '{label.Text}'");
         dialog.Visible = false;
 
         var (endGame, endSession) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Endgame, players: 3);
@@ -1979,14 +1989,14 @@ public partial class UiTest : Control
         await Frames();
         var endDialog = endGame.GetNode<ReportDialog>("%ReportDialog");
         endDialog.ShowReport(endSession, endSession.State.Reports[^1]);
-        Expect(endDialog.GetNode<Label>("%Loyalty").Text == "Village captured", "A capture is reported");
+        Expect(endDialog.GetNode<Label>("%Loyalty").Text == L.T("report.captured"), "A capture is reported");
         await Shot("report-captured");
         endDialog.Visible = false;
 
         endGame.ShowTab(GameScreen.SideTab.Village);
         await Frames();
         var info = endGame.GetNode<Label>("%VillageInfo").Text;
-        Expect(info.Contains("Loyalty") && info.Contains("Capital"), $"The Village tab shows loyalty and the capital, got '{info}'");
+        Expect(Shows(info.Split('\n')[0], "village.info") && info.Contains(L.T("popup.capital")), $"The Village tab shows loyalty and the capital, got '{info}'");
     }
 
     private async Task TestFounding(GameData data)
@@ -2092,7 +2102,7 @@ public partial class UiTest : Control
         Press(dialog.GetNode<Button>("%Later"));
         await Frames();
         Expect(!dialog.Visible, "The dialog can be set aside");
-        Expect(warning.Visible && warning.Text.StartsWith("Choose a capital"), $"The top bar warns, got '{warning.Text}'");
+        Expect(warning.Visible && Shows(warning.Text, "bar.choose_capital"), $"The top bar warns, got '{warning.Text}'");
         PressKey(game, Key.E);
         Expect(game.CurrentVillageId == own[1].Id, "The game can be played with the dialog set aside");
         await Shot("capital-warning");
@@ -2163,7 +2173,7 @@ public partial class UiTest : Control
         session.Tick(TestDuration);
         await Frames();
         Expect(game.GetNode<MatchEndScreen>("%MatchEndScreen").Visible, "The results appear for a watcher too");
-        Expect(game.GetNode<MatchEndScreen>("%MatchEndScreen").GetNode<Label>("%Title").Text == "Defeat", "A watcher has lost");
+        Expect(game.GetNode<MatchEndScreen>("%MatchEndScreen").GetNode<Label>("%Title").Text == L.T("report.defeat"), "A watcher has lost");
     }
 
     private async Task TestMatchResults(GameData data)
@@ -2173,19 +2183,19 @@ public partial class UiTest : Control
         session.Tick(session.State.Movements[0].ArrivalTime);
         await Frames();
         var end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
-        Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Victory", "Taking the last village wins");
-        Expect(end.GetNode<Label>("%Reason").Text == "You are the last player standing.", "The reason is stated");
+        Expect(end.Visible && end.GetNode<Label>("%Title").Text == L.T("report.victory"), "Taking the last village wins");
+        Expect(end.GetNode<Label>("%Reason").Text == L.T("end.you_last"), "The reason is stated");
         var cells = end.GetNode<GridContainer>("%Table").GetChildren().OfType<Label>().Select(l => l.Text).ToList();
         var top = session.State.Outcome!.Scores[0];
         Expect(cells.Count == 18, $"A header and one row per player, got {cells.Count} cells");
-        Expect(cells[7] == "You" && cells[8] == $"{top.Villages}" && cells[9] == $"{top.Population}" && cells[10] == $"{top.Captures}" && cells[11] == $"{top.Score:0}", "The table matches the score");
-        Expect(cells[13].EndsWith("(eliminated)"), "Eliminated players are marked");
+        Expect(cells[7] == L.T("player.you") && cells[8] == $"{top.Villages}" && cells[9] == $"{top.Population}" && cells[10] == $"{top.Captures}" && cells[11] == $"{top.Score:0}", "The table matches the score");
+        Expect(cells[13].EndsWith(L.T("end.eliminated", ("name", ""))), "Eliminated players are marked");
         await Shot("end-victory");
 
         (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, rivalAttacks: true);
         await RunUntilArrived(session);
         end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
-        Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Defeat", "Losing the last village loses");
+        Expect(end.Visible && end.GetNode<Label>("%Title").Text == L.T("report.defeat"), "Losing the last village loses");
         Expect(!game.GetNode<Overlay>("%EliminatedOverlay").Visible, "The results replace the elimination message");
         await Shot("end-defeat");
 
@@ -2193,8 +2203,8 @@ public partial class UiTest : Control
         session.Tick(30);
         await Frames();
         end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
-        Expect(end.GetNode<Label>("%Title").Text == "Draw", "Equal scores at time-out are a draw");
-        Expect(end.GetNode<Label>("%Reason").Text.Contains("tied"), "The draw is explained");
+        Expect(end.GetNode<Label>("%Title").Text == L.T("end.draw"), "Equal scores at time-out are a draw");
+        Expect(end.GetNode<Label>("%Reason").Text == L.T("end.tied", ("names", L.T("common.and", ("first", L.T("player.you")), ("second", "Rival")))), "The draw is explained");
         await Shot("end-draw");
 
         (game, session) = await StartMatch(data, null, duration: 100);
@@ -2202,8 +2212,8 @@ public partial class UiTest : Control
         session.Tick(100);
         await Frames();
         end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
-        Expect(end.GetNode<Label>("%Title").Text == "Victory", "The higher score wins at time-out");
-        Expect(end.GetNode<Label>("%Reason").Text == "Time ran out. You have the highest score.", "The time-out win is explained");
+        Expect(end.GetNode<Label>("%Title").Text == L.T("report.victory"), "The higher score wins at time-out");
+        Expect(end.GetNode<Label>("%Reason").Text == L.T("end.you_highest"), "The time-out win is explained");
 
         foreach (var child in GetChildren().OfType<GameScreen>())
             child.QueueFree();

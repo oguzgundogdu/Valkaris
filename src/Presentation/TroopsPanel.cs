@@ -66,7 +66,7 @@ public partial class TroopsPanel : VBoxContainer
         var actions = new HBoxContainer { Name = "Actions" };
         actions.AddThemeConstantOverride("separation", 6);
         var amount = new SpinBox { Name = "Amount", MinValue = 0, MaxValue = MaxBatch, Step = 1, Value = 1, UpdateOnTextChanged = true, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var max = new Button { Name = "Max", Text = "Max", ThemeTypeVariation = "SecondaryButton", FocusMode = FocusModeEnum.None };
+        var max = new Button { Name = "Max", Text = L.T("common.max"), ThemeTypeVariation = "SecondaryButton", FocusMode = FocusModeEnum.None };
         var train = new Button { Name = "Train", CustomMinimumSize = new Vector2(120, 0), FocusMode = FocusModeEnum.None };
         actions.AddChild(amount);
         actions.AddChild(max);
@@ -99,15 +99,15 @@ public partial class TroopsPanel : VBoxContainer
         foreach (var (unit, row) in _rows)
         {
             var definition = session.Data.Units.Units[unit];
-            row.Count.Text = $"× {village.TroopCount(unit)}";
+            row.Count.Text = Format.Times(village.TroopCount(unit));
             row.Stats.Text =
-                $"Attack {Format.Whole(definition.Attack)}  ·  Defence {Format.Whole(definition.DefenceVsInfantry)} inf / {Format.Whole(definition.DefenceVsCavalry)} cav  ·  Carry {Format.Whole(definition.LootCapacity)}";
+                L.T("troops.stats", ("attack", Format.Whole(definition.Attack)), ("infantry", Format.Whole(definition.DefenceVsInfantry)), ("cavalry", Format.Whole(definition.DefenceVsCavalry)), ("carry", Format.Whole(definition.LootCapacity)));
 
             var locked = barracks < definition.RequiredBarracksLevel;
             row.Controls.Visible = !locked;
             if (locked)
             {
-                row.Note.Text = $"Requires Barracks level {definition.RequiredBarracksLevel}";
+                row.Note.Text = L.T("troops.requires", ("level", Format.Whole(definition.RequiredBarracksLevel)));
                 row.Note.Visible = true;
                 continue;
             }
@@ -116,7 +116,7 @@ public partial class TroopsPanel : VBoxContainer
             var option = TrainPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, village.Id, unit, count);
             row.Cost.Refresh(option.Cost, village.Resources);
             row.Time.Text = Format.Time(option.DurationSeconds);
-            row.Train.Text = $"Train {count}";
+            row.Train.Text = L.T("troops.train", ("count", Format.Whole(count)));
             row.Train.Disabled = !option.CanTrain;
 
             var note = option.Rejection is null or CommandRejection.InvalidCount ? "" : UiContent.RejectionText(option.Rejection.Value);
@@ -125,8 +125,8 @@ public partial class TroopsPanel : VBoxContainer
         }
 
         var now = session.State.ElapsedTime;
-        _queue.Refresh("Training", session.Data.Game.MaxTrainingQueueLength, now, village.TrainingQueue
-            .Select(item => new QueueRow(UiContent.Units[item.Unit].IconPath, $"{UiContent.Units[item.Unit].Name} × {item.Count}", item.StartTime, item.FinishTime))
+        _queue.Refresh(L.T("queue.training"), session.Data.Game.MaxTrainingQueueLength, now, village.TrainingQueue
+            .Select(item => new QueueRow(UiContent.Units[item.Unit].IconPath, L.T("queue.train_item", ("unit", UiContent.Units[item.Unit].Name), ("count", Format.Whole(item.Count))), item.StartTime, item.FinishTime))
             .ToList());
     }
 }

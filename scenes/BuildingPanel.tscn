@@ -60,7 +60,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(52, 0)
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
-text = "Cost"
+text = "ui.building.cost"
 
 [node name="Costs" type="HBoxContainer" parent="Box/CostSection/CostRow"]
 unique_name_in_owner = true
@@ -74,7 +74,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(52, 0)
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
-text = "Time"
+text = "ui.building.time"
 
 [node name="Time" type="Label" parent="Box/CostSection/TimeRow"]
 unique_name_in_owner = true
@@ -91,14 +91,14 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_type_variation = &"SecondaryButton"
-text = "Train troops"
+text = "ui.building.train"
 
 [node name="OpenTransfer" type="Button" parent="Box"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_type_variation = &"SecondaryButton"
-text = "Send resources"
+text = "ui.send_resources"
 
 [node name="Reason" type="Label" parent="Box"]
 unique_name_in_owner = true

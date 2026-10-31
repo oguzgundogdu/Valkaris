@@ -42,8 +42,8 @@ public partial class VillageStrip : HFlowContainer
 
             var village = villages[i];
             var threatened = UiContent.IsThreatened(session, village);
-            chip.Text = threatened ? $"{village.Name} !" : village.Name;
-            chip.TooltipText = threatened ? "Under threat" : "";
+            chip.Text = threatened ? Format.Flagged(village.Name) : village.Name;
+            chip.TooltipText = threatened ? L.T("strip.threat") : "";
             chip.Icon = LoyaltyRules.IsCapital(session.State, village) ? CapitalIcon : null;
             chip.ButtonPressed = village.Id == currentId;
             if (threatened)

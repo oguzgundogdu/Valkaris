@@ -29,7 +29,7 @@ horizontal_alignment = 1
 [node name="Tagline" type="Label" parent="Card/Box"]
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
-text = "Build your village. Hold your ground."
+text = "ui.start.tagline"
 horizontal_alignment = 1
 
 [node name="Spacer" type="Control" parent="Card/Box"]
@@ -55,7 +55,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="Card/Box/DurationRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Match length"
+text = "ui.start.duration"
 
 [node name="Duration" type="OptionButton" parent="Card/Box/DurationRow"]
 unique_name_in_owner = true
@@ -68,7 +68,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="Card/Box/SpeedRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Game speed"
+text = "ui.start.speed"
 
 [node name="Speed" type="OptionButton" parent="Card/Box/SpeedRow"]
 unique_name_in_owner = true
@@ -81,7 +81,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="Card/Box/MapRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Map size"
+text = "ui.start.map_size"
 
 [node name="MapSize" type="OptionButton" parent="Card/Box/MapRow"]
 unique_name_in_owner = true
@@ -94,7 +94,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="Card/Box/OpponentsRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "AI opponents"
+text = "ui.start.opponents"
 
 [node name="Opponents" type="OptionButton" parent="Card/Box/OpponentsRow"]
 unique_name_in_owner = true
@@ -107,7 +107,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="Card/Box/DifficultyRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "AI difficulty"
+text = "ui.start.difficulty"
 
 [node name="Difficulty" type="OptionButton" parent="Card/Box/DifficultyRow"]
 unique_name_in_owner = true
@@ -122,4 +122,4 @@ layout_mode = 2
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
-text = "Start match"
+text = "ui.start.start"

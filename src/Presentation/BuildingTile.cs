@@ -44,14 +44,14 @@ public partial class BuildingTile : Button
         }
 
         var level = village.BuildingLevel(Building);
-        _level.Text = level == 0 ? "Not built" : $"Level {level}";
+        _level.Text = level == 0 ? L.T("common.not_built") : L.T("common.level", ("level", Format.Whole(level)));
         _icon.Modulate = level == 0 ? new Color(1, 1, 1, 0.4f) : Colors.White;
 
         var item = FindQueued(village);
         var running = item is not null && now >= item.StartTime;
         _progress.Visible = running;
         _state.Visible = item is not null && !running;
-        _state.Text = "Queued";
+        _state.Text = L.T("tile.queued");
         if (running)
             _progress.Value = (now - item!.StartTime) / (item.FinishTime - item.StartTime);
     }

@@ -133,7 +133,7 @@ public partial class Main : Control
         var card = new PanelContainer { ThemeTypeVariation = "CardPanel", CustomMinimumSize = new Vector2(720, 0) };
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 12);
-        box.AddChild(new Label { Text = "The game data could not be loaded", ThemeTypeVariation = "HeadingLabel" });
+        box.AddChild(new Label { Text = L.T("error.data"), ThemeTypeVariation = "HeadingLabel" });
         box.AddChild(new Label { Text = message, AutowrapMode = TextServer.AutowrapMode.WordSmart });
 
         card.AddChild(box);

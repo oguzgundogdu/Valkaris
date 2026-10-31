@@ -29,26 +29,26 @@ theme_override_constants/separation = 2
 [node name="ViewVillage" type="Button" parent="Box/ViewToggle"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Village view (M)"
+tooltip_text = "ui.bar.village_tip"
 focus_mode = 0
 theme_type_variation = &"SecondaryButton"
 toggle_mode = true
-text = "Village"
+text = "ui.bar.village"
 
 [node name="ViewWorld" type="Button" parent="Box/ViewToggle"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "World map (M)"
+tooltip_text = "ui.bar.world_tip"
 focus_mode = 0
 theme_type_variation = &"SecondaryButton"
 toggle_mode = true
-text = "World"
+text = "ui.bar.world"
 
 [node name="CapitalWarning" type="Button" parent="Box"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-tooltip_text = "Choose a new capital"
+tooltip_text = "ui.bar.capital_tip"
 focus_mode = 0
 theme_type_variation = &"SecondaryButton"
 theme_override_colors/font_color = Color(0.898, 0.439, 0.345, 1)
@@ -58,7 +58,7 @@ theme_override_colors/font_hover_color = Color(0.898, 0.439, 0.345, 1)
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-tooltip_text = "Show on the map"
+tooltip_text = "ui.bar.incoming_tip"
 focus_mode = 0
 theme_type_variation = &"SecondaryButton"
 theme_override_colors/font_color = Color(0.961, 0.682, 0.243, 1)
@@ -67,14 +67,14 @@ theme_override_colors/font_hover_color = Color(0.961, 0.682, 0.243, 1)
 [node name="Pause" type="Button" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Pause the match (P)"
+tooltip_text = "ui.bar.pause_tip"
 focus_mode = 0
 theme_type_variation = &"SecondaryButton"
-text = "Pause"
+text = "ui.bar.pause"
 
 [node name="Clock" type="Label" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"HeadingLabel"
-tooltip_text = "Time left in the match"
+tooltip_text = "ui.bar.clock_tip"
 mouse_filter = 0

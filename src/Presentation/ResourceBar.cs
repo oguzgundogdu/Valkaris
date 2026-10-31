@@ -79,7 +79,7 @@ public partial class ResourceBar : PanelContainer
         var warning = GetNode<Button>("%CapitalWarning");
         warning.Visible = secondsLeft is not null;
         if (secondsLeft is { } seconds)
-            warning.Text = $"Choose a capital {Format.Time(seconds)}";
+            warning.Text = L.T("bar.choose_capital", ("time", Format.Time(seconds)));
     }
 
     private void RefreshResources(IGameSession session, Village village)
@@ -92,7 +92,7 @@ public partial class ResourceBar : PanelContainer
             var amount = village.Resources.Get(type);
             chip.Amount.Text = Format.Amount(amount);
             chip.Amount.AddThemeColorOverride("font_color", amount >= capacity ? UiContent.Warning : UiContent.Text);
-            chip.Capacity.Text = $"/ {Format.Amount(capacity)}";
+            chip.Capacity.Text = Format.Limit(capacity);
             chip.Rate.Text = Format.Rate(production.Get(type));
         }
     }
@@ -122,6 +122,6 @@ public partial class ResourceBar : PanelContainer
         if (hostile is not null)
             _incomingTarget = hostile.ToVillageId!.Value;
         if (hostile is not null)
-            _incoming.Text = $"{hostile.Type} arriving in {Format.Time(hostile.ArrivalTime - session.State.ElapsedTime)}";
+            _incoming.Text = L.T("bar.incoming", ("mission", UiContent.MissionName(hostile.Type)), ("time", Format.Time(hostile.ArrivalTime - session.State.ElapsedTime)));
     }
 }

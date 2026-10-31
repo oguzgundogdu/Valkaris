@@ -38,28 +38,28 @@ autowrap_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "Send troops"
+text = "ui.popup.send"
 
 [node name="Enter" type="Button" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "Enter village"
+text = "ui.popup.enter"
 
 [node name="Reinforce" type="Button" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "Reinforce"
+text = "ui.popup.reinforce"
 
 [node name="SendResources" type="Button" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "Send resources"
+text = "ui.popup.resources"
 
 [node name="Found" type="Button" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "Send settler"
+text = "ui.popup.settler"

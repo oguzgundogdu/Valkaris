@@ -222,6 +222,18 @@ public static class Format
         return hours > 0 ? $"{Whole(hours)}:{Padded(minutes)}:{Padded(rest)}" : $"{Whole(minutes)}:{Padded(rest)}";
     }
 
+    /// <summary>The limit shown after an amount, as in "120 / 800".</summary>
+    public static string Limit(double value) => $"/ {Amount(value)}";
+
+    public static string Times(int count) => $"× {Whole(count)}";
+
+    public static string OutOf(int count, int total) => $"{Whole(count)} / {Whole(total)}";
+
+    public static string Multiplier(double value) => $"{Trimmed(value)}x";
+
+    /// <summary>A village name that needs attention.</summary>
+    public static string Flagged(string name) => $"{name} !";
+
     public static string Range(int low, int high) => $"{Whole(low)}-{Whole(high)}";
 
     /// <summary>Parts of one line, with the separator the game uses everywhere.</summary>

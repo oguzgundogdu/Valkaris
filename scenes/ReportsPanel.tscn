@@ -13,13 +13,13 @@ theme_override_constants/separation = 10
 [node name="Title" type="Label" parent="Box"]
 layout_mode = 2
 theme_type_variation = &"HeadingLabel"
-text = "Reports"
+text = "ui.reports.title"
 
 [node name="None" type="Label" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
-text = "No battles yet."
+text = "ui.reports.none"
 
 [node name="Scroll" type="ScrollContainer" parent="Box"]
 layout_mode = 2

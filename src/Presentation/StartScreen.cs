@@ -34,11 +34,11 @@ public partial class StartScreen : CenterContainer
         foreach (var minutes in _data.Game.MatchDurationsMinutes)
             duration.AddItem(L.N("common.minutes", (int)minutes));
         if (_data.Game.UnlimitedMatches)
-            duration.AddItem("Unlimited");
+            duration.AddItem(L.T("start.unlimited"));
 
         var speed = GetNode<OptionButton>("%Speed");
         foreach (var multiplier in _data.Game.SpeedMultipliers)
-            speed.AddItem($"{Format.Trimmed(multiplier)}x");
+            speed.AddItem(Format.Multiplier(multiplier));
 
         var mapSizes = Enum.GetValues<MapSize>();
         var mapSize = GetNode<OptionButton>("%MapSize");

@@ -17,6 +17,9 @@ msgid_plural "common.minutes"
 msgstr[0] "{count} minute"
 msgstr[1] "{count} minutes"
 
+msgid "tile.queued"
+msgstr "Queued"
+
 msgid "common.max"
 msgstr "Max"
 

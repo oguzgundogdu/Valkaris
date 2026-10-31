@@ -32,7 +32,7 @@ theme_type_variation = &"MutedLabel"
 [node name="TargetLabel" type="Label" parent="Scroll/Content/Form/Box"]
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
-text = "Target"
+text = "ui.send.target"
 
 [node name="TargetLine" type="Label" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
@@ -59,7 +59,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="Scroll/Content/Form/Box/MissionRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Mission"
+text = "ui.send.mission"
 
 [node name="Mission" type="OptionButton" parent="Scroll/Content/Form/Box/MissionRow"]
 unique_name_in_owner = true
@@ -85,7 +85,7 @@ layout_mode = 2
 [node name="Label" type="Label" parent="Scroll/Content/Form/Box/CatapultRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Catapults aim at"
+text = "ui.send.catapults"
 
 [node name="CatapultTarget" type="OptionButton" parent="Scroll/Content/Form/Box/CatapultRow"]
 unique_name_in_owner = true
@@ -118,7 +118,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 focus_mode = 0
-text = "Send troops"
+text = "ui.send.troops"
 
 [node name="Reason" type="Label" parent="Scroll/Content/Form/Box"]
 unique_name_in_owner = true
@@ -139,7 +139,7 @@ theme_override_constants/separation = 8
 [node name="Title" type="Label" parent="Scroll/Content/Moving/Box"]
 layout_mode = 2
 theme_type_variation = &"HeadingLabel"
-text = "On the way"
+text = "ui.send.moving"
 
 [node name="Rows" type="VBoxContainer" parent="Scroll/Content/Moving/Box"]
 unique_name_in_owner = true
@@ -151,4 +151,4 @@ theme_override_constants/separation = 6
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
-text = "Nothing on the move."
+text = "ui.send.none"

@@ -24,7 +24,7 @@ public partial class CapitalDialog : ColorRect
         var automatic = CapitalRules.AutomaticChoice(session.State, session.LocalPlayerId);
 
         GetNode<Label>("%Message").Text =
-            $"Choose a new capital. Its Main Building drops to level {config.PenaltyMainLevel}. If you don't choose, {automatic.Name} is picked.";
+            L.T("capital.message", ("level", Format.Whole(config.PenaltyMainLevel)), ("village", automatic.Name));
         GetNode<Label>("%Countdown").Text = Format.Time(deadline - session.State.ElapsedTime);
 
         var villages = UiContent.OwnVillages(session);
@@ -40,7 +40,7 @@ public partial class CapitalDialog : ColorRect
                 continue;
 
             _villageIds.Add(villages[i].Id);
-            _rows[i].Text = $"{villages[i].Name}  ·  Main Building level {villages[i].BuildingLevel(BuildingType.MainBuilding)}";
+            _rows[i].Text = L.T("capital.row", ("village", villages[i].Name), ("level", Format.Whole(villages[i].BuildingLevel(BuildingType.MainBuilding))));
         }
     }
 

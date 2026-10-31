@@ -82,7 +82,7 @@ public partial class SendPanel : VBoxContainer
         foreach (var type in Enum.GetValues<ResourceType>())
             _resources[type] = AddResourceRow(resources, type);
 
-        _catapultTarget.AddItem("Random");
+        _catapultTarget.AddItem(L.T("send.random"));
         foreach (var building in Enum.GetValues<BuildingType>())
             _catapultTarget.AddItem(UiContent.Buildings[building].Name);
 
@@ -105,7 +105,7 @@ public partial class SendPanel : VBoxContainer
 
         var amount = new SpinBox { Name = "Amount", MinValue = 0, MaxValue = 0, Step = 1, UpdateOnTextChanged = true };
         var available = new Label { Name = "Available", ThemeTypeVariation = "MutedLabel", CustomMinimumSize = new Vector2(44, 0) };
-        var max = new Button { Name = "Max", Text = "Max", ThemeTypeVariation = "SecondaryButton", FocusMode = FocusModeEnum.None };
+        var max = new Button { Name = "Max", Text = L.T("common.max"), ThemeTypeVariation = "SecondaryButton", FocusMode = FocusModeEnum.None };
         max.Pressed += () => amount.Value = amount.MaxValue;
         row.AddChild(amount);
         row.AddChild(available);
@@ -130,7 +130,7 @@ public partial class SendPanel : VBoxContainer
 
         var amount = new SpinBox { Name = "Amount", MinValue = 0, MaxValue = 0, Step = 1, UpdateOnTextChanged = true };
         var available = new Label { Name = "Available", ThemeTypeVariation = "MutedLabel", CustomMinimumSize = new Vector2(44, 0) };
-        var max = new Button { Name = "Max", Text = "Max", ThemeTypeVariation = "SecondaryButton", FocusMode = FocusModeEnum.None };
+        var max = new Button { Name = "Max", Text = L.T("common.max"), ThemeTypeVariation = "SecondaryButton", FocusMode = FocusModeEnum.None };
         max.Pressed += () => amount.Value = MaxResourceAmount(type);
         row.AddChild(amount);
         row.AddChild(available);
@@ -156,7 +156,7 @@ public partial class SendPanel : VBoxContainer
         _session = session;
         _village = village;
 
-        GetNode<Label>("%FromLine").Text = $"From {village.Name}";
+        GetNode<Label>("%FromLine").Text = L.T("send.from", ("village", village.Name));
 
         var target = _targetId is { } id ? session.State.Villages[id] : null;
         if (_sendingResources && target is not null && target.OwnerId != village.OwnerId)
@@ -176,8 +176,8 @@ public partial class SendPanel : VBoxContainer
         GetNode<Control>("%Warning").Visible = false;
         var scoutRule = GetNode<Label>("%ScoutRule");
         scoutRule.Visible = type == MovementType.Scout;
-        scoutRule.Text = "Scouts face the Scouts at home there. Equal numbers rarely get through, and those caught all die. A large majority nearly always succeeds, and the bigger the margin, the more you see.";
-        _send.Text = _sendingResources ? "Send resources" : "Send troops";
+        scoutRule.Text = L.T("send.scout_rule");
+        _send.Text = L.T(_sendingResources ? "send.resources" : "send.troops");
 
         if (_sendingResources)
             RefreshResourceForm(session, village, target);
@@ -193,7 +193,7 @@ public partial class SendPanel : VBoxContainer
         {
             var stock = Math.Floor(village.Resources.Get(type));
             row.Amount.MaxValue = stock;
-            row.Available.Text = $"/ {stock}";
+            row.Available.Text = Format.Limit(stock);
         }
 
         _catapultRow.Visible = false;
@@ -206,20 +206,20 @@ public partial class SendPanel : VBoxContainer
         _send.Disabled = option is not { CanSend: true };
         _arrival.Visible = option is { CanSend: true };
         _arrival.Text = option is { CanSend: true }
-            ? $"Uses {option.CarriersUsed} of {option.CarriersFree} free carriers  ·  Arrives in {Format.Time(option.DurationSeconds)}"
+            ? L.T("send.carriers_preview", ("used", Format.Whole(option.CarriersUsed)), ("free", Format.Whole(option.CarriersFree)), ("time", Format.Time(option.DurationSeconds)))
             : "";
         _reason.Visible = _send.Disabled;
         _reason.Text = option is null
-            ? "Pick one of your villages on the map."
+            ? L.T("send.pick_own")
             : option.Rejection == CommandRejection.NotEnoughCarriers
-                ? $"This needs {option.CarriersUsed} carriers, and {option.CarriersFree} are free."
+                ? L.T("send.needs_carriers", ("needed", Format.Whole(option.CarriersUsed)), ("free", Format.Whole(option.CarriersFree)))
                 : option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : "";
 
         if (option is { CanSend: true } && option.ExpectedLoss != Resources.Zero)
         {
             var warning = GetNode<Label>("%Warning");
             warning.Visible = true;
-            warning.Text = $"About {LossText(option.ExpectedLoss)} will be lost: {target!.Name}'s warehouse will be full.";
+            warning.Text = L.T("send.warning", ("loss", LossText(option.ExpectedLoss)), ("village", target!.Name));
         }
     }
 
@@ -227,7 +227,7 @@ public partial class SendPanel : VBoxContainer
         string.Join(", ", Enum.GetValues<ResourceType>()
             .Where(type => loss.Get(type) >= 1)
             .Select(type => UiContent.ResourceAmount(type, loss.Get(type)))
-            .DefaultIfEmpty("a little"));
+            .DefaultIfEmpty(L.T("send.a_little")));
 
     private void RefreshTroopForm(IGameSession session, Village village, Village? target, MovementType type)
     {
@@ -237,7 +237,7 @@ public partial class SendPanel : VBoxContainer
         {
             var present = village.TroopCount(unit);
             row.Amount.MaxValue = present;
-            row.Available.Text = $"/ {present}";
+            row.Available.Text = Format.Limit(present);
             unitRows.GetNode<Control>(unit.ToString()).Visible = CanGo(unit, type);
         }
 
@@ -254,11 +254,11 @@ public partial class SendPanel : VBoxContainer
 
         _send.Disabled = option is not { CanSend: true };
         _arrival.Visible = option is { CanSend: true };
-        _arrival.Text = option is { CanSend: true } ? $"Arrives in {Format.Time(option.DurationSeconds)}" : "";
+        _arrival.Text = option is { CanSend: true } ? L.T("send.arrives", ("time", Format.Time(option.DurationSeconds))) : "";
         _reason.Visible = _send.Disabled;
         _reason.Text = option is null
-            ? "Pick a target on the world map."
-            : target!.Id == village.Id ? "Troops are already in this village."
+            ? L.T("send.pick_target")
+            : target!.Id == village.Id ? L.T("send.already_here")
             : option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : "";
     }
 
@@ -273,11 +273,11 @@ public partial class SendPanel : VBoxContainer
     private void RefreshTarget(IGameSession session, Village village, Village? target, bool mapIsOpen)
     {
         _targetLine.Text = target is null
-            ? "No target yet"
-            : $"{target.Name}  ·  {UiContent.OwnerName(session, target.OwnerId)}  ·  {Format.OneDecimal(UnitRules.Distance(village.Position, target.Position))} tiles";
+            ? L.T("send.no_target")
+            : Format.Dotted(target.Name, UiContent.OwnerName(session, target.OwnerId), L.T("common.tiles", ("distance", Format.OneDecimal(UnitRules.Distance(village.Position, target.Position)))));
 
         _pickTarget.Visible = !mapIsOpen;
-        _pickTarget.Text = target is null ? "Pick a village on the map" : "Change target on the map";
+        _pickTarget.Text = L.T(target is null ? "send.pick_village" : "send.change_target");
     }
 
     /// <summary>What the player last learned here, so it is in view while choosing troops.</summary>
