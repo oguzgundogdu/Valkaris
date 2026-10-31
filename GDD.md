@@ -65,6 +65,8 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
 - Model classes have public getters, internal setters and read-only collection views, so code outside Core cannot mutate state.
 - No balance values hard-coded in logic. Read them from `data/*.json`.
 - Single player = local host + AI players. No separate code path.
+- No player-facing text in code. It lives in `locale/*.po`, and tests fail on new hard-coded text (3.5).
+- Code logic never depends on the machine's culture: comparisons, parsing, JSON keys and case changes state their culture or are ordinal, and numbers shown to players go through `Format`. The Core and UI tests also run under tr-TR.
 
 ### 3.3 Core Model (draft)
 
@@ -138,12 +140,21 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 ---
 
+### 3.5 Localisation
+- Languages: English (default) and Turkish, with Godot's translation system and one PO file per language. Scenes and `L.T` / `L.N` use namespaced keys such as `ui.start.language` and `rejection.queue_full`, with named placeholders so word order can differ. Plurals come from each file's own rules: English has two forms and Turkish one.
+- The language is chosen on the start screen and saved in `user://settings.cfg`. A first launch uses Turkish if the system is Turkish, and English otherwise. It can't change during a match.
+- Buildings, units, resources, missions, tiers, difficulty, map size and terrain are translated through keys built from their identifiers, which stay unchanged in `data/*.json` and in code. The food resource reads "Grain" in English.
+- **Not translated:** proper nouns, meaning nation names, AI player names and village names, which read the same in every language, so all players in a multiplayer match see the same names. Also dev-only text, the sim tool's output and data validation messages.
+- Turkish strings are worded so that player and village names never need a grammatical suffix.
+- Tests: a syntax-tree scan of game code and a scan of scenes fail on hard-coded text. Both languages must have the same keys and placeholders, every key used must exist, and every key in the files must be used. The glossary terms are checked one by one. The UI test checks that the font has every character used, runs in both languages, and fails on text cut off or outside the window.
+
 ## 4. Match Settings (chosen in lobby)
 
 - Number of players: 2–4 (human or AI slots; limits in `data/game.json`). A single slot is not allowed, since a player with no opponents would win instantly. The start screen offers 1–3 AI opponents at one difficulty until the lobby exists.
 - Match duration: 30 / 45 / 60 minutes or Unlimited (`data/game.json`). An Unlimited match has no timer and no score win, and ends only when one player remains. Its top bar shows elapsed time, and the end screen still shows the score table for information.
 - Game speed multiplier (optional). Scales production, build, training and travel speed and loyalty regeneration. It does not scale match duration: a 30-minute match lasts 30 real minutes.
 - Map size (small / medium), set on the start screen until the lobby exists
+- Language, and an optional name for the player's starting village (11.1), also on the start screen
 
 **Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
 
@@ -155,7 +166,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 ## 5. Resources
 
-- **Wood, Stone, Food**
+- **Wood, Stone, Food** (displayed as Grain in English and Tahıl in Turkish)
 - Produced continuously at a fixed rate per second, increased by building level.
 - Capped per resource by Warehouse capacity. Production above the cap is lost.
 - Food is mainly a troop-training resource: units cost significantly more food than wood or stone. There is no troop upkeep or starvation in v1.
@@ -346,6 +357,7 @@ Players must be able to manage their villages from both views.
 - Send one Settler to an empty land tile at least a data-defined distance from every existing village (`minFoundingDistance` in `map.json`). On arrival, a new village is created and the Settler is consumed.
 - The tile and limit are checked again on arrival. If they no longer allow it, the Settler returns home. That includes while the player has no capital.
 - Founded villages use their own starting values in data, and names from a list in data, numbered if the list runs out.
+- **Village names:** a starting village can be named on the start screen, and left empty it gets a random name from data as before. A player can rename any of their own villages at any time from the Village tab with `RenameVillageCommand`. A captured village keeps its name until the new owner renames it. The AI doesn't rename. `VillageNameRules` holds the rules for both: trimmed, with single spaces, and `villageNames` in `game.json` sets the length (3-20). Latin letters including Turkish, digits, spaces, `-` and `'` are allowed, and a name needs a letter. Names are unique on the map, ignoring case and treating I, ı, İ and i as one letter. Names on the data lists, with or without a number after them, are reserved even when unused, since camps and founded villages take them later.
 - Max village count is limited by the capital's Main Building level (`maxVillagesByCapitalMainLevel` in `buildings.json`). Owned villages plus Settlers in flight must be below the limit. The limit applies to founding only: captured villages, and villages already owned when the limit drops, are kept.
 
 ### 11.2 Loyalty
@@ -395,6 +407,8 @@ Players must be able to manage their villages from both views.
 6.5. **Scouting and an easier Easy:** the Scout mission, AI scouting, and Easy as the softest target to attack.
 6.6. **Pacing, combat balance, real war, Unlimited matches and surrender.**
 6.7. **Scouting depth:** Scouts, the Watchtower, uncertain reports, and AI counter-scouting.
+6.7b. **God mode** for testing.
+6.8. **Localisation:** English and Turkish, and village naming.
 7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
 8. **Nations:** passive bonuses.
 9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).

@@ -11,6 +11,7 @@ Build a village, train troops, raid barbarians, found and capture villages, and 
 - Timed or Unlimited matches, with surrender for when a position is lost
 - Scouts and a Watchtower: scouting is a contest, and the margin decides whether you get a rough range, exact numbers or the whole village
 - Resource transfers between your own villages through a Marketplace
+- English and Turkish, and villages you can name and rename
 - Rule-based AI opponents (Easy, Normal, Hard) that play by the same rules and see only what a player sees
 - A headless AI-vs-AI simulation tool for balance work
 
@@ -27,7 +28,7 @@ Multiplayer and nation bonuses are planned. See [GDD.md](GDD.md) for the full de
 godot-mono --path .
 ```
 
-All balance values assume the default 1× speed. Debug builds also accept `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai`, `--dev-scenario=` and `--dev-god` (F9 toggles it), for example:
+All balance values assume the default 1× speed. Debug builds also accept `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai`, `--dev-scenario=`, `--dev-god` (F9 toggles it), `--dev-language=` and `--dev-culture=`, for example:
 
 ```sh
 godot-mono --path . -- --dev-speed=5
@@ -37,8 +38,10 @@ godot-mono --path . -- --dev-speed=5
 
 ```sh
 dotnet test Valkaris.sln                                         # Core, AI and tool tests
+VALKARIS_TEST_CULTURE=tr-TR dotnet test Valkaris.sln             # the same, under a Turkish system
 godot-mono --headless --build-solutions --quit                   # build the game
 godot-mono --headless --path . res://scenes/dev/UiTest.tscn      # UI test, prints [uitest] PASS
+godot-mono --headless --path . res://scenes/dev/UiTest.tscn -- --dev-language=tr --dev-culture=tr-TR   # in Turkish
 ```
 
 ## Simulate AI matches
@@ -61,6 +64,7 @@ Use `--minutes=unlimited` for Unlimited matches, which stop at `--cap-minutes` (
 | `src/Presentation` | Godot scenes' scripts |
 | `scenes/`, `assets/` | Godot scenes and placeholder art |
 | `data/` | All balance values, as JSON |
+| `locale/` | All player-facing text, as PO files |
 | `tools/Valkaris.Sim` | The headless simulation tool |
 | `tests/` | Unit tests |
 
