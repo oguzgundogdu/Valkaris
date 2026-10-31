@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
@@ -44,8 +45,9 @@ public partial class VillageView : Control
         }
 
         var now = session.State.ElapsedTime;
+        var showPlates = Input.IsKeyPressed(Key.Alt);
         foreach (var (building, tile) in _tiles)
-            tile.Refresh(village, now, building == selected);
+            tile.Refresh(village, now, building == selected, session.Data.Buildings.Buildings[building].MaxLevel, showPlates);
     }
 
     public void Pulse(BuildingType building) => _tiles[building].Pulse();
@@ -54,6 +56,11 @@ public partial class VillageView : Control
     {
         foreach (var (building, tile) in _tiles)
             tile.Position = new Vector2(VillageArt.Plots[building].X, VillageArt.Plots[building].Y) * Size - tile.Size / 2;
+
+        // Further down the ground draws on top, so nearer buildings overlap farther ones.
+        var order = 0;
+        foreach (var building in VillageArt.Plots.OrderBy(p => p.Value.Y).Select(p => p.Key))
+            MoveChild(_tiles[building], order++);
         QueueRedraw();
     }
 

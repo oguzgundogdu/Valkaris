@@ -183,6 +183,47 @@ public partial class UiTest : Control
         await Frames();
     }
 
+    /// <summary>Every building at every stage, with the rules for plates and badges.</summary>
+    private async Task TestBuildingStages()
+    {
+        var game = Find<GameScreen>();
+        var village = game.Session.State.Villages[game.CurrentVillageId!.Value];
+        var tiles = Find<VillageView>().GetChildren().OfType<BuildingTile>().ToList();
+        var saved = tiles.ToDictionary(t => t.Building, t => village.BuildingLevel(t.Building));
+        Find<Toast>().Visible = false;
+
+        SelectTile(BuildingType.MainBuilding);
+        await Frames();
+        var other = tiles.First(t => t.Building == BuildingType.Farm);
+        var selected = tiles.First(t => t.Building == BuildingType.MainBuilding);
+        Expect(selected.GetNode<Control>("%Plate").Visible && !selected.GetNode<Control>("%Badge").Visible, "The selected building shows its name plate");
+        Expect(!other.GetNode<Control>("%Plate").Visible && other.GetNode<Control>("%Badge").Visible, "Other buildings show only a level badge");
+
+        Input.ParseInputEvent(new InputEventKey { Keycode = Key.Alt, Pressed = true });
+        await Frames();
+        if (DisplayServer.GetName() != "headless")
+            Expect(tiles.All(t => t.GetNode<Control>("%Plate").Visible), "Holding Alt shows every name plate");
+        await Shot("stage-all-plates");
+        Input.ParseInputEvent(new InputEventKey { Keycode = Key.Alt, Pressed = false });
+        await Frames();
+
+        for (var stage = 0; stage <= VillageArt.StageCount; stage++)
+        {
+            foreach (var tile in tiles)
+            {
+                var max = game.Session.Data.Buildings.Buildings[tile.Building].MaxLevel;
+                Valkaris.Core.Dev.DevScenario.SetLevel(village, tile.Building, Enumerable.Range(0, max + 1).First(level => VillageArt.Stage(level, max) == stage));
+            }
+            await Frames();
+            Expect(tiles.All(t => t.Stage == stage), $"Every building shows stage {stage}");
+            await Shot($"stage-{stage}");
+        }
+
+        foreach (var (building, level) in saved)
+            Valkaris.Core.Dev.DevScenario.SetLevel(village, building, level);
+        await Frames();
+    }
+
     private async Task TestLanguage()
     {
         var language = Language.Current;
@@ -386,7 +427,7 @@ public partial class UiTest : Control
 
         var wall = Find<VillageView>().GetNode<BuildingTile>(nameof(BuildingType.Wall));
         Expect(wall.GetNode<Label>("%Level").Text == L.T("common.not_built"), "Unbuilt building says so");
-        Expect(wall.GetNode<TextureRect>("%Icon").Modulate.A < 1, "Unbuilt building is dimmed");
+        Expect(wall.Stage == 0 && wall.GetNode<TextureRect>("%Icon").Texture.ResourcePath == VillageArt.PlotSprite, "An unbuilt building is an empty plot");
 
         var tiles = Find<VillageView>().GetChildren().OfType<BuildingTile>().ToList();
         Expect(tiles.Count == Enum.GetValues<BuildingType>().Length, "Every building has a tile");
@@ -396,11 +437,15 @@ public partial class UiTest : Control
         Expect(panel.GetNode<Label>("%Name").Text == UiContent.Buildings[BuildingType.Watchtower].Name, "The Watchtower can be selected");
         Expect(panel.GetNode<Button>("%Upgrade").Text == L.T("upgrade.build"), $"The Watchtower can be built, got '{panel.GetNode<Button>("%Upgrade").Text}'");
 
+        await TestBuildingStages();
+
         SelectTile(BuildingType.Wall);
         await Frames();
         panel.GetNode<Button>("%Upgrade").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
         Expect(wall.GetNode<ProgressBar>("%Progress").Visible, "Tile under construction shows progress");
+        Expect(wall.GetNode<Control>("%Scaffold").Visible, "A building under construction shows scaffolding");
+        await Shot("stage-building");
         await Shot("village");
 
         var ground = Find<VillageView>().Ground;

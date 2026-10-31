@@ -73,6 +73,16 @@ public class VillageArtTests
     }
 
     [Fact]
+    public void EverySpriteTheGameAsksForExists()
+    {
+        foreach (var building in Enum.GetValues<BuildingType>())
+        {
+            for (var stage = 0; stage <= VillageArt.StageCount; stage++)
+                Assert.True(File.Exists(Path.Combine(Catalogue.Root, VillageArt.Sprite(building, stage).Replace("res://", ""))), $"{building} {stage}");
+        }
+    }
+
+    [Fact]
     public void AVillageKeepsItsLookAndDiffersFromOthers()
     {
         Assert.Equal(VillageArt.Seed(5, 1), VillageArt.Seed(5, 1));

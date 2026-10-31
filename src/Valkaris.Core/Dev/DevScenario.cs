@@ -10,6 +10,9 @@ namespace Valkaris.Core.Dev;
 /// </summary>
 public static class DevScenario
 {
+    /// <summary>For the UI test's pictures of every building stage.</summary>
+    public static void SetLevel(Village village, BuildingType building, int level) => village.SetBuildingLevel(building, level);
+
     public const string Villages = "villages";
     public const string Founding = "founding";
     public const string Endgame = "endgame";
