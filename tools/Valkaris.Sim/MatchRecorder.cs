@@ -244,16 +244,38 @@ public sealed class MatchRecorder
     private SeatScouting ScoutingOf(Player player, IReadOnlyList<BattleReport> attacks)
     {
         var scouted = _state.ScoutReports.Where(r => r.SenderId == player.Id).ToList();
+        var atPlayers = scouted.Where(r => r.DefenderId != Village.BarbarianOwnerId).ToList();
         var maxAge = _data.Ai.Difficulties[player.Difficulty ?? AiDifficulty.Normal].ScoutMaxAgeSeconds / _state.Settings.SpeedMultiplier;
 
+        ScoutReport? IntelFor(BattleReport attack) => scouted.LastOrDefault(r => r.Succeeded
+            && r.TargetVillageId == attack.DefenderVillageId
+            && r.DefenderId == attack.DefenderId
+            && r.Time <= attack.Time
+            && attack.Time - r.Time <= maxAge + TravelAllowance(attack));
+
+        var byIntel = attacks.Select(attack => (Attack: attack, Quality: IntelFor(attack)?.Quality)).ToList();
+        AttackRecord Record(Func<ScoutQuality?, bool> matches)
+        {
+            var matching = byIntel.Where(a => matches(a.Quality)).ToList();
+            return new AttackRecord(matching.Count, matching.Count(a => a.Attack.AttackerWon));
+        }
+
+        var villages = _state.Villages.Values.Where(v => v.OwnerId == player.Id).ToList();
         return new SeatScouting(
             scouted.Count,
             scouted.Count(r => r.Succeeded),
-            scouted.Where(r => !r.Succeeded).Sum(r => r.Sent.Values.Sum()),
-            attacks.Count(attack => scouted.Any(r => r.Succeeded
-                && r.TargetVillageId == attack.DefenderVillageId
-                && r.Time <= attack.Time
-                && attack.Time - r.Time <= maxAge + TravelAllowance(attack))));
+            scouted.Sum(r => r.ScoutsLost),
+            byIntel.Count(a => a.Quality is not null),
+            atPlayers.Count,
+            atPlayers.Count(r => r.Succeeded),
+            scouted.Count(r => r.Quality == ScoutQuality.Narrow),
+            scouted.Count(r => r.Quality == ScoutQuality.Clear),
+            scouted.Count(r => r.Quality == ScoutQuality.Overwhelming),
+            (int)Math.Round(_unitSpending.GetValueOrDefault(player.Id)?.GetValueOrDefault(UnitType.Scout) / Total(_data.Units.Units[UnitType.Scout].Cost) ?? 0),
+            villages.Count == 0 ? 0 : villages.Average(v => v.BuildingLevel(BuildingType.Watchtower)),
+            Record(q => q is ScoutQuality.Clear or ScoutQuality.Overwhelming),
+            Record(q => q == ScoutQuality.Narrow),
+            Record(q => q is null));
     }
 
     /// <summary>News can be at its limit when the army leaves, and the army still has to walk there.</summary>

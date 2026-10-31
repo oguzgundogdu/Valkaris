@@ -11,8 +11,28 @@ public sealed record SeatDefence(
     double HomeDefenceAtEnd,
     int AttacksWon);
 
-/// <summary>A seat's scouting. Attacks with intel are those on players after a success still within the profile's age limit.</summary>
-public sealed record SeatScouting(int Sent, int Succeeded, int TroopsLost, int AttacksWithIntel);
+/// <summary>Attacks on players, and how many were won.</summary>
+public sealed record AttackRecord(int Attacks, int Won);
+
+/// <summary>
+/// A seat's scouting. Attacks with intel are those on players after a success still within the profile's age limit:
+/// exact from a Clear or Overwhelming report, ranged from a Narrow one. Against players counts only missions at other players' villages.
+/// </summary>
+public sealed record SeatScouting(
+    int Sent,
+    int Succeeded,
+    int TroopsLost,
+    int AttacksWithIntel,
+    int SentAtPlayers = 0,
+    int SucceededAtPlayers = 0,
+    int Narrow = 0,
+    int Clear = 0,
+    int Overwhelming = 0,
+    int ScoutsTrained = 0,
+    double WatchtowerAtEnd = 0,
+    AttackRecord? WithExact = null,
+    AttackRecord? WithRange = null,
+    AttackRecord? WithNone = null);
 
 /// <summary>What one seat did in one match.</summary>
 public sealed record SeatResult(

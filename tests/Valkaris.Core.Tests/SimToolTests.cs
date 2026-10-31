@@ -263,6 +263,95 @@ public class SimToolTests
         Assert.Equal(1, scouting.Succeeded);
         Assert.Equal(2, scouting.TroopsLost);
         Assert.Equal(1, scouting.AttacksWithIntel);
+        Assert.Equal(2, scouting.SentAtPlayers);
+        Assert.Equal(1, scouting.SucceededAtPlayers);
+        Assert.Equal(1, scouting.Overwhelming);
+    }
+
+    private static SeatScouting ScoutThenAttack(int scouts, int defendingScouts, int tries = 1)
+    {
+        var match = new Recorded();
+        var target = match.State.Villages[2];
+        foreach (var (unit, count) in target.Troops.ToList())
+            target.RemoveTroops(unit, count);
+        target.AddTroops(UnitType.Scout, defendingScouts);
+        var home = match.State.Villages[1];
+        home.AddTroops(UnitType.Cavalry, 10);
+        home.AddTroops(UnitType.Scout, scouts * tries);
+        for (var i = 0; i < tries; i++)
+        {
+            match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Scout, scouts)));
+            while (match.State.Movements.Any())
+                match.Session.Tick(match.State.Movements.Min(m => m.ArrivalTime) - match.State.ElapsedTime + 0.001);
+            if (match.State.ScoutReports[^1].Succeeded)
+                break;
+        }
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Attack, Force(UnitType.Cavalry, 1)));
+        match.Session.Tick(match.State.Movements.Single().ArrivalTime - match.State.ElapsedTime + 0.001);
+        return match.Finish().Seats[0].Scouting!;
+    }
+
+    [Fact]
+    public void AnAttackAfterAnExactReportCountsAsExact()
+    {
+        var scouting = ScoutThenAttack(1, 0);
+
+        Assert.Equal(new AttackRecord(1, 1), scouting.WithExact);
+        Assert.Equal(new AttackRecord(0, 0), scouting.WithRange);
+        Assert.Equal(new AttackRecord(0, 0), scouting.WithNone);
+    }
+
+    [Fact]
+    public void AnAttackAfterANarrowReportCountsAsRanged()
+    {
+        var scouting = ScoutThenAttack(5, 4, tries: 50);
+
+        Assert.Equal(1, scouting.Narrow);
+        Assert.Equal(new AttackRecord(1, 1), scouting.WithRange);
+        Assert.Equal(new AttackRecord(0, 0), scouting.WithExact);
+    }
+
+    [Fact]
+    public void AnAttackWithNoReportCountsAsNone()
+    {
+        var match = new Recorded();
+        match.State.Villages[1].AddTroops(UnitType.Cavalry, 1);
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Attack, Force(UnitType.Cavalry, 1)));
+        match.Session.Tick(match.State.Movements.Single().ArrivalTime);
+
+        var scouting = match.Finish().Seats[0].Scouting!;
+
+        Assert.Equal(1, scouting.WithNone!.Attacks);
+        Assert.Equal(0, scouting.AttacksWithIntel);
+    }
+
+    [Fact]
+    public void ScoutsTrainedAndWatchtowersAreCounted()
+    {
+        var match = new Recorded();
+        var home = match.State.Villages[1];
+        home.Resources = new Resources(5000, 5000, 5000);
+        home.SetBuildingLevel(BuildingType.Barracks, 1);
+        home.SetBuildingLevel(BuildingType.Watchtower, 3);
+        match.Send(1, new TrainCommand(1, UnitType.Scout, 4));
+        match.Session.Tick(home.TrainingQueue.Single().FinishTime + 0.001);
+
+        var scouting = match.Finish().Seats[0].Scouting!;
+
+        Assert.Equal(4, scouting.ScoutsTrained);
+        Assert.Equal(3, scouting.WatchtowerAtEnd);
+    }
+
+    [Fact]
+    public void TheReportShowsTheScoutingNumbers()
+    {
+        var report = SimReport.Build(new[] { new Recorded().Finish() }, Array.Empty<MatchFailure>());
+
+        var table = report.ToTable();
+
+        Assert.Contains("Report quality", table);
+        Assert.Contains("Attack wins by intel", table);
+        Assert.Contains("Scouts, Watchtower at end", table);
     }
 
     [Fact]

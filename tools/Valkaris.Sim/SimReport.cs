@@ -22,7 +22,20 @@ public sealed record ScoutingStats(
     double SentPerSeat,
     double SuccessShare,
     double TroopsLostPerSeat,
-    double AttacksWithIntelShare);
+    double AttacksWithIntelShare,
+    double SuccessShareAtPlayers = 0,
+    double SentAtPlayersPerSeat = 0,
+    double NarrowShare = 0,
+    double ClearShare = 0,
+    double OverwhelmingShare = 0,
+    double ScoutsTrainedPerSeat = 0,
+    double WatchtowerAtEnd = 0,
+    int AttacksWithExact = 0,
+    double WinShareWithExact = 0,
+    int AttacksWithRange = 0,
+    double WinShareWithRange = 0,
+    int AttacksWithNone = 0,
+    double WinShareWithNone = 0);
 
 public sealed record DifficultyStats(
     AiDifficulty Difficulty,
@@ -217,7 +230,23 @@ public sealed record SimReport(
             Safe(measured.Sum(s => s.Scouting!.Sent), measured.Count),
             Safe(measured.Sum(s => s.Scouting!.Succeeded), measured.Sum(s => s.Scouting!.Sent)),
             Safe(measured.Sum(s => s.Scouting!.TroopsLost), measured.Count),
-            Safe(measured.Sum(s => s.Scouting!.AttacksWithIntel), measured.Sum(s => s.AttacksSent)));
+            Safe(measured.Sum(s => s.Scouting!.AttacksWithIntel), measured.Sum(s => s.AttacksSent)),
+            Safe(measured.Sum(s => s.Scouting!.SucceededAtPlayers), measured.Sum(s => s.Scouting!.SentAtPlayers)),
+            Safe(measured.Sum(s => s.Scouting!.SentAtPlayers), measured.Count),
+            Safe(measured.Sum(s => s.Scouting!.Narrow), measured.Sum(s => s.Scouting!.Succeeded)),
+            Safe(measured.Sum(s => s.Scouting!.Clear), measured.Sum(s => s.Scouting!.Succeeded)),
+            Safe(measured.Sum(s => s.Scouting!.Overwhelming), measured.Sum(s => s.Scouting!.Succeeded)),
+            Safe(measured.Sum(s => s.Scouting!.ScoutsTrained), measured.Count),
+            Safe(measured.Sum(s => s.Scouting!.WatchtowerAtEnd), measured.Count),
+            Total(s => s.WithExact),
+            WinShare(s => s.WithExact),
+            Total(s => s.WithRange),
+            WinShare(s => s.WithRange),
+            Total(s => s.WithNone),
+            WinShare(s => s.WithNone));
+
+        int Total(Func<SeatScouting, AttackRecord?> pick) => measured.Sum(s => pick(s.Scouting!)?.Attacks ?? 0);
+        double WinShare(Func<SeatScouting, AttackRecord?> pick) => Safe(measured.Sum(s => pick(s.Scouting!)?.Won ?? 0), Total(pick));
     }
 
     private static DefenceStats DefenceOf(IReadOnlyList<SeatResult> seats)
@@ -315,7 +344,11 @@ public sealed record SimReport(
             Line("Home defence (mid, end)", $"{d.Defence.HomeDefenceAtMid:0}, {d.Defence.HomeDefenceAtEnd:0}");
             Line("Attacks on players won", Pct(d.Defence.AttackWinShare));
             Line("Scouting per seat", $"{d.Scouting.SentPerSeat:0.#} sent, {Pct(d.Scouting.SuccessShare)} succeed, {d.Scouting.TroopsLostPerSeat:0.#} troops lost");
+            Line("Scouting at players", $"{d.Scouting.SentAtPlayersPerSeat:0.#} sent, {Pct(d.Scouting.SuccessShareAtPlayers)} succeed");
+            Line("Report quality", $"narrow {Pct(d.Scouting.NarrowShare)}, clear {Pct(d.Scouting.ClearShare)}, overwhelming {Pct(d.Scouting.OverwhelmingShare)}");
+            Line("Scouts, Watchtower at end", $"{d.Scouting.ScoutsTrainedPerSeat:0.#} trained, level {d.Scouting.WatchtowerAtEnd:0.0}");
             Line("Attacks with fresh intel", Pct(d.Scouting.AttacksWithIntelShare));
+            Line("Attack wins by intel", $"exact {Pct(d.Scouting.WinShareWithExact)} of {d.Scouting.AttacksWithExact}, ranged {Pct(d.Scouting.WinShareWithRange)} of {d.Scouting.AttacksWithRange}, none {Pct(d.Scouting.WinShareWithNone)} of {d.Scouting.AttacksWithNone}");
             Line("Unit mix", string.Join("  ", d.UnitMix.Select(u => $"{u.Key} {Pct(u.Value)}")));
         }
         text.AppendLine("Economy");
