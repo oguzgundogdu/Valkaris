@@ -30,31 +30,32 @@ public static class TrainPreview
         if (village.OwnerId != playerId)
             return new TrainOption { Rejection = CommandRejection.NotOwner };
 
+        var god = GodRules.Applies(state, playerId);
         var definition = data.Units.Units[unit];
         var barracksLevel = village.BuildingLevel(BuildingType.Barracks);
-        var cost = definition.Cost * Math.Max(0, count);
-        var seconds = UnitRules.SecondsPerUnit(data, unit, barracksLevel) * Math.Max(0, count);
+        var cost = god ? Resources.Zero : definition.Cost * Math.Max(0, count);
+        var seconds = god ? 0 : UnitRules.SecondsPerUnit(data, unit, barracksLevel) * Math.Max(0, count);
 
         return new TrainOption
         {
-            Rejection = FindRejection(data, village, definition, barracksLevel, count, cost),
+            Rejection = FindRejection(data, village, definition, barracksLevel, count, cost, god),
             Cost = cost,
 
             // One batch at a time: this one starts when the one before it finishes.
             StartTime = village.TrainingQueue.Count > 0 ? village.TrainingQueue[^1].FinishTime : state.ElapsedTime,
             DurationSeconds = seconds / state.Settings.SpeedMultiplier,
-            MaxCount = UnitRules.MaxAffordable(data, unit, village.Resources),
+            MaxCount = god ? int.MaxValue : UnitRules.MaxAffordable(data, unit, village.Resources),
         };
     }
 
     private static CommandRejection? FindRejection(
-        GameData data, Village village, UnitDefinition definition, int barracksLevel, int count, Resources cost)
+        GameData data, Village village, UnitDefinition definition, int barracksLevel, int count, Resources cost, bool god)
     {
         if (barracksLevel < definition.RequiredBarracksLevel)
             return CommandRejection.BarracksLevelTooLow;
         if (count <= 0)
             return CommandRejection.InvalidCount;
-        if (village.TrainingQueue.Count >= data.Game.MaxTrainingQueueLength)
+        if (!god && village.TrainingQueue.Count >= data.Game.MaxTrainingQueueLength)
             return CommandRejection.QueueFull;
         return village.Resources.Covers(cost) ? null : CommandRejection.InsufficientResources;
     }

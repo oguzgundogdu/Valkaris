@@ -109,6 +109,152 @@ public class GodModeTests
         Assert.Single(events.OfType<BuildingCompleted>());
     }
 
+    // Resources.
+
+    private void AssertFull(Village village)
+    {
+        var capacity = BuildingRules.VillageCapacity(Data, village);
+        Assert.Equal(new Resources(capacity, capacity, capacity), village.Resources);
+    }
+
+    [Fact]
+    public void ResourcesAreFullFromTheMomentItIsOn()
+    {
+        _session.SetGodMode(true);
+
+        AssertFull(_home);
+    }
+
+    [Fact]
+    public void SpendingNeverReducesThem()
+    {
+        _session.SetGodMode(true);
+        _home.SetBuildingLevel(BuildingType.Marketplace, 3);
+        var second = new Village(50, Local, new TileCoord(_home.Position.X + 3, _home.Position.Y));
+        _state.AddVillage(second);
+
+        Build(BuildingType.Farm);
+        Assert.True(_session.SendAs(Local, new SendResourcesCommand(Local, second.Id, 100, 0, 0)).Success);
+
+        AssertFull(_home);
+    }
+
+    [Fact]
+    public void AWarehouseUpgradeFillsTheLargerCapacity()
+    {
+        _session.SetGodMode(true);
+
+        Build(BuildingType.MainBuilding);
+        Build(BuildingType.Warehouse);
+
+        AssertFull(_home);
+    }
+
+    [Fact]
+    public void ANewVillageIsFullOnTheNextTick()
+    {
+        _session.SetGodMode(true);
+        var second = new Village(50, Local, new TileCoord(_home.Position.X + 3, _home.Position.Y));
+        second.SetBuildingLevel(BuildingType.Warehouse, 1);
+        _state.AddVillage(second);
+
+        _session.Tick(0.1);
+
+        AssertFull(second);
+    }
+
+    [Fact]
+    public void OtherPlayersResourcesAreNotTouched()
+    {
+        var rival = _state.Villages[Rival];
+        var stock = rival.Resources;
+
+        _session.SetGodMode(true);
+
+        Assert.Equal(stock, rival.Resources);
+    }
+
+    [Fact]
+    public void TurningItOffLeavesTheStockAndSpendingCounts()
+    {
+        _session.SetGodMode(true);
+        Build(BuildingType.Farm);
+        _session.SetGodMode(false);
+        var stock = _home.Resources;
+
+        Build(BuildingType.Quarry);
+
+        Assert.True(_home.Resources.Wood < stock.Wood);
+    }
+
+    // Training.
+
+    private void WithBarracks(int level = 1) => _home.SetBuildingLevel(BuildingType.Barracks, level);
+
+    [Fact]
+    public void TrainingIsFreeAndInstant()
+    {
+        WithBarracks();
+        _session.SetGodMode(true);
+        var spears = _home.TroopCount(UnitType.Spearman);
+        var time = _state.ElapsedTime;
+
+        var option = TrainPreview.Evaluate(_state, Data, Local, Local, UnitType.Spearman, 5000);
+        Assert.True(_session.SendAs(Local, new TrainCommand(Local, UnitType.Spearman, 5000)).Success);
+
+        Assert.Equal(Resources.Zero, option.Cost);
+        Assert.Equal(0, option.DurationSeconds);
+        Assert.Equal(int.MaxValue, option.MaxCount);
+        Assert.Equal(spears + 5000, _home.TroopCount(UnitType.Spearman));
+        Assert.Empty(_home.TrainingQueue);
+        Assert.Equal(time, _state.ElapsedTime);
+        AssertFull(_home);
+    }
+
+    [Fact]
+    public void TrainingHasNoQueueLimit()
+    {
+        WithBarracks();
+        _session.SetGodMode(true);
+
+        for (var i = 0; i < Data.Game.MaxTrainingQueueLength + 3; i++)
+            Assert.True(_session.SendAs(Local, new TrainCommand(Local, UnitType.Spearman, 1)).Success);
+    }
+
+    [Fact]
+    public void TheBarracksLevelStillApplies()
+    {
+        WithBarracks();
+        _session.SetGodMode(true);
+
+        Assert.Equal(CommandRejection.BarracksLevelTooLow, _session.SendAs(Local, new TrainCommand(Local, UnitType.Lord, 1)).Rejection);
+    }
+
+    [Fact]
+    public void TurningItOffRestoresTrainingRules()
+    {
+        WithBarracks();
+        _session.SetGodMode(true);
+        _session.SetGodMode(false);
+
+        var option = TrainPreview.Evaluate(_state, Data, Local, Local, UnitType.Spearman, 1);
+
+        Assert.Equal(Data.Units.Units[UnitType.Spearman].Cost, option.Cost);
+        Assert.True(option.DurationSeconds > 0);
+    }
+
+    [Fact]
+    public void TheRivalsTrainingKeepsItsCostAndTime()
+    {
+        _state.Villages[Rival].SetBuildingLevel(BuildingType.Barracks, 1);
+        _session.SetGodMode(true);
+
+        var option = TrainPreview.Evaluate(_state, Data, Rival, Rival, UnitType.Spearman, 1);
+
+        Assert.NotEqual(Resources.Zero, option.Cost);
+        Assert.True(option.DurationSeconds > 0);
+    }
+
     // Work under way.
 
     [Fact]

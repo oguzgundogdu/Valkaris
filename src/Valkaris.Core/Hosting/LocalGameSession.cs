@@ -102,7 +102,24 @@ public sealed class LocalGameSession : IGameSession
         if (IsPaused)
             return;
 
-        var end = State.ElapsedTime + deltaSeconds;
+        RunTo(State.ElapsedTime + deltaSeconds);
+
+        if (GodRules.Applies(State, LocalPlayerId))
+            FillLocalVillages();
+    }
+
+    /// <summary>God mode's unlimited resources: spending and raids take effect, and the stock is full again straight after.</summary>
+    private void FillLocalVillages()
+    {
+        foreach (var village in State.Villages.Values.Where(v => v.OwnerId == LocalPlayerId))
+        {
+            var capacity = BuildingRules.VillageCapacity(Data, village);
+            village.Resources = new Resources(capacity, capacity, capacity);
+        }
+    }
+
+    private void RunTo(double end)
+    {
         var events = new List<GameEvent>();
 
         while (!State.IsMatchOver)
