@@ -241,7 +241,7 @@ public sealed class Simulation
             movement.Troops,
             load,
             movement.ArrivalTime,
-            movement.ArrivalTime + CarrierRules.TravelSeconds(_data, _state, from.Position, home.Position),
+            movement.ArrivalTime + GodRules.TravelSeconds(_state, movement.OwnerId, CarrierRules.TravelSeconds(_data, _state, from.Position, home.Position)),
             null,
             Carriers: movement.Carriers));
     }
@@ -578,7 +578,7 @@ public sealed class Simulation
     {
         var from = fromTile ?? _state.Villages[fromVillageId].Position;
         var home = HomeFor(ownerId, homeVillageId);
-        var duration = UnitRules.TravelSeconds(_data, _state, from, home.Position, troops);
+        var duration = GodRules.TravelSeconds(_state, ownerId, UnitRules.TravelSeconds(_data, _state, from, home.Position, troops));
 
         _state.AddMovement(new Movement(
             _state.NextMovementId++,

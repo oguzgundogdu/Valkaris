@@ -255,6 +255,173 @@ public class GodModeTests
         Assert.True(option.DurationSeconds > 0);
     }
 
+    // Movements.
+
+    private Village Second()
+    {
+        var second = new Village(50, Local, new TileCoord(_home.Position.X + 3, _home.Position.Y));
+        second.SetBuildingLevel(BuildingType.Warehouse, 1);
+        _state.AddVillage(second);
+        return second;
+    }
+
+    private void SendLocal(MovementType type, int to, UnitType unit, int count)
+    {
+        _home.AddTroops(unit, count);
+        Assert.True(_session.SendAs(Local, new SendTroopsCommand(Local, to, type, new Dictionary<UnitType, int> { [unit] = count })).Success);
+    }
+
+    [Theory]
+    [InlineData(MovementType.Attack)]
+    [InlineData(MovementType.Raid)]
+    public void AttacksAndRaidsArriveAndReturnInstantly(MovementType type)
+    {
+        _session.SetGodMode(true);
+        var sword = _home.TroopCount(UnitType.Swordsman);
+        var time = _state.ElapsedTime;
+
+        SendLocal(type, Rival, UnitType.Swordsman, 500);
+
+        Assert.Single(_state.Reports);
+        Assert.Empty(_state.Movements);
+        Assert.True(_home.TroopCount(UnitType.Swordsman) > sword);
+        Assert.Equal(time, _state.ElapsedTime);
+    }
+
+    [Fact]
+    public void ScoutsArriveAndReturnInstantly()
+    {
+        _session.SetGodMode(true);
+
+        SendLocal(MovementType.Scout, Rival, UnitType.Scout, 3);
+
+        Assert.True(_state.ScoutReports.Single().Succeeded);
+        Assert.Empty(_state.Movements);
+        Assert.Equal(3, _home.TroopCount(UnitType.Scout));
+    }
+
+    [Fact]
+    public void ReinforcementsArriveInstantly()
+    {
+        _session.SetGodMode(true);
+        var second = Second();
+
+        SendLocal(MovementType.Reinforce, second.Id, UnitType.Spearman, 4);
+
+        Assert.Equal(4, second.TroopCount(UnitType.Spearman));
+        Assert.Empty(_state.Movements);
+    }
+
+    [Fact]
+    public void TransfersAndTheirCarriersAreInstant()
+    {
+        _session.SetGodMode(true);
+        _home.SetBuildingLevel(BuildingType.Marketplace, 1);
+        var second = Second();
+        var carriers = CarrierRules.Free(_state, Data, _home);
+
+        Assert.True(_session.SendAs(Local, new SendResourcesCommand(Local, second.Id, 10, 0, 0)).Success);
+
+        Assert.Empty(_state.Movements);
+        Assert.Equal(carriers, CarrierRules.Free(_state, Data, _home));
+    }
+
+    [Fact]
+    public void SettlersFoundAVillageInstantly()
+    {
+        _session.SetGodMode(true);
+        for (var i = 0; i < 3; i++)
+            Build(BuildingType.MainBuilding);
+        _home.AddTroops(UnitType.Settler, 1);
+        var count = _state.Villages.Count;
+        var tile = _state.Map.Tiles.Select((t, i) => (t, new TileCoord(i % _state.Map.Width, i / _state.Map.Width)))
+            .Where(x => FoundPreview.TileRejection(_state, Data, x.Item2) is null)
+            .Select(x => x.Item2)
+            .First();
+
+        Assert.True(_session.SendAs(Local, new FoundVillageCommand(Local, tile)).Success);
+
+        Assert.Equal(count + 1, _state.Villages.Count);
+        Assert.Empty(_state.Movements);
+    }
+
+    [Fact]
+    public void PreviewsAgreeThatTravelTakesNoTime()
+    {
+        _session.SetGodMode(true);
+        _home.AddTroops(UnitType.Swordsman, 1);
+
+        var option = SendPreview.Evaluate(_state, Data, Local, new SendTroopsCommand(Local, Rival, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 1 }));
+
+        Assert.Equal(0, option.DurationSeconds);
+        Assert.Equal(_state.ElapsedTime, option.ArrivalTime);
+    }
+
+    [Fact]
+    public void ARivalsMovementKeepsItsSpeed()
+    {
+        _session.SetGodMode(true);
+        _state.Villages[Rival].AddTroops(UnitType.Swordsman, 5);
+        var expected = UnitRules.TravelSeconds(Data, _state, _state.Villages[Rival].Position, _home.Position, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 5 });
+
+        Assert.True(_session.SendAs(Rival, new SendTroopsCommand(Rival, Local, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 5 })).Success);
+
+        var movement = _state.Movements.Single();
+        Assert.Equal(_state.ElapsedTime + expected, movement.ArrivalTime, 6);
+        Assert.Empty(_state.Reports);
+    }
+
+    [Fact]
+    public void ARivalsReturnKeepsItsSpeed()
+    {
+        _session.SetGodMode(true);
+        _state.Villages[Rival].AddTroops(UnitType.Swordsman, 500);
+        _session.SendAs(Rival, new SendTroopsCommand(Rival, Local, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 500 }));
+
+        _session.Tick(_state.Movements.Single().ArrivalTime - _state.ElapsedTime + 0.001);
+
+        Assert.True(_state.Movements.Single(m => m.OwnerId == Rival).ArrivalTime > _state.ElapsedTime);
+    }
+
+    [Fact]
+    public void TurningItOffRestoresTravelTime()
+    {
+        _session.SetGodMode(true);
+        _session.SetGodMode(false);
+        _home.AddTroops(UnitType.Swordsman, 1);
+
+        var option = SendPreview.Evaluate(_state, Data, Local, new SendTroopsCommand(Local, Rival, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 1 }));
+
+        Assert.True(option.DurationSeconds > 0);
+    }
+
+    [Fact]
+    public void ABattleGoesTheSameWayWithGodMode()
+    {
+        BattleReport Fought(bool god)
+        {
+            var state = TestMatch.Create(duration: 36000);
+            var session = new LocalGameSession(state, Data, Local);
+            state.Villages[Local].AddTroops(UnitType.Swordsman, 60);
+            var command = new SendTroopsCommand(Local, Rival, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 60 });
+            if (god)
+                session.SetGodMode(true);
+            Assert.True(session.SendAs(Local, command).Success);
+            if (!god)
+                session.Tick(state.Movements.Single().ArrivalTime - state.ElapsedTime);
+            return state.Reports.Single();
+        }
+
+        var normal = Fought(false);
+        var withGod = Fought(true);
+
+        Assert.Equal(normal.AttackPower, withGod.AttackPower);
+        Assert.Equal(normal.DefencePower, withGod.DefencePower);
+        Assert.Equal(normal.AttackerWon, withGod.AttackerWon);
+        Assert.Equal(normal.AttackerLost, withGod.AttackerLost);
+        Assert.Equal(normal.DefenderLost, withGod.DefenderLost);
+    }
+
     // Work under way.
 
     [Fact]

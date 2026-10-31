@@ -47,7 +47,7 @@ public static class SendResourcesPreview
         if (rejection is not null)
             return option with { Rejection = rejection };
 
-        var duration = CarrierRules.TravelSeconds(data, state, from.Position, to.Position);
+        var duration = GodRules.TravelSeconds(state, playerId, CarrierRules.TravelSeconds(data, state, from.Position, to.Position));
         var arrival = state.ElapsedTime + duration;
         var load = new Resources(command.Wood, command.Stone, command.Food);
         return option with

@@ -16,4 +16,8 @@ public static class GodRules
         return false;
 #endif
     }
+
+    /// <summary>A trip's length for its owner: none at all in god mode.</summary>
+    public static double TravelSeconds(GameState state, int ownerId, double seconds) =>
+        Applies(state, ownerId) ? 0 : seconds;
 }

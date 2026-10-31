@@ -32,7 +32,7 @@ public static class SendPreview
         if (rejection is not null)
             return new SendOption { Rejection = rejection };
 
-        var duration = UnitRules.TravelSeconds(data, state, from.Position, to.Position, command.Troops);
+        var duration = GodRules.TravelSeconds(state, playerId, UnitRules.TravelSeconds(data, state, from.Position, to.Position, command.Troops));
         return new SendOption { DurationSeconds = duration, ArrivalTime = state.ElapsedTime + duration };
     }
 
