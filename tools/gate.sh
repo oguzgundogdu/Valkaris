@@ -1,5 +1,5 @@
 #!/bin/zsh
-# The per-commit gate: clean build, Core tests in both cultures, the UI test in all four setups.
+# The per-commit gate: clean build, Core tests in both cultures, the UI test in all four setups, and real processes over the network.
 # Prints one line per step, and only failures beyond that. Exits non-zero if any step failed.
 cd "${0:A:h}/.."
 failed=0
@@ -40,5 +40,8 @@ ui
 ui --dev-culture=tr-TR
 ui --dev-language=tr
 ui --dev-language=tr --dev-culture=tr-TR
+
+out=$(tools/nettest.sh 2>&1); code=$?
+report "two-process network" $code "$out"
 
 exit $failed

@@ -10,6 +10,9 @@ public static class Handshake
     /// <summary>Change this whenever the wire format changes.</summary>
     public const string Version = "0.7.0";
 
+    public const int DefaultPort = 24565;
+    public const string AnyAddress = "*";
+
     public static string DataHash(IDataSource source)
     {
         using var sha = SHA256.Create();
