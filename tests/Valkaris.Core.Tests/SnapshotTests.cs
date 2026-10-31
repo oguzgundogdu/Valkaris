@@ -67,6 +67,7 @@ public class SnapshotTests
         state.AddReport(new BattleReport(
             2, 90.5, MovementType.Raid, 1, 2, 1, 2, troops, troops, troops, troops, 3, 120.5, 80.25, true,
             new Resources(10, 20, 30), new CatapultDamage(BuildingType.Wall, 3, 2), new LoyaltyChange(30, 0, true), CapitalProtected: true));
+        state.AddBattleArrival(new BattleArrival(90.5, 1, 2, "Brennhold", 2, "Karvik"));
         state.NextMovementId = 8;
         state.NextReportId = 3;
         state.NextRandom();
@@ -122,6 +123,7 @@ public class SnapshotTests
         Assert.Equal(BuildingType.Wall, restored.Movements[0].CatapultTarget);
         Assert.Equal(3, restored.Movements[1].Troops[UnitType.Cavalry]);
         Assert.Equal(new CatapultDamage(BuildingType.Wall, 3, 2), restored.Reports[0].CatapultDamage);
+        Assert.Equal(new BattleArrival(90.5, 1, 2, "Brennhold", 2, "Karvik"), restored.BattleArrivals.Single());
         Assert.Equal(8, restored.NextMovementId);
         Assert.Equal(3, restored.NextReportId);
         Assert.Equal(original.RngState, restored.RngState);

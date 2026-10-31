@@ -121,6 +121,24 @@ public sealed record ScoutReport(
 /// What the defender learned, known only to the defender. Shares ids with reports.
 /// The count sent is known only when the Scouts failed: a Watchtower sees a success happen, but not its size.
 /// </summary>
+/// <summary>An Attack or Raid reaching its target, with names as they were then. Who may see it is up to Visibility.</summary>
+public sealed record BattleArrival(
+    double Time,
+    int AttackerId,
+    int DefenderId,
+    string FromVillageName,
+    int TargetVillageId,
+    string TargetVillageName);
+
+/// <summary>What everyone hears about a battle between other players: village names and nothing else.</summary>
+public sealed record PublicNotice(double Time, string FromVillageName, int TargetVillageId, string TargetVillageName);
+
+/// <summary>A battle a player can see happen at a village.</summary>
+public sealed record Clash(double Time, int VillageId);
+
+/// <summary>Someone else's movement seen from a village: where it is and which way it goes, and nothing about whose it is or where it ends.</summary>
+public sealed record SightedMovement(int Id, MovementType Type, double X, double Y, double VelocityX, double VelocityY, double Time);
+
 public sealed record ScoutNotice(
     int Id,
     double Time,

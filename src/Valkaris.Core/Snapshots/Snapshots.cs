@@ -15,6 +15,7 @@ public sealed record GameStateSnapshot(
     IReadOnlyList<BattleReport> Reports,
     IReadOnlyList<ScoutReport> ScoutReports,
     IReadOnlyList<ScoutNotice> ScoutNotices,
+    IReadOnlyList<BattleArrival> BattleArrivals,
     int NextMovementId,
     int NextReportId,
     ulong RngState,

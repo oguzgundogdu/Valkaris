@@ -171,6 +171,11 @@ public sealed record MapConfig
     /// <summary>A new village must be at least this many tiles from every existing village.</summary>
     public required double MinFoundingDistance { get; init; }
 
+    /// <summary>How far, in tiles, a village sees other players' movements, before its Watchtower.</summary>
+    public required double SightRadius { get; init; }
+
+    public required double SightPerWatchtowerLevel { get; init; }
+
     /// <summary>How far, in tiles, a player's start may shift from its quadrant position.</summary>
     public required int StartJitter { get; init; }
 

@@ -2,6 +2,8 @@
   "barbarianCounts": { "Small": 6, "Medium": 12 },
   "minVillageSpacing": 3,
   "minFoundingDistance": 3,
+  "sightRadius": 4,
+  "sightPerWatchtowerLevel": 0.5,
   "startJitter": 1,
   "startClearRadius": 1,
   "terrain": {

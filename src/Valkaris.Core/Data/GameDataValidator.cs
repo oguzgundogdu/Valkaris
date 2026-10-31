@@ -289,6 +289,10 @@ internal static class GameDataValidator
 
         if (config.MinVillageSpacing < 1)
             Error("minVillageSpacing", "must be at least 1.");
+        if (config.SightRadius <= 0)
+            Error("sightRadius", "must be above 0.");
+        if (config.SightPerWatchtowerLevel < 0)
+            Error("sightPerWatchtowerLevel", "must be 0 or more.");
         if (config.MinFoundingDistance < 1)
             Error("minFoundingDistance", "must be at least 1.");
         if (config.StartJitter < 0)

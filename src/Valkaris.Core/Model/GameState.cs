@@ -10,6 +10,7 @@ public sealed class GameState
     private readonly List<BattleReport> _reports = new();
     private readonly List<ScoutReport> _scoutReports = new();
     private readonly List<ScoutNotice> _scoutNotices = new();
+    private readonly List<BattleArrival> _battleArrivals = new();
 
     internal GameState(GameSettings settings, GameMap map)
     {
@@ -21,6 +22,7 @@ public sealed class GameState
         Reports = _reports.AsReadOnly();
         ScoutReports = _scoutReports.AsReadOnly();
         ScoutNotices = _scoutNotices.AsReadOnly();
+        BattleArrivals = _battleArrivals.AsReadOnly();
         RngState = settings.Seed;
     }
 
@@ -43,6 +45,9 @@ public sealed class GameState
 
     /// <summary>Show one only to its defender. Ids are shared with battle reports.</summary>
     public IReadOnlyList<ScoutNotice> ScoutNotices { get; }
+
+    /// <summary>Every Attack and Raid that reached its target, oldest first. Read through Visibility.</summary>
+    public IReadOnlyList<BattleArrival> BattleArrivals { get; }
 
     public int NextMovementId { get; internal set; } = 1;
     public int NextReportId { get; internal set; } = 1;
@@ -85,6 +90,8 @@ public sealed class GameState
     internal void AddScoutReport(ScoutReport report) => _scoutReports.Add(report);
 
     internal void AddScoutNotice(ScoutNotice notice) => _scoutNotices.Add(notice);
+
+    internal void AddBattleArrival(BattleArrival arrival) => _battleArrivals.Add(arrival);
 
     /// <summary>SplitMix64. System.Random cannot be saved and restored.</summary>
     internal ulong NextRandom()
