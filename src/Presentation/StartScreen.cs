@@ -22,6 +22,8 @@ public partial class StartScreen : CenterContainer
         var duration = GetNode<OptionButton>("%Duration");
         foreach (var minutes in _data.Game.MatchDurationsMinutes)
             duration.AddItem($"{minutes:0} minutes");
+        if (_data.Game.UnlimitedMatches)
+            duration.AddItem("Unlimited");
 
         var speed = GetNode<OptionButton>("%Speed");
         foreach (var multiplier in _data.Game.SpeedMultipliers)
@@ -47,9 +49,11 @@ public partial class StartScreen : CenterContainer
 
         GetNode<Button>("%Start").Pressed += () =>
         {
-            var minutes = _data.Game.MatchDurationsMinutes[duration.Selected];
+            // Unlimited comes after the durations.
+            var durations = _data.Game.MatchDurationsMinutes;
+            double? seconds = duration.Selected < durations.Count ? durations[duration.Selected] * 60 : null;
             var multiplier = _data.Game.SpeedMultipliers[speed.Selected];
-            var settings = new GameSettings(minutes * 60, multiplier, mapSizes[mapSize.Selected]);
+            var settings = new GameSettings(seconds, multiplier, mapSizes[mapSize.Selected]);
             StartRequested?.Invoke(new MatchSetup(settings, _data.Game.MinPlayers - 1 + opponents.Selected, difficulties[difficulty.Selected]));
         };
     }

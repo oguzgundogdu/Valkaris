@@ -61,12 +61,15 @@ public partial class UiTest : Control
         var start = Find<StartScreen>();
         await Shot("start");
 
-        // The longest match, so the steps below can use plenty of game time.
+        await TestUnlimitedFromStart();
+        start = Find<StartScreen>();
+
+        // The longest timed match, so the steps below can use plenty of game time.
         Expect(start.GetNode<OptionButton>("%MapSize").ItemCount == Enum.GetValues<MapSize>().Length, "Every map size is offered");
         await TestOpponentChoices();
         start = Find<StartScreen>();
         var durations = start.GetNode<OptionButton>("%Duration");
-        durations.Select(durations.ItemCount - 1);
+        durations.Select(LongestTimed(durations));
         start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
 
@@ -1125,6 +1128,34 @@ public partial class UiTest : Control
         Press(end.GetNode<Button>("%Back"));
         await Frames();
         Expect(Find<StartScreen>() is not null, "Back to start works after a live match");
+    }
+
+    private static int LongestTimed(OptionButton durations) => durations.ItemCount - 2;
+
+    private async Task TestUnlimitedFromStart()
+    {
+        var start = Find<StartScreen>();
+        var durations = start.GetNode<OptionButton>("%Duration");
+        Expect(durations.GetItemText(durations.ItemCount - 1) == "Unlimited", "Unlimited is the last duration");
+        Expect(durations.ItemCount == 4 && durations.GetItemText(0) == "30 minutes", $"Durations start at 30 minutes, got {durations.GetItemText(0)}");
+        durations.Select(durations.ItemCount - 1);
+        start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+
+        var game = Find<GameScreen>();
+        Expect(game.Session.State.Settings.MatchDurationSeconds is null, "The match has no time limit");
+        game.Session.Tick(90);
+        await Frames();
+        var clock = Find<ResourceBar>().GetNode<Label>("%Clock").Text;
+        Expect(clock == Format.Time(game.Session.State.ElapsedTime), $"The top bar counts up, got '{clock}'");
+        await Shot("unlimited");
+
+        game.Session.SetPaused(true);
+        await Frames();
+        Press(game.GetNode<Overlay>("%PauseOverlay").GetNode<Button>("%Secondary"));
+        await Frames();
+        Press(game.GetNode<Overlay>("%LeaveOverlay").GetNode<Button>("%Action"));
+        await Frames();
     }
 
     /// <summary>Every number of opponents at every difficulty, through the real start screen.</summary>
