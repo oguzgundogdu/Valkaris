@@ -26,7 +26,7 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
 
 - **Engine:** Godot 4 (.NET / C#)
 - **Target:** Desktop (macOS, Linux, Windows)
-- **Networking:** Godot high-level multiplayer (ENet), host-authoritative
+- **Networking:** ENet through Godot's `ENetConnection`, host-authoritative, over LAN or direct IP. Default port 24565.
 - **Data:** Balance values in JSON files under `data/`. Export presets must include `data/*.json`, since Godot does not export plain JSON files by default.
 
 ---
@@ -42,13 +42,13 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
    - `SnapshotMapper`: converts `GameState` to and from its wire format (see 3.4)
    - Must be unit-testable without running Godot.
 2. **Network**
-   - Clients send commands to the host via RPC. The host takes the issuer from the RPC sender, never from the command payload.
-   - Host applies commands, runs the simulation and sends periodic full state snapshots plus events to clients.
+   - Clients send commands to the host as messages. The host takes the issuer from the connection, never from the command payload.
+   - Host applies commands, runs the simulation and sends each client its own filtered state plus events. See 3.6.
    - A disconnected player's slot is taken over by AI. If the host leaves, the match ends.
 3. **Presentation (Godot scenes)**
    - Only reads state and sends commands. Never mutates `GameState` directly.
    - Talks only to `IGameSession` (state, data, `Send`, `Tick`, events). `Send` returns nothing and rejections arrive as an event, because a command sent over the network cannot answer immediately. Views read `State` fresh each frame, because a snapshot may replace it.
-   - `LocalGameSession` runs everything in-process. Multiplayer adds another implementation of the same interface.
+   - `LocalGameSession` runs everything in-process. `HostGameSession` wraps it for a host, and `ClientGameSession` is built from what the host sends.
    - `BuildPreview` in Core is the single evaluation of the build rules, used by both `CommandHandler` and the UI, so rules are never duplicated in Presentation.
 4. **AI (`Valkaris.Ai`, a separate assembly with no access to Core's internals)**
    - AI players issue the same commands as human players through the same `CommandHandler`, and check the same previews first.
@@ -148,17 +148,51 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 - Turkish strings are worded so that player and village names never need a grammatical suffix.
 - Tests: a syntax-tree scan of game code and a scan of scenes fail on hard-coded text. Both languages must have the same keys and placeholders, every key used must exist, and every key in the files must be used. The glossary terms are checked one by one. The UI test checks that the font has every character used, runs in both languages, and fails on text cut off or outside the window.
 
+### 3.6 Multiplayer
+
+All of this is in Core and tested without Godot, apart from the ENet connection and the screens.
+
+- **Pieces:** `INetworkHost` and `INetworkClient` move bytes, with `MemoryNetwork` for tests and `EnetHost` and `EnetClient` for play. `WireCodec` turns messages into JSON from an allow-list of types, with size limits, and bad input gives null rather than an exception. `LobbyState`, `LobbyHost` and `LobbyClient` run the seats, settings and handshake. `PlayerView` cuts the state down for one player.
+- **Sync:** `snapshotsPerSecond` in `data/game.json` sets the rate, 2 per second. Each packet holds the player's view and their events, and the client applies the state first, so a handler can find the report an event names. An event or a successful command triggers a packet at once. ENet compresses everything with Zstandard.
+- **Size:** terrain goes once, and each report and notice goes once. A client works out which tiles hold villages from the village list. Everything else is sent in full.
+- **Clients don't simulate.** They only move the clock between views, up to 2 seconds past the last one, so timers stay smooth. Resource numbers update with each view.
+- **What a client receives:**
+
+| Data | Own | Others |
+|---|---|---|
+| Village id, owner, position, name, barbarian tier | Yes | Yes |
+| Resources, buildings, troops, queues, loyalty | Yes | Empty |
+| Player name, nation, capital, whether out of the match, whether AI | Yes | Yes |
+| Captures, capital choice deadline | Yes | Empty |
+| Own movements | In full | |
+| Attacks and raids heading for own villages | | Without troops, loot or catapult target |
+| Movements in sight | | `SightedMovement` only (7.3) |
+| Battle reports, scout reports and scout notices | Only its own | Never |
+| Public notices | | All, with names only |
+| Random state, next ids, the real seed | Never | Never. A hash of the seed paints every map the same |
+| AI difficulty and memory | | Never |
+
+- **Host limit:** the host's machine holds the full state, so a modified host could cheat. That comes with host-authoritative play. The host's own screens still go through `Visibility`.
+- **Joining:** the handshake compares `Handshake.Version` and a hash of `data/`, and refuses a mismatch with a clear message. Joining a match under way is refused, and there is no reconnecting.
+- **Disconnects:** ENet notices a lost connection in about 8 seconds. An `AiPlayer` at Normal with fresh memory takes over that player, and everyone is told. Someone already out of the match gets no AI. If the host leaves or the connection is lost, each client sees "The host left. The match has ended." and returns to the start screen. Once a match has ended, the results stay on screen.
+- **Tests:** a planted-values test proves hidden data never reaches a client at any stage of a real match, and a guard test fails when a sent type gains a field nobody has judged. `FullMatchTests` plays a whole match with a host, three clients, random delay and a disconnect, comparing every view each client rebuilds with `PlayerView` of the host's state. `tools/nettest.sh` runs real processes over ENet on loopback, and it is part of `tools/gate.sh`.
+- **Dev:** `UiTest` takes `--net-report` for packet sizes and frame costs in a late match, and `--net-window=host` or `guest` to play a match through the real screens.
+
+---
+
 ## 4. Match Settings (chosen in lobby)
 
-- Number of players: 2–4 (human or AI slots; limits in `data/game.json`). A single slot is not allowed, since a player with no opponents would win instantly. The start screen offers 1–3 AI opponents at one difficulty until the lobby exists.
+- Number of players: 2–4 (human or AI slots; limits in `data/game.json`). A single slot is not allowed, since a player with no opponents would win instantly. Single player's start screen offers 1–3 AI opponents at one difficulty.
 - Match duration: 30 / 45 / 60 minutes or Unlimited (`data/game.json`). An Unlimited match has no timer and no score win, and ends only when one player remains. Its top bar shows elapsed time, and the end screen still shows the score table for information.
 - Game speed multiplier (optional). Scales production, build, training and travel speed and loyalty regeneration. It does not scale match duration: a 30-minute match lasts 30 real minutes.
-- Map size (small / medium), set on the start screen until the lobby exists
-- Language, and an optional name for the player's starting village (11.1), also on the start screen
+- Map size (small / medium)
+- Language, and an optional name for the player's starting village (11.1). Language is each player's own, because all text is built on their machine.
 
-**Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
+**Multiplayer lobby:** the start screen offers Host and Join, and each asks for a player name (remembered, same limits as a village name) and an optional village name. Join also asks for an IP, or IP and port. The host holds seat 1 and sets duration, speed and map size. Each other seat is Open, AI with its own difficulty, or Closed, and changing an occupied seat removes that person. The host sees their local addresses to share. A match needs at least 2 players, and Open seats with nobody in them count as Closed. Nations keep the single player rotation until Milestone 8.
 
-**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai`, `--dev-scenario=` and `--dev-god` command-line arguments apply in debug builds only. Dev values never go in `data/`. `--dev-idle-ai` makes opponents stand still, for scripted tests and scenarios. `DevScenario` sets up late-game states for play and for the UI test (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`, `scouting`, `counterscouting`).
+**Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`, and the same top bar button opens a menu with Surrender and Leave match while time runs on.
+
+**Dev overrides:** multiplayer never reads these, and neither God mode nor scenarios can reach it. A test confirms it. `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai`, `--dev-scenario=` and `--dev-god` command-line arguments apply in debug builds only. Dev values never go in `data/`. `--dev-idle-ai` makes opponents stand still, for scripted tests and scenarios. `DevScenario` sets up late-game states for play and for the UI test (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`, `scouting`, `counterscouting`).
 
 **God mode (dev tool, not a game feature):** `--dev-god` starts a match with it on, and F9 toggles it, with a "GOD MODE" badge in the top bar. F9 does nothing without the argument, while paused or after the match. It applies only to the local player of a `LocalGameSession`, so never to AI players, the sim tool or a multiplayer session, and it isn't saved in snapshots. The rules are in Core: `GodRules` is what the previews and the simulation check, so the UI, previews and handler agree. While on, upgrades and training are free with no queue limit and take no time, resources refill to capacity, and all the player's own movements arrive at once. Main Building limits, max levels, Barracks levels and every other rule still apply, and battles, loyalty and scouting are unchanged. Turning it on finishes the player's work under way. Turning it off keeps levels, troops and the current stock, and normal rules apply from then on. Nothing can turn it on in ExportRelease.
 
@@ -258,6 +292,17 @@ A range always contains the true value, and where the value sits in it is random
 
 With a target picked, the Send form shows the sender's latest intel under the village's current owner, as a range or exact value with its age, and any failure since. A village the sender's side now holds merges the Scouts in, and Scouts whose home was lost go to the nearest village, as other movements do.
 
+### 7.3 Seeing Other Players
+
+This applies in single player and multiplayer, through `Visibility`, the one place that decides. The UI, `AiView` and client views all ask it. AI decisions don't use this information yet.
+
+- **Sight:** each village sees `sightRadius` tiles (3), plus `sightPerWatchtowerLevel` (0.5) per Watchtower level, both in `data/map.json`.
+- **Sightings:** another player's movement within sight shows as a neutral marker with no route, and hovering shows only its mission. `SightedMovement` has no owner, origin, target, arrival time or troops, so the wire can't leak them. Scouts stay invisible even in sight, as 7.2 says.
+- **Attacks on your own villages** warn from any distance, without troops or loot. Their icon shows the mission, not a unit type.
+- **Public notices:** an Attack or Raid between two other players is news for everyone: "<attacking village> attacked <target village>", with names as they were at that moment. Notices appear in Reports under the News filter, and as a small mark on the target village for 15 seconds, gently pulsing and one size on screen at any zoom. Attacks on barbarian or abandoned villages aren't news.
+- **Clash effect:** crossed swords with a dark outline and a flash for 2 seconds, for your own battles and any at a village within sight.
+- Captures still show, since village owners are visible on the map. Hiding that needs fog of war (v2).
+
 ---
 
 ## 8. Nations (v1: passive bonuses only)
@@ -280,6 +325,8 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 ---
 
 ## 9. Map and Views
+
+The map also shows sightings, news marks and clash effects (7.3).
 
 - Small tile grid. Each player starts with one village (their capital).
 - Travel time = distance / slowest unit speed in the group. Troops travel in straight lines across any terrain, since there is no pathfinding.
@@ -384,7 +431,7 @@ Players must be able to manage their villages from both views.
 
 ### 11.4 Win Conditions
 - Last player standing wins, and the match ends at that moment. Barbarians don't count.
-- **Surrender:** any player still in the match can send `SurrenderCommand`, from the pause menu with a confirmation. Their villages become barbarian villages with no tier: buildings, troops and resources stay, loyalty is 100, and queues are cleared. All their movements are removed, so troops on the way are lost, while other players' movements aimed at those villages carry on. These abandoned villages don't regenerate, can be raided, scouted and captured, and a capture counts as normal. The player is out (Defeat), and if one player remains, the match ends at once. Multiplayer has no pause, so the button must move to a menu in the Multiplayer milestone.
+- **Surrender:** any player still in the match can send `SurrenderCommand`, from the pause menu in single player or the top bar menu in multiplayer, with a confirmation. Their villages become barbarian villages with no tier: buildings, troops and resources stay, loyalty is 100, and queues are cleared. All their movements are removed, so troops on the way are lost, while other players' movements aimed at those villages carry on. These abandoned villages don't regenerate, can be raided, scouted and captured, and a capture counts as normal. The player is out (Defeat), and if one player remains, the match ends at once.
 - If time runs out (timed matches only): highest score among surviving players wins (villages + population + captured villages), with weights in `data/scoring.json`. A tie is a draw between the tied leaders.
 - Population is the sum of a village's building levels, weighted by data.
 - A village counts as a capture at most once per player, so trading a village back and forth can't farm score. Barbarian villages count, and captures are kept if the village is lost again.
@@ -399,7 +446,7 @@ Players must be able to manage their villages from both views.
 **v2 (later)**
 - Nation-specific units (e.g. Valdren: Shield Guard, Armoured Rider; Karuk: Axe Warrior, Wolf Rider; Solari: Archer, Wind Cavalry).
 - Fog of war. v1 has Scouts and the Watchtower (7.2), but the whole map stays visible.
-- Internet play without port forwarding (e.g. GodotSteam).
+- Internet play without port forwarding or a VPN (e.g. GodotSteam). Until then, play over LAN, direct IP or Tailscale.
 
 ---
 
@@ -418,7 +465,7 @@ Players must be able to manage their villages from both views.
 6.7b. **God mode** for testing.
 6.8. **Localisation:** English and Turkish, and village naming.
 6.9. **Village view visuals:** rendered 2.5D sprites, three stages per building, a painted ground, growth from houses and scenery, and the Wall ring.
-7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
+7. **Multiplayer:** LAN and direct IP for up to 4 players, with a lobby, filtered state per player, AI takeover, and sight, sightings, news and clash effects (7.3) in every match.
 8. **Nations:** passive bonuses.
 9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).
    Parked from 6.9:

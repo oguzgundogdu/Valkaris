@@ -11,11 +11,13 @@ Build a village, train troops, raid barbarians, found and capture villages, and 
 - Timed or Unlimited matches, with surrender for when a position is lost
 - Scouts and a Watchtower: scouting is a contest, and the margin decides whether you get a rough range, exact numbers or the whole village
 - Resource transfers between your own villages through a Marketplace
+- Multiplayer for up to 4 players over LAN, direct IP or Tailscale, with AI in any seat and AI taking over for anyone who disconnects
+- Sight around your villages, public news of battles elsewhere, and clash effects
 - English and Turkish, and villages you can name and rename
 - Rule-based AI opponents (Easy, Normal, Hard) that play by the same rules and see only what a player sees
 - A headless AI-vs-AI simulation tool for balance work
 
-Multiplayer and nation bonuses are planned. See [GDD.md](GDD.md) for the full design and the milestone list.
+Nation bonuses are planned. See [GDD.md](GDD.md) for the full design and the milestone list.
 
 ## Requirements
 
@@ -34,6 +36,26 @@ All balance values assume the default 1× speed. Debug builds also accept `--dev
 godot-mono --path . -- --dev-speed=5
 ```
 
+## Play together
+
+One player hosts and the others join. Everyone needs the same version of the game with the same `data/` files, or the join is refused with a message saying so. The host's game runs the match, so it ends if the host leaves.
+
+**On the same network (LAN):**
+
+1. Host: choose **Host a LAN game**, enter a name, and continue. The lobby shows the addresses to share.
+2. Others: choose **Join a LAN game**, enter a name and the host's address, such as `192.168.1.20`.
+3. Host: set the seats and settings, then start.
+
+**Over the internet with [Tailscale](https://tailscale.com):** everyone installs Tailscale and joins the same tailnet. The host's lobby lists its Tailscale address (it starts with `100.`), and the others join with that. No port forwarding is needed.
+
+**Over the internet by direct IP:** the host forwards UDP port 24565 on their router to their computer, and the others join with the host's public IP.
+
+**Firewall:** the game uses UDP port 24565. If nobody can reach the host, allow the game through its firewall. macOS and Windows usually ask the first time you host. Hosting always uses 24565, and if a router forwards another port to it, join with `address:port`.
+
+To try it on one computer, run `godot-mono --path .` in two terminals, host in one window, and join `127.0.0.1` in the other.
+
+These have only been tested on one Mac over loopback so far, not on a real LAN, over Tailscale or on Windows.
+
 ## Test
 
 ```sh
@@ -42,6 +64,8 @@ VALKARIS_TEST_CULTURE=tr-TR dotnet test Valkaris.sln             # the same, und
 godot-mono --headless --build-solutions --quit                   # build the game
 godot-mono --headless --path . res://scenes/dev/UiTest.tscn      # UI test, prints [uitest] PASS
 godot-mono --headless --path . res://scenes/dev/UiTest.tscn -- --dev-language=tr --dev-culture=tr-TR   # in Turkish
+tools/nettest.sh                                                 # real processes over ENet on this machine
+tools/gate.sh                                                    # all of the above, from a clean build
 ```
 
 ## Simulate AI matches
