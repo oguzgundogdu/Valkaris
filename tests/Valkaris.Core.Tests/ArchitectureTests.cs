@@ -23,6 +23,70 @@ public class ArchitectureTests
         Assert.Contains("""<Compile Remove="Dev/**" Condition="'$(Configuration)' == 'ExportRelease'" />""", project);
     }
 
+    private static string RepositoryRoot()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root.FullName, "Valkaris.sln")))
+            root = root.Parent!;
+        return root.FullName;
+    }
+
+    /// <summary>The part of a file outside #if VALKARIS_DEV blocks, which is what ExportRelease compiles.</summary>
+    private static string ReleaseText(string path)
+    {
+        var kept = new List<string>();
+        var inDev = false;
+        foreach (var line in File.ReadAllLines(path))
+        {
+            if (line.Trim() == "#if VALKARIS_DEV")
+                inDev = true;
+            else if (inDev && line.Trim() is "#else" or "#endif")
+                inDev = false;
+            else if (!inDev)
+                kept.Add(line);
+        }
+        return string.Join("\n", kept);
+    }
+
+    [Fact]
+    public void GodModeIsLeftOutOfReleaseBuilds()
+    {
+        var root = RepositoryRoot();
+        var game = File.ReadAllText(Path.Combine(root, "Valkaris.csproj"));
+        Assert.Contains("""<Compile Remove="src/Presentation/Dev/**" Condition="'$(Configuration)' == 'ExportRelease'" />""", game);
+        Assert.True(File.Exists(Path.Combine(root, "src", "Presentation", "Dev", "GodModeControl.cs")));
+
+        var sources = Directory.GetFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}Dev{Path.DirectorySeparatorChar}"));
+        foreach (var source in sources)
+        {
+            var text = ReleaseText(source);
+            Assert.DoesNotContain("GodPlayerId", text);
+            Assert.DoesNotContain("SetGodMode", text);
+            Assert.DoesNotContain("GodModeControl", text);
+        }
+    }
+
+    [Fact]
+    public void OnlyTheLocalSessionCanTurnOnGodMode()
+    {
+        var names = typeof(Valkaris.Core.Hosting.IGameSession).GetMembers().Select(m => m.Name);
+
+        Assert.DoesNotContain(names, n => n.Contains("God", StringComparison.Ordinal));
+        Assert.DoesNotContain(typeof(GameState).GetMembers(), m => m.Name.Contains("God", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TheAiAndTheSimToolNeverTouchGodMode()
+    {
+        var root = RepositoryRoot();
+        var sources = new[] { Path.Combine(root, "src", "Valkaris.Ai"), Path.Combine(root, "tools", "Valkaris.Sim") }
+            .SelectMany(folder => Directory.GetFiles(folder, "*.cs", SearchOption.AllDirectories))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
+
+        Assert.All(sources, source => Assert.DoesNotContain("God", File.ReadAllText(source)));
+    }
+
     [Fact]
     public void ModelClassesHaveNoPublicSetters()
     {

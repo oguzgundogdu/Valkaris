@@ -27,7 +27,7 @@ Multiplayer and nation bonuses are planned. See [GDD.md](GDD.md) for the full de
 godot-mono --path .
 ```
 
-All balance values assume the default 1× speed. Debug builds also accept `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai` and `--dev-scenario=`, for example:
+All balance values assume the default 1× speed. Debug builds also accept `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai`, `--dev-scenario=` and `--dev-god` (F9 toggles it), for example:
 
 ```sh
 godot-mono --path . -- --dev-speed=5

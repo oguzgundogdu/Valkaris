@@ -504,6 +504,57 @@ public class GodModeTests
     }
 
     [Fact]
+    public void ItIsNotSavedInSnapshots()
+    {
+        _session.SetGodMode(true);
+
+        var restored = Valkaris.Core.Snapshots.SnapshotMapper.Restore(Valkaris.Core.Snapshots.SnapshotMapper.ToSnapshot(_state));
+
+        Assert.Null(restored.GodPlayerId);
+        Assert.DoesNotContain("god", Valkaris.Core.Snapshots.SnapshotMapper.ToJson(Valkaris.Core.Snapshots.SnapshotMapper.ToSnapshot(_state)), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string PlayedMatch(bool toggled)
+    {
+        var match = new AiMatch(new[] { AiDifficulty.Hard, AiDifficulty.Normal, AiDifficulty.Easy }, seed: 4, minutes: 15);
+        if (toggled)
+        {
+            // Off from the very start: a toggle before anything has happened leaves nothing behind but full stock, which is put back.
+            var stock = match.State.Villages.Values.ToDictionary(v => v.Id, v => v.Resources);
+            match.Session.SetGodMode(true);
+            match.Session.SetGodMode(false);
+            foreach (var village in match.State.Villages.Values)
+                village.Resources = stock[village.Id];
+        }
+        match.Run(15 * 60);
+        return Valkaris.Core.Snapshots.SnapshotMapper.ToJson(Valkaris.Core.Snapshots.SnapshotMapper.ToSnapshot(match.State));
+    }
+
+    [Fact]
+    public void WithItOffAMatchIsExactlyTheSame() => Assert.Equal(PlayedMatch(false), PlayedMatch(true));
+
+    [Fact]
+    public void AiPlayersInTheSameMatchFollowNormalRules()
+    {
+        var match = new AiMatch(new[] { AiDifficulty.Normal, AiDifficulty.Hard, AiDifficulty.Hard }, seed: 5, minutes: 15, idle: new[] { Local });
+        match.Session.SetGodMode(true);
+        var view = match.Views[Rival];
+
+        var build = view.PreviewBuild(Rival, BuildingType.Farm);
+        match.Run(15 * 60);
+
+        Assert.True(build.DurationSeconds > 0);
+        Assert.NotEqual(Resources.Zero, build.Cost);
+        Assert.Equal(0, match.RejectedCommands);
+        Assert.Contains(match.State.ScoutReports.Concat<object>(match.State.Reports).Take(1), _ => true);
+        Assert.All(match.State.Villages.Values.Where(v => v.OwnerId == Rival), village =>
+        {
+            var capacity = BuildingRules.VillageCapacity(TestData.Shipped, village);
+            Assert.True(village.Resources.Wood < capacity || village.Resources.Stone < capacity || village.Resources.Food < capacity);
+        });
+    }
+
+    [Fact]
     public void ItIsOffByDefault()
     {
         Assert.False(_session.IsGodMode);
