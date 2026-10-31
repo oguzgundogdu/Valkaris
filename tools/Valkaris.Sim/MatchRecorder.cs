@@ -19,6 +19,7 @@ public sealed class MatchRecorder
     private readonly Dictionary<int, double> _firstCapture = new();
     private readonly Dictionary<string, int> _rejections = new();
     private readonly Dictionary<int, double> _defenceSpent = new();
+    private readonly Dictionary<int, Dictionary<UnitType, double>> _unitSpending = new();
     private readonly Dictionary<int, (double Wall, double Home)> _atMid = new();
     private double _lastSample;
     private double _samples;
@@ -52,6 +53,9 @@ public sealed class MatchRecorder
 
     private void OnEvent(GameEvent gameEvent)
     {
+        if (gameEvent is TroopsTrained batch)
+            AddUnitSpending(_state.Villages[batch.VillageId].OwnerId, batch.Unit, batch.Count);
+
         switch (gameEvent)
         {
             case BuildingCompleted { Building: BuildingType.Wall } wall:
@@ -97,6 +101,20 @@ public sealed class MatchRecorder
                 break;
         }
     }
+
+    /// <summary>Settlers aren't military, so they stay out of the unit mix.</summary>
+    private void AddUnitSpending(int playerId, UnitType unit, int count)
+    {
+        if (unit == UnitType.Settler)
+            return;
+
+        if (!_unitSpending.TryGetValue(playerId, out var spending))
+            _unitSpending[playerId] = spending = new Dictionary<UnitType, double>();
+        spending[unit] = spending.GetValueOrDefault(unit) + Total(_data.Units.Units[unit].Cost) * count;
+    }
+
+    private double ValueOf(IReadOnlyDictionary<UnitType, int> troops) =>
+        troops.Sum(t => Total(_data.Units.Units[t.Key].Cost) * t.Value);
 
     private void AddDefenceSpent(int playerId, Resources cost) =>
         _defenceSpent[playerId] = _defenceSpent.GetValueOrDefault(playerId) + Total(cost);
@@ -182,7 +200,8 @@ public sealed class MatchRecorder
                     hasMid ? atMid.Home : null,
                     atEnd.Home,
                     sent.Count(r => r.AttackerWon)),
-                ScoutingOf(player, sent));
+                ScoutingOf(player, sent),
+                _unitSpending.TryGetValue(player.Id, out var spending) ? spending.OrderBy(s => s.Key).ToDictionary(s => s.Key, s => s.Value) : new Dictionary<UnitType, double>());
         }).ToList();
 
         return new MatchResult(
@@ -207,7 +226,9 @@ public sealed class MatchRecorder
             _moved,
             _lostInTransfer,
             _commands,
-            _rejections.OrderBy(r => r.Key).ToDictionary(r => r.Key, r => r.Value));
+            _rejections.OrderBy(r => r.Key).ToDictionary(r => r.Key, r => r.Value),
+            battles.Where(IsAttackOnPlayer).Sum(r => ValueOf(r.AttackerLost)),
+            battles.Where(IsAttackOnPlayer).Sum(r => ValueOf(r.DefenderLost)));
     }
 
     private SeatScouting ScoutingOf(Player player, IReadOnlyList<BattleReport> attacks)

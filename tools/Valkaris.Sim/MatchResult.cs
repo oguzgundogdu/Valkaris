@@ -31,7 +31,8 @@ public sealed record SeatResult(
     int AttacksReceived,
     IReadOnlyDictionary<int, int> AttacksAtPlayers,
     SeatDefence? Defence = null,
-    SeatScouting? Scouting = null);
+    SeatScouting? Scouting = null,
+    IReadOnlyDictionary<UnitType, double>? UnitSpending = null);
 
 /// <summary>Everything recorded about one match. Only numbers from the match, so the same seed always gives the same record.</summary>
 public sealed record MatchResult(
@@ -56,4 +57,6 @@ public sealed record MatchResult(
     double ResourcesMoved,
     double ResourcesLostInTransfer,
     int Commands,
-    IReadOnlyDictionary<string, int> Rejections);
+    IReadOnlyDictionary<string, int> Rejections,
+    double AttackerResourcesLost = 0,
+    double DefenderResourcesLost = 0);

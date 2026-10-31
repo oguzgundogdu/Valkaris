@@ -263,6 +263,59 @@ public class SimToolTests
     }
 
     [Fact]
+    public void ResourcesLostAndDestroyedAreCountedOnPlayersOnly()
+    {
+        var match = new Recorded();
+        var camp = match.State.Villages.Values.First(v => v.IsBarbarian);
+        match.State.Villages[1].AddTroops(UnitType.Cavalry, 40);
+        match.Send(1, new SendTroopsCommand(1, 2, MovementType.Attack, Force(UnitType.Cavalry, 20)));
+        match.Send(1, new SendTroopsCommand(1, camp.Id, MovementType.Attack, Force(UnitType.Cavalry, 20)));
+
+        var result = match.Finish();
+
+        var units = TestData.Shipped.Units.Units;
+        double Value(IReadOnlyDictionary<UnitType, int> troops) => troops.Sum(t => t.Value * (units[t.Key].Cost.Wood + units[t.Key].Cost.Stone + units[t.Key].Cost.Food));
+        var battle = match.State.Reports.Single(r => r.DefenderId == 2);
+        Assert.Equal(Value(battle.AttackerLost), result.AttackerResourcesLost, 6);
+        Assert.Equal(Value(battle.DefenderLost), result.DefenderResourcesLost, 6);
+    }
+
+    [Fact]
+    public void TheExchangeRatioIsReportedForBothSides()
+    {
+        MatchResult Match(double lost, double destroyed) => new(1, MatchEndReason.TimeUp, 1, false, Array.Empty<SeatResult>(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, new Dictionary<string, int>(), lost, destroyed);
+
+        var report = SimReport.Build(new[] { Match(100, 50), Match(200, 100) }, Array.Empty<MatchFailure>());
+
+        Assert.Equal(2, report.AttackerLostPerDestroyed, 6);
+        Assert.Equal(0.5, report.DefenderLostPerDestroyed, 6);
+    }
+
+    [Fact]
+    public void TheUnitMixIsAShareOfMilitarySpending()
+    {
+        var match = new Recorded();
+        var village = match.State.Villages[1];
+        village.SetBuildingLevel(BuildingType.Barracks, 5);
+        village.SetBuildingLevel(BuildingType.Warehouse, 8);
+        village.Resources = new Resources(5000, 5000, 5000);
+        match.Send(1, new TrainCommand(1, UnitType.Spearman, 2));
+        match.Send(1, new TrainCommand(1, UnitType.Settler, 1));
+
+        var result = match.Finish();
+        var report = SimReport.Build(new[] { result with { Seats = new[] { result.Seats[0] } } }, Array.Empty<MatchFailure>());
+
+        var cost = TestData.Shipped.Units.Units[UnitType.Spearman].Cost;
+        Assert.Equal(2 * (cost.Wood + cost.Stone + cost.Food), result.Seats[0].UnitSpending![UnitType.Spearman], 6);
+        Assert.False(result.Seats[0].UnitSpending!.ContainsKey(UnitType.Settler));
+        Assert.Equal(1, report.ByDifficulty.Single().UnitMix[UnitType.Spearman], 6);
+    }
+
+    [Fact]
+    public void TheSpreadIsAlsoGivenAsAMultipleOfEven() =>
+        Assert.Equal(2, new AttackSpread(1, 0.5, 0.25, 0).MultipleOfEven, 6);
+
+    [Fact]
     public void RejectedCommandsAreCountedByReason()
     {
         var match = new Recorded();

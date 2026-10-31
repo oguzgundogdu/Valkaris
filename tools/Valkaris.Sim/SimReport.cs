@@ -43,13 +43,18 @@ public sealed record DifficultyStats(
     Spread? FirstCapture,
     double CaptureShare,
     DefenceStats Defence,
-    ScoutingStats Scouting);
+    ScoutingStats Scouting,
+    IReadOnlyDictionary<UnitType, double> UnitMix);
 
 public sealed record AttackSpread(
     double MeanAttacksPerMatch,
     double MostAttackedShare,
     double EvenShare,
-    double MatchesWithOneTargetOverTwiceEven);
+    double MatchesWithOneTargetOverTwiceEven)
+{
+    /// <summary>The most-attacked player's share, as a multiple of an even split.</summary>
+    public double MultipleOfEven => EvenShare <= 0 ? 0 : MostAttackedShare / EvenShare;
+}
 
 /// <summary>The summary of a run. It holds only match results, so it is the same at any thread count.</summary>
 public sealed record SimReport(
@@ -79,6 +84,9 @@ public sealed record SimReport(
     Spread ResourcesMoved,
     Spread ResourcesLostInTransfer,
     AttackSpread Attacks,
+    double AttackerLostPerDestroyed,
+    double DefenderLostPerDestroyed,
+    double EliminationShareOfMatches,
     int Commands,
     int Rejected,
     double RejectedShare,
@@ -141,6 +149,9 @@ public sealed record SimReport(
             Of(r => r.ResourcesMoved),
             Of(r => r.ResourcesLostInTransfer),
             AttacksFrom(results),
+            Safe(results.Sum(r => r.AttackerResourcesLost), results.Sum(r => r.DefenderResourcesLost)),
+            Safe(results.Sum(r => r.DefenderResourcesLost), results.Sum(r => r.AttackerResourcesLost)),
+            Share(r => r.Eliminations > 0),
             commands,
             rejected,
             Safe(rejected, commands),
@@ -175,7 +186,16 @@ public sealed record SimReport(
             seats.Count == 0 ? null : SpreadOf(seats.Select(s => s.Seat.Score)),
             barracks, barracksShare, settler, settlerShare, lord, lordShare, founded, foundedShare, capture, captureShare,
             DefenceOf(seats.Select(s => s.Seat).ToList()),
-            ScoutingOf(seats.Select(s => s.Seat).ToList()));
+            ScoutingOf(seats.Select(s => s.Seat).ToList()),
+            UnitMixOf(seats.Select(s => s.Seat).ToList()));
+    }
+
+    /// <summary>Each unit's share of the resources spent on military units.</summary>
+    private static IReadOnlyDictionary<UnitType, double> UnitMixOf(IReadOnlyList<SeatResult> seats)
+    {
+        var spending = seats.Where(s => s.UnitSpending is not null).SelectMany(s => s.UnitSpending!).ToList();
+        var total = spending.Sum(s => s.Value);
+        return spending.GroupBy(s => s.Key).OrderBy(g => g.Key).ToDictionary(g => g.Key, g => Safe(g.Sum(s => s.Value), total));
     }
 
     private static ScoutingStats ScoutingOf(IReadOnlyList<SeatResult> seats)
@@ -282,6 +302,7 @@ public sealed record SimReport(
             Line("Attacks on players won", Pct(d.Defence.AttackWinShare));
             Line("Scouting per seat", $"{d.Scouting.SentPerSeat:0.#} sent, {Pct(d.Scouting.SuccessShare)} succeed, {d.Scouting.TroopsLostPerSeat:0.#} troops lost");
             Line("Attacks with fresh intel", Pct(d.Scouting.AttacksWithIntelShare));
+            Line("Unit mix", string.Join("  ", d.UnitMix.Select(u => $"{u.Key} {Pct(u.Value)}")));
         }
         text.AppendLine("Economy");
         Line("Resources at the cap", Pct(AtCapShare));
@@ -295,6 +316,8 @@ public sealed record SimReport(
         Line("Player captures", Num(PlayerCaptures));
         Line("Capital captures", Num(CapitalCaptures));
         Line("Eliminations", Num(Eliminations));
+        Line("Matches with an elimination", Pct(EliminationShareOfMatches));
+        Line("Lost per resource destroyed", $"attackers {AttackerLostPerDestroyed:0.00}, defenders {DefenderLostPerDestroyed:0.00}");
         text.AppendLine("Expansion and transfers");
         Line("Matches with a founded village", Pct(FoundedShareOfMatches));
         Line("Matches with a capture", Pct(CaptureShareOfMatches));
@@ -306,6 +329,7 @@ public sealed record SimReport(
         text.AppendLine("Attack spread");
         Line("Attacks on players per match", $"{Attacks.MeanAttacksPerMatch:0.#}");
         Line("Most-attacked player's share", $"{Pct(Attacks.MostAttackedShare)} (even split {Pct(Attacks.EvenShare)})");
+        Line("Multiple of an even share", $"{Attacks.MultipleOfEven:0.00}x");
         Line("One target over twice even", Pct(Attacks.MatchesWithOneTargetOverTwiceEven));
         text.AppendLine("Health");
         Line("Commands", $"{Commands}, rejected {Rejected} ({Pct(RejectedShare)})");
