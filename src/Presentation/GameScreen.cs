@@ -41,6 +41,8 @@ public partial class GameScreen : Control
     private Label _villageInfo = null!;
     private RenamePanel _renamePanel = null!;
     private Tween? _viewTween;
+    private bool _menuOpen;
+    private bool _hostLost;
 
 #if VALKARIS_DEV
     /// <summary>How long this screen's update took on the last frame, for the frame report.</summary>
@@ -132,11 +134,14 @@ public partial class GameScreen : Control
         };
         _sendPanel.MapRequested += () => ShowView(MainView.World);
 
-        _pauseOverlay.Configure(L.T("overlay.paused.title"), L.T("overlay.paused.message"), L.T("overlay.resume"), L.T("overlay.leave"));
+        if (Session.CanPause)
+            _pauseOverlay.Configure(L.T("overlay.paused.title"), L.T("overlay.paused.message"), L.T("overlay.resume"), L.T("overlay.leave"));
+        else
+            _pauseOverlay.Configure(L.T("overlay.menu.title"), L.T("overlay.menu.message"), L.T("overlay.close"), L.T("overlay.leave"));
         _pauseOverlay.ActionPressed += TogglePause;
         _pauseOverlay.SecondaryPressed += () => _confirmingLeave = true;
 
-        _leaveOverlay.Configure(L.T("overlay.leave.title"), L.T("overlay.leave.message"), L.T("overlay.leave"), L.T("overlay.keep_playing"));
+        _leaveOverlay.Configure(L.T("overlay.leave.title"), L.T(LeaveMessageKey()), L.T("overlay.leave"), L.T("overlay.keep_playing"));
         _leaveOverlay.ActionPressed += () => ExitRequested?.Invoke();
         _leaveOverlay.SecondaryPressed += () => _confirmingLeave = false;
 
@@ -164,6 +169,8 @@ public partial class GameScreen : Control
         _tabs.SetTabTitle((int)SideTab.Send, L.T("tab.send"));
 
         Session.EventRaised += OnGameEvent;
+        if (Session is ClientGameSession client)
+            client.ConnectionLost += OnHostLost;
         Session.CommandRejected += rejection => _toast.ShowMessage(UiContent.RejectionText(rejection));
     }
 
@@ -183,10 +190,10 @@ public partial class GameScreen : Control
             _worldMap.Refresh(Session, village);
         RefreshActiveTab(village);
 
-        _pauseOverlay.Visible = Session.IsPaused && !_confirmingLeave && !_confirmingSurrender;
+        _pauseOverlay.Visible = (Session.IsPaused || _menuOpen) && !_confirmingLeave && !_confirmingSurrender && !_hostLost;
         _pauseOverlay.SetTertiary(Session.State.Players[Session.LocalPlayerId].IsEliminated ? null : L.T("overlay.surrender"));
-        _leaveOverlay.Visible = _confirmingLeave;
-        _surrenderOverlay.Visible = _confirmingSurrender;
+        _leaveOverlay.Visible = _confirmingLeave || _hostLost;
+        _surrenderOverlay.Visible = _confirmingSurrender && !_hostLost;
         RefreshDialogs();
 #if VALKARIS_DEV
         LastFrameSeconds = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds;
@@ -392,12 +399,38 @@ public partial class GameScreen : Control
     private void Surrender()
     {
         _confirmingSurrender = false;
-        Session.SetPaused(false);
+        _menuOpen = false;
+        if (Session.CanPause)
+            Session.SetPaused(false);
         Session.Send(new SurrenderCommand());
+    }
+
+    private string LeaveMessageKey() => Session switch
+    {
+        HostGameSession => "overlay.leave.message_host",
+        ClientGameSession => "overlay.leave.message_guest",
+        _ => "overlay.leave.message",
+    };
+
+    /// <summary>Once the match has ended the results are still worth reading, so only a match under way is cut short.</summary>
+    private void OnHostLost()
+    {
+        if (Session.State.IsMatchOver)
+            return;
+
+        _hostLost = true;
+        _leaveOverlay.Configure(L.T("overlay.host_left.title"), L.T("overlay.host_left.message"), L.T("overlay.host_left.back"));
     }
 
     private void TogglePause()
     {
+        if (!Session.CanPause)
+        {
+            if (!Session.State.IsMatchOver && !_confirmingLeave && !_confirmingSurrender)
+                _menuOpen = !_menuOpen;
+            return;
+        }
+
         if (Session.CanPause && !Session.State.IsMatchOver && !_confirmingLeave && !_confirmingSurrender)
             Session.SetPaused(!Session.IsPaused);
     }
@@ -455,6 +488,9 @@ public partial class GameScreen : Control
                 break;
             case PlayerSurrendered surrendered when surrendered.PlayerId != Session.LocalPlayerId:
                 _toast.ShowMessage(L.T("toast.surrendered", ("owner", UiContent.OwnerName(Session, surrendered.PlayerId))));
+                break;
+            case PlayerDisconnected disconnected when disconnected.PlayerId != Session.LocalPlayerId:
+                _toast.ShowMessage(L.T("toast.disconnected", ("owner", UiContent.OwnerName(Session, disconnected.PlayerId))));
                 break;
             case PlayerEliminated eliminated when eliminated.PlayerId != Session.LocalPlayerId:
                 _toast.ShowMessage(L.T("toast.eliminated", ("owner", UiContent.OwnerName(Session, eliminated.PlayerId))));

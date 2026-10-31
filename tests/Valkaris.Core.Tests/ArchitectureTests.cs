@@ -12,6 +12,28 @@ public class ArchitectureTests
         Assert.DoesNotContain(references, r => r.Name!.Contains("Godot", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Theory]
+    [InlineData("ConnectScreen.cs")]
+    [InlineData("LobbyScreen.cs")]
+    [InlineData("EnetNetwork.cs")]
+    public void TheMultiplayerPathNeverReadsDevOptions(string file)
+    {
+        Assert.DoesNotContain("DevOptions", File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "Presentation", file)));
+    }
+
+    [Fact]
+    public void OnlyTheSinglePlayerStartAppliesDevOptions()
+    {
+        var main = File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "Presentation", "Main.cs"));
+        var from = main.IndexOf("private void ShowConnect", StringComparison.Ordinal);
+        var to = main.IndexOf("private void StartMatch", StringComparison.Ordinal);
+
+        Assert.True(from > 0 && to > from);
+        Assert.DoesNotContain("devOptions", main[from..to]);
+        Assert.DoesNotContain("DevOptions.Parse", main[from..to]);
+        Assert.DoesNotContain("GodMode", main[from..to]);
+    }
+
     [Fact]
     public void DevScenariosAreLeftOutOfReleaseBuilds()
     {

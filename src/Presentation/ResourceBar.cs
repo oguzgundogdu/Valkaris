@@ -110,7 +110,11 @@ public partial class ResourceBar : PanelContainer
         _clock.Text = Format.Time(session.State.Settings.MatchDurationSeconds is { } duration
             ? duration - session.State.ElapsedTime
             : session.State.ElapsedTime);
-        _pause.Visible = session.CanPause;
+        if (!session.CanPause)
+        {
+            _pause.Text = L.T("bar.menu");
+            _pause.TooltipText = L.T("bar.menu_tip");
+        }
 
         var hostile = session.State.Movements
             .Where(m => m.OwnerId != session.LocalPlayerId

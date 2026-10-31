@@ -1037,3 +1037,36 @@ msgstr "The host can't accept that village name."
 
 msgid "join.removed_by_host"
 msgstr "The host removed you from the lobby."
+
+msgid "bar.menu"
+msgstr "Menu"
+
+msgid "bar.menu_tip"
+msgstr "Surrender or leave. The match keeps running. (P)"
+
+msgid "overlay.menu.title"
+msgstr "Menu"
+
+msgid "overlay.menu.message"
+msgstr "The match keeps running while this is open."
+
+msgid "overlay.close"
+msgstr "Close"
+
+msgid "overlay.leave.message_host"
+msgstr "You are the host, so leaving ends the match for everyone."
+
+msgid "overlay.leave.message_guest"
+msgstr "An AI takes over your villages, and you can't rejoin this match."
+
+msgid "overlay.host_left.title"
+msgstr "Match ended"
+
+msgid "overlay.host_left.message"
+msgstr "The host left. The match has ended."
+
+msgid "overlay.host_left.back"
+msgstr "Back to start"
+
+msgid "toast.disconnected"
+msgstr "{owner} disconnected. An AI plays on in their place."

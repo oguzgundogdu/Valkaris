@@ -1034,3 +1034,36 @@ msgstr "Kurucu bu köy adını kabul edemiyor."
 
 msgid "join.removed_by_host"
 msgstr "Kurucu seni lobiden çıkardı."
+
+msgid "bar.menu"
+msgstr "Menü"
+
+msgid "bar.menu_tip"
+msgstr "Teslim ol veya ayrıl. Oyun devam eder. (P)"
+
+msgid "overlay.menu.title"
+msgstr "Menü"
+
+msgid "overlay.menu.message"
+msgstr "Bu ekran açıkken oyun devam eder."
+
+msgid "overlay.close"
+msgstr "Kapat"
+
+msgid "overlay.leave.message_host"
+msgstr "Kurucu sensin, ayrılırsan oyun herkes için biter."
+
+msgid "overlay.leave.message_guest"
+msgstr "Köylerini yapay zekâ devralır ve bu oyuna geri dönemezsin."
+
+msgid "overlay.host_left.title"
+msgstr "Oyun bitti"
+
+msgid "overlay.host_left.message"
+msgstr "Kurucu ayrıldı. Oyun bitti."
+
+msgid "overlay.host_left.back"
+msgstr "Başlangıca dön"
+
+msgid "toast.disconnected"
+msgstr "{owner} bağlantısı koptu. Yerine yapay zekâ oynuyor."

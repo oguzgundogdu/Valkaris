@@ -330,6 +330,8 @@ public partial class UiTest : Control
 
         await TestStartVillageName();
         await TestLobbyScreens();
+        await TestGuestMatch();
+        await TestHostMatch();
         var start = Find<StartScreen>();
         await Shot("start");
 
@@ -631,6 +633,122 @@ public partial class UiTest : Control
         Expect(Find<ConnectScreen>().GetNode<Label>("%Reason").Text == L.T("join.data_mismatch"), "Different data is refused with a reason");
         Press(Find<ConnectScreen>().GetNode<Button>("%Back"));
         await Frames();
+    }
+
+    private async Task TestGuestMatch()
+    {
+        var data = GameData.Load(new GodotDataSource());
+        var network = new MemoryNetwork();
+        var lobby = new LobbyHost(network.Host, data, Handshake.DataHash(new GodotDataSource()), "Oğuz", null);
+        var connection = network.Connect();
+        _main.OpenClientLobby(connection, "Ayla", null);
+        await Frames();
+        lobby.Poll();
+        await Frames();
+        var host = lobby.Start(5, (session, id) => throw new InvalidOperationException());
+        await Frames();
+
+        var game = Find<GameScreen>();
+        var session = (ClientGameSession)game.Session;
+        async Task Steps(double seconds = 0.5)
+        {
+            host.Tick(seconds);
+            await Frames();
+        }
+
+        await Steps();
+        var menu = Find<ResourceBar>().GetNode<Button>("%Pause");
+        var overlay = game.GetNode<Overlay>("%PauseOverlay");
+        Expect(!session.CanPause && menu.Visible && menu.Text == L.T("bar.menu"), "Multiplayer offers a menu in place of pause");
+        Press(menu);
+        await Frames();
+        var before = host.State.ElapsedTime;
+        await Steps();
+        Expect(overlay.Visible && host.State.ElapsedTime > before && !session.IsPaused, "The match runs on behind the menu");
+        await Shot("mp_menu");
+        Press(overlay.GetNode<Button>("%Action"));
+        await Frames();
+        Expect(!overlay.Visible, "The menu closes");
+
+        var villageId = game.CurrentVillageId!.Value;
+        Expect(session.State.Villages[villageId].OwnerId == session.LocalPlayerId, "A guest starts in their own village");
+        var other = session.State.Villages.Values.First(v => v.OwnerId == 1);
+        Expect(session.State.Villages[other.Id].Troops.Values.Sum() == 0, "A guest's state holds no rival troops");
+
+        // Everything a guest can look at must survive the state being replaced under it.
+        session.Send(new BuildCommand(villageId, BuildingType.Farm));
+        await Steps();
+        await Steps();
+        Expect(session.State.Villages[villageId].BuildQueue.Count == 1, "A guest's command reaches the host and comes back");
+        foreach (var tab in Enum.GetValues<GameScreen.SideTab>())
+        {
+            game.ShowTab(tab);
+            await Steps();
+        }
+        game.ShowView(GameScreen.MainView.World);
+        await Steps();
+        await Shot("mp_map");
+        game.ShowView(GameScreen.MainView.Village);
+        game.ShowTab(GameScreen.SideTab.Village);
+
+        host.Stop();
+        await Frames();
+        var leave = game.GetNode<Overlay>("%LeaveOverlay");
+        Expect(leave.Visible && leave.GetNode<Label>("%Message").Text == L.T("overlay.host_left.message"), "A guest is told when the host leaves");
+        await Shot("mp_host_left");
+        Press(leave.GetNode<Button>("%Action"));
+        await Frames();
+        Expect(Find<StartScreen>() is not null, "The message leads back to the start");
+    }
+
+    private async Task TestHostMatch()
+    {
+        var data = GameData.Load(new GodotDataSource());
+        var hash = Handshake.DataHash(new GodotDataSource());
+        var network = new MemoryNetwork();
+        _main.OpenHostLobby(network.Host, "Oğuz", null, Array.Empty<string>(), Handshake.DefaultPort);
+        await Frames();
+        var lobby = Find<LobbyScreen>();
+        var guests = new[] { "Ayla", "Deniz" }.Select(name => new LobbyClient(network.Connect(), data, hash, name, null)).ToList();
+        var sessions = new List<ClientGameSession>();
+        foreach (var guest in guests)
+        {
+            guest.MatchStarted += sessions.Add;
+            guest.Poll();
+        }
+        await Frames();
+        Press(lobby.GetNode<Button>("%Start"));
+        await Frames();
+        foreach (var guest in guests)
+            guest.Poll();
+
+        var game = Find<GameScreen>();
+        var host = (HostGameSession)game.Session;
+        Expect(sessions.Count == 2 && !host.CanPause, "The match starts for everyone, and can't be paused");
+        Expect(host.State.Settings.SpeedMultiplier == data.Game.SpeedMultipliers[0], "Dev settings don't reach a multiplayer match");
+        Expect(Find<ResourceBar>().GetNode<Button>("%Pause").Text == L.T("bar.menu"), "The host has the menu as well");
+
+        sessions[0].Leave();
+        await Frames();
+        Expect(host.State.Players[sessions[0].LocalPlayerId].IsAi, "An AI takes the seat of someone who leaves");
+        sessions[1].Tick(0);
+        Expect(sessions[1].State.Players[sessions[0].LocalPlayerId].IsAi, "Others can see that");
+
+        var heardLoss = false;
+        sessions[1].ConnectionLost += () => heardLoss = true;
+        Press(Find<ResourceBar>().GetNode<Button>("%Pause"));
+        await Frames();
+        var overlay = game.GetNode<Overlay>("%PauseOverlay");
+        Expect(overlay.GetNode<Button>("%Tertiary").Visible, "The menu offers surrender");
+        Press(overlay.GetNode<Button>("%Secondary"));
+        await Frames();
+        var leave = game.GetNode<Overlay>("%LeaveOverlay");
+        Expect(leave.GetNode<Label>("%Message").Text == L.T("overlay.leave.message_host"), "The host is warned that leaving ends the match");
+        await Shot("mp_host_leave");
+        Press(leave.GetNode<Button>("%Action"));
+        await Frames();
+        sessions[1].Tick(0);
+        Expect(heardLoss && Find<StartScreen>() is not null, "The host leaving reaches the others");
     }
 
     private async Task TestThirdParty()
