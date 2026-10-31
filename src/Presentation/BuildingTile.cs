@@ -8,6 +8,7 @@ public partial class BuildingTile : Button
 {
     private static readonly Color Accent = new(0.851f, 0.643f, 0.255f);
     private static readonly Vector2 GroundCentre = new(75, 105);
+    private const int LabelsAbove = 5;
 
     private TextureRect _icon = null!;
     private Label _name = null!;
@@ -54,6 +55,10 @@ public partial class BuildingTile : Button
         slim.ContentMarginTop = slim.ContentMarginBottom = 1;
         _badge.AddThemeStyleboxOverride("panel", slim);
         _plate.AddThemeStyleboxOverride("panel", slim);
+
+        // Labels stay readable even where a taller neighbour or a tree stands in front.
+        foreach (var label in new Control[] { _badge, _plate, _progress, _state })
+            label.ZIndex = LabelsAbove;
 
         // Only the picture shows, and the button keeps its click area.
         var none = new StyleBoxEmpty();

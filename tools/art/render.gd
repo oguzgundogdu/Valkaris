@@ -13,6 +13,8 @@ var viewport: SubViewport
 var parts: Node3D
 var camera: Camera3D
 var used := {}
+var roof_colour := Color(0, 0, 0, 0)
+var roof_textures := {}
 var out_dir := ProjectSettings.globalize_path("res://../../assets/village")
 
 func _init() -> void:
@@ -26,6 +28,7 @@ func run() -> void:
 	build_stage()
 	for name in Recipes.ALL:
 		clear()
+		roof_colour = Recipes.ROOFS.get(name.split("_")[0], Color(0, 0, 0, 0))
 		Recipes.new(self).call(name)
 		await save(name)
 	print("Ground centre on the canvas: ", camera.unproject_position(Vector3.ZERO), ", pixels per unit: ", SIZE / UNITS_TALL)
@@ -72,6 +75,11 @@ func clear() -> void:
 	for child in parts.get_children():
 		parts.remove_child(child)
 		child.free()
+	parts.rotation_degrees.y = 0
+
+## Turns the sprite so its +x face looks straight at the camera, for pieces that line up along the screen.
+func face_camera() -> void:
+	parts.rotation_degrees.y = -45
 
 ## Adds one model: "wall", or "n:crop_carrot" and "c:character-male-a" from the other kits.
 func part(id: String, position := Vector3.ZERO, turn := 0.0, scale := 1.0) -> Node3D:
@@ -93,8 +101,34 @@ func part(id: String, position := Vector3.ZERO, turn := 0.0, scale := 1.0) -> No
 			material.metallic = 0
 			material.roughness = 1
 			material.metallic_specular = 0.1
+			if id.begins_with("roof") and roof_colour.a > 0:
+				material.albedo_texture = roof_texture(material.albedo_texture, roof_colour)
 			mesh.set_surface_override_material(i, material)
 	return node
+
+## Adds a model with its colours multiplied, for pieces the kit makes too pale.
+func tinted(id: String, position: Vector3, turn: float, scale: float, tint: Color) -> void:
+	var node := part(id, position, turn, scale)
+	for mesh in node.find_children("*", "MeshInstance3D", true, false):
+		for i in mesh.mesh.get_surface_count():
+			var material: BaseMaterial3D = mesh.get_surface_override_material(i)
+			material.albedo_color *= tint
+
+## The kit's palette with its roof columns repainted in one colour, keeping their light and dark.
+func roof_texture(texture: Texture2D, colour: Color) -> Texture2D:
+	if roof_textures.has(colour):
+		return roof_textures[colour]
+	var image := texture.get_image()
+	image.decompress()
+	image.convert(Image.FORMAT_RGBA8)
+	for column in [0, 64, 192]:
+		var light := image.get_pixel(column + 47, 396).get_luminance()
+		for y in range(384, image.get_height()):
+			for x in range(column, column + 64):
+				var shade := image.get_pixel(x, y).get_luminance() / light
+				image.set_pixel(x, y, Color(colour.r * shade, colour.g * shade, colour.b * shade))
+	roof_textures[colour] = ImageTexture.create_from_image(image)
+	return roof_textures[colour]
 
 ## A soft dark patch on the ground, since a transparent sprite has nothing to catch a real shadow.
 func shadow(size_x: float, size_z: float, strength := 0.34) -> void:

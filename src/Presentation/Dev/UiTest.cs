@@ -207,6 +207,7 @@ public partial class UiTest : Control
         Input.ParseInputEvent(new InputEventKey { Keycode = Key.Alt, Pressed = false });
         await Frames();
 
+        var lastHouses = 0;
         for (var stage = 0; stage <= VillageArt.StageCount; stage++)
         {
             foreach (var tile in tiles)
@@ -216,8 +217,12 @@ public partial class UiTest : Control
             }
             await Frames();
             Expect(tiles.All(t => t.Stage == stage), $"Every building shows stage {stage}");
+            var houses = Find<VillageView>().Scenery.Count(item => item.Sprite.Contains("house_"));
+            Expect(houses >= lastHouses, $"The village never loses houses as it grows, went {lastHouses} to {houses}");
+            lastHouses = houses;
             await Shot($"stage-{stage}");
         }
+        Expect(lastHouses > 0, "A grown village has houses");
 
         foreach (var (building, level) in saved)
             Valkaris.Core.Dev.DevScenario.SetLevel(village, building, level);

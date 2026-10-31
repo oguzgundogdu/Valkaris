@@ -83,6 +83,56 @@ public class VillageArtTests
     }
 
     [Fact]
+    public void TheSameVillageAlwaysGetsTheSameScenery()
+    {
+        Assert.Equal(VillageArt.Scenery(9, 40, 2), VillageArt.Scenery(9, 40, 2));
+        Assert.NotEqual(VillageArt.Scenery(9, 40, 2), VillageArt.Scenery(10, 40, 2));
+    }
+
+    [Fact]
+    public void GrowingOnlyAddsHousesAndExtras()
+    {
+        var before = new HashSet<Placed>();
+        for (var levels = 0; levels <= 90; levels++)
+        {
+            var now = VillageArt.Scenery(9, levels, 1).ToHashSet();
+            Assert.Superset(before, now);
+            before = now;
+        }
+
+        Assert.Equal(0, VillageArt.HouseCount(0));
+        Assert.Equal(VillageArt.HouseSpots.Count, VillageArt.HouseCount(90));
+    }
+
+    [Fact]
+    public void FarmStagesAddCrops()
+    {
+        int Crops(int stage) => VillageArt.Scenery(9, 20, stage).Count(item => item.Sprite.Contains("crops_"));
+
+        Assert.Equal(0, Crops(0));
+        Assert.True(Crops(1) < Crops(2) && Crops(2) < Crops(3));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(77)]
+    public void SceneryStaysOffPlotsAndPathsAndItsArtExists(int seed)
+    {
+        foreach (var item in VillageArt.Scenery(seed, 90, 3))
+        {
+            Assert.True(VillageArt.IsClear(item.X, item.Y), $"{item.Sprite} at {item.X}, {item.Y}");
+            Assert.True(File.Exists(Path.Combine(Catalogue.Root, item.Sprite.Replace("res://", ""))), item.Sprite);
+        }
+    }
+
+    [Fact]
+    public void EveryFixedSpotIsClear()
+    {
+        Assert.All(VillageArt.HouseSpots.Concat(VillageArt.CropSpots), spot => Assert.True(VillageArt.IsClear(spot.X, spot.Y), $"{spot.X}, {spot.Y}"));
+    }
+
+    [Fact]
     public void AVillageKeepsItsLookAndDiffersFromOthers()
     {
         Assert.Equal(VillageArt.Seed(5, 1), VillageArt.Seed(5, 1));
