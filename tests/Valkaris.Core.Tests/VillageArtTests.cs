@@ -1,4 +1,6 @@
 using System.Text.RegularExpressions;
+using Valkaris.Core.Model;
+using Valkaris.Presentation;
 
 namespace Valkaris.Core.Tests;
 
@@ -29,5 +31,51 @@ public class VillageArtTests
     public void TheRenderToolStaysOutOfTheGame()
     {
         Assert.True(File.Exists(Path.Combine(Catalogue.Root, "tools", "art", ".gdignore")));
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1, 1)]
+    [InlineData(3, 1)]
+    [InlineData(4, 2)]
+    [InlineData(7, 2)]
+    [InlineData(8, 3)]
+    [InlineData(10, 3)]
+    public void TenLevelsSplitIntoThreeStages(int level, int stage)
+    {
+        Assert.Equal(stage, VillageArt.Stage(level, 10));
+    }
+
+    [Fact]
+    public void EveryBuildingShowsEveryStageAndNeverGoesBack()
+    {
+        foreach (var (building, definition) in TestData.Shipped.Buildings.Buildings)
+        {
+            var stages = Enumerable.Range(0, definition.MaxLevel + 1).Select(level => VillageArt.Stage(level, definition.MaxLevel)).ToList();
+
+            Assert.Equal(new[] { 0, 1, 2, 3 }, stages.Distinct());
+            Assert.Equal(stages.Order(), stages);
+        }
+    }
+
+    [Fact]
+    public void EveryBuildingHasAPlotAndNoneOverlapAtTheSmallestView()
+    {
+        const float width = 832, height = 633, tile = 150;
+        Assert.All(Enum.GetValues<BuildingType>(), building => Assert.True(VillageArt.Plots.ContainsKey(building)));
+
+        var plots = VillageArt.Plots.Values.ToList();
+        for (var a = 0; a < plots.Count; a++)
+        {
+            for (var b = a + 1; b < plots.Count; b++)
+                Assert.True(Math.Abs(plots[a].X - plots[b].X) * width >= tile || Math.Abs(plots[a].Y - plots[b].Y) * height >= tile, $"{a} and {b}");
+        }
+    }
+
+    [Fact]
+    public void AVillageKeepsItsLookAndDiffersFromOthers()
+    {
+        Assert.Equal(VillageArt.Seed(5, 1), VillageArt.Seed(5, 1));
+        Assert.NotEqual(VillageArt.Seed(5, 1), VillageArt.Seed(5, 2));
     }
 }

@@ -14,10 +14,10 @@ public partial class MapTerrain : Control
 {
     private const int PixelsPerTile = 16;
 
-    private static readonly Color Grass = new(0.345f, 0.42f, 0.235f);
-    private static readonly Color Forest = new(0.235f, 0.33f, 0.185f);
-    private static readonly Color Hills = new(0.44f, 0.405f, 0.30f);
-    private static readonly Color Sand = new(0.60f, 0.54f, 0.38f);
+    internal static readonly Color Grass = new(0.345f, 0.42f, 0.235f);
+    internal static readonly Color Forest = new(0.235f, 0.33f, 0.185f);
+    internal static readonly Color Hills = new(0.44f, 0.405f, 0.30f);
+    internal static readonly Color Sand = new(0.60f, 0.54f, 0.38f);
     private static readonly Color Shallow = new(0.27f, 0.45f, 0.50f);
     private static readonly Color Deep = new(0.17f, 0.31f, 0.41f);
 
@@ -118,7 +118,7 @@ public partial class MapTerrain : Control
         _ => Grass,
     };
 
-    private static float[,] Grain(int width, int height, Random random)
+    internal static float[,] Grain(int width, int height, Random random)
     {
         var grain = new float[width * 2 + 4, height * 2 + 4];
         for (var y = 0; y < grain.GetLength(1); y++)
@@ -129,7 +129,7 @@ public partial class MapTerrain : Control
         return grain;
     }
 
-    private static float Sample(float[,] grain, float x, float y)
+    internal static float Sample(float[,] grain, float x, float y)
     {
         x = Mathf.Clamp(x, 0, grain.GetLength(0) - 2);
         y = Mathf.Clamp(y, 0, grain.GetLength(1) - 2);

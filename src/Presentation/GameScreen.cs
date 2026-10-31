@@ -178,7 +178,7 @@ public partial class GameScreen : Control
         _resourceBar.Refresh(Session, village, CurrentView);
         _villageStrip.Refresh(Session, _currentVillageId);
         if (CurrentView == MainView.Village && village is not null)
-            _villageView.Refresh(village, Session.State.ElapsedTime, _selected);
+            _villageView.Refresh(Session, village, _selected);
         else
             _worldMap.Refresh(Session, village);
         RefreshActiveTab(village);

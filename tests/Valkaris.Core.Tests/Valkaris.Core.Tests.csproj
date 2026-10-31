@@ -26,6 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../../src/Presentation/VillageArt.cs" Link="Linked/VillageArt.cs" />
     <Content Include="../../data/*.json" Link="data/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

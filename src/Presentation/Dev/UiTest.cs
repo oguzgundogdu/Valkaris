@@ -234,6 +234,11 @@ public partial class UiTest : Control
         Press(Find<StartScreen>().GetNode<Button>("%Start"));
         await Frames();
         await PrintFrameCost("village");
+        for (var seed = 1; seed <= 3; seed++)
+        {
+            VillageGround.For(seed, Find<VillageView>().Size);
+            GD.Print($"[frames] ground paint {seed}: {VillageGround.LastPaintMilliseconds:0.0} ms");
+        }
     }
 
     private async Task PrintFrameCost(string name)
@@ -397,6 +402,13 @@ public partial class UiTest : Control
         await Frames();
         Expect(wall.GetNode<ProgressBar>("%Progress").Visible, "Tile under construction shows progress");
         await Shot("village");
+
+        var ground = Find<VillageView>().Ground;
+        Find<GameScreen>().ShowView(GameScreen.MainView.World);
+        await Frames();
+        Find<GameScreen>().ShowView(GameScreen.MainView.Village);
+        await Frames();
+        Expect(Find<VillageView>().Ground == ground, "The ground stays the same between visits");
 
         await TestTroops();
         await TestSend();
