@@ -7,6 +7,7 @@ using Valkaris.Ai;
 using Valkaris.Core.Data;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Network;
 using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
@@ -19,11 +20,15 @@ public partial class Main : Control
     private static readonly Vector2I MinWindowSize = new(1024, 640);
     private static readonly PackedScene StartScene = GD.Load<PackedScene>("res://scenes/StartScreen.tscn");
     private static readonly PackedScene GameScene = GD.Load<PackedScene>("res://scenes/Game.tscn");
+    private static readonly PackedScene ConnectScene = GD.Load<PackedScene>("res://scenes/ConnectScreen.tscn");
+    private static readonly PackedScene LobbyScene = GD.Load<PackedScene>("res://scenes/LobbyScreen.tscn");
 
     /// <summary>Dev only: opponents stand still, for scripted tests that need a predictable match.</summary>
     public bool IdleOpponents { get; set; }
 
     private GameData _data = null!;
+    private string _lastVillage = "";
+    private string _lastAddress = "";
     private Control? _screen;
 
     public override void _Ready()
@@ -75,6 +80,89 @@ public partial class Main : Control
         screen.Init(_data, choices);
         screen.StartRequested += StartMatch;
         screen.LanguageChanged += ShowStartScreen;
+        screen.HostRequested += () => ShowConnect(hosting: true);
+        screen.JoinRequested += () => ShowConnect(hosting: false);
+        SwitchTo(screen);
+    }
+
+    private void ShowConnect(bool hosting, string? error = null)
+    {
+        var screen = ConnectScene.Instantiate<ConnectScreen>();
+        screen.Init(_data, hosting, error, _lastVillage, _lastAddress);
+        screen.BackRequested += ShowStartScreen;
+        screen.ContinueRequested += (name, village, address) =>
+        {
+            _lastVillage = village ?? "";
+            _lastAddress = address;
+            if (hosting)
+                Host(name, village);
+            else
+                Join(name, village, address);
+        };
+        SwitchTo(screen);
+    }
+
+    private void Host(string name, string? village)
+    {
+        if (EnetHost.Listen(Handshake.DefaultPort) is { } network)
+            OpenHostLobby(network, name, village, NetAddress.Shareable(IP.GetLocalAddresses()), Handshake.DefaultPort);
+        else
+            ShowConnect(hosting: true, L.T("connect.port_busy", ("port", Handshake.PortText(Handshake.DefaultPort))));
+    }
+
+    private void Join(string name, string? village, string address)
+    {
+        if (NetAddress.Parse(address) is { } target && EnetClient.Connect(target.Host, target.Port) is { } network)
+            OpenClientLobby(network, name, village);
+        else
+            ShowConnect(hosting: false, L.T("connect.bad_address"));
+    }
+
+    /// <summary>Takes any network, so the UI test can use one in memory.</summary>
+    public void OpenHostLobby(INetworkHost network, string name, string? village, IReadOnlyList<string> addresses, int port)
+    {
+        var lobby = new LobbyHost(network, _data, Handshake.DataHash(new GodotDataSource()), name, village);
+        var screen = LobbyScene.Instantiate<LobbyScreen>();
+        screen.InitHost(_data, lobby, addresses, port);
+        screen.LeaveRequested += () =>
+        {
+            network.Stop();
+            ShowStartScreen();
+        };
+        screen.HostStarted += session => PlayNetworkMatch(session, session.Stop);
+        SwitchTo(screen);
+    }
+
+    /// <summary>Takes any network, so the UI test can use one in memory.</summary>
+    public void OpenClientLobby(INetworkClient network, string name, string? village)
+    {
+        var client = new LobbyClient(network, _data, Handshake.DataHash(new GodotDataSource()), name, village);
+        var screen = LobbyScene.Instantiate<LobbyScreen>();
+        screen.InitClient(_data, client);
+        screen.LeaveRequested += () =>
+        {
+            client.Leave();
+            ShowStartScreen();
+        };
+        screen.Failed += reason =>
+        {
+            network.Close();
+            ShowConnect(hosting: false, reason);
+        };
+        screen.ClientStarted += session => PlayNetworkMatch(session, session.Leave);
+        SwitchTo(screen);
+    }
+
+    /// <summary>Never looks at DevOptions: dev settings can't reach a multiplayer match.</summary>
+    private void PlayNetworkMatch(IGameSession session, Action leave)
+    {
+        var screen = GameScene.Instantiate<GameScreen>();
+        screen.Init(session);
+        screen.ExitRequested += () =>
+        {
+            leave();
+            ShowStartScreen();
+        };
         SwitchTo(screen);
     }
 

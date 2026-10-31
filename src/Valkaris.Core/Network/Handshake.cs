@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Valkaris.Core.Data;
@@ -12,6 +13,9 @@ public static class Handshake
 
     public const int DefaultPort = 24565;
     public const string AnyAddress = "*";
+
+    /// <summary>A port as people type it, with no grouping.</summary>
+    public static string PortText(int port) => port.ToString(CultureInfo.InvariantCulture);
 
     public static string DataHash(IDataSource source)
     {

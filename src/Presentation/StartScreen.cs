@@ -19,6 +19,8 @@ public partial class StartScreen : CenterContainer
     private StartChoices? _choices;
 
     public event Action<MatchSetup>? StartRequested;
+    public event Action? HostRequested;
+    public event Action? JoinRequested;
 
     /// <summary>The language changed, so the screen needs rebuilding with these choices.</summary>
     public event Action<StartChoices>? LanguageChanged;
@@ -29,25 +31,38 @@ public partial class StartScreen : CenterContainer
         _choices = choices;
     }
 
+    /// <summary>The same choices here and in the lobby.</summary>
+    public static void FillMatchOptions(GameData data, OptionButton duration, OptionButton speed, OptionButton mapSize)
+    {
+        foreach (var minutes in data.Game.MatchDurationsMinutes)
+            duration.AddItem(L.N("common.minutes", (int)minutes));
+        if (data.Game.UnlimitedMatches)
+            duration.AddItem(L.T("start.unlimited"));
+
+        foreach (var multiplier in data.Game.SpeedMultipliers)
+            speed.AddItem(Format.Multiplier(multiplier));
+
+        foreach (var size in Enum.GetValues<MapSize>())
+        {
+            var definition = data.Game.MapSizes[size];
+            mapSize.AddItem(L.T("start.map_size", ("size", L.T(L.Key("map_size", size))), ("width", Format.Whole(definition.Width)), ("height", Format.Whole(definition.Height))));
+        }
+    }
+
+    /// <summary>Seconds, or null for Unlimited, which comes after the durations.</summary>
+    public static double? ChosenDuration(GameData data, OptionButton duration)
+    {
+        var durations = data.Game.MatchDurationsMinutes;
+        return duration.Selected < durations.Count ? durations[duration.Selected] * 60 : null;
+    }
+
     public override void _Ready()
     {
         var duration = GetNode<OptionButton>("%Duration");
-        foreach (var minutes in _data.Game.MatchDurationsMinutes)
-            duration.AddItem(L.N("common.minutes", (int)minutes));
-        if (_data.Game.UnlimitedMatches)
-            duration.AddItem(L.T("start.unlimited"));
-
         var speed = GetNode<OptionButton>("%Speed");
-        foreach (var multiplier in _data.Game.SpeedMultipliers)
-            speed.AddItem(Format.Multiplier(multiplier));
-
         var mapSizes = Enum.GetValues<MapSize>();
         var mapSize = GetNode<OptionButton>("%MapSize");
-        foreach (var size in mapSizes)
-        {
-            var definition = _data.Game.MapSizes[size];
-            mapSize.AddItem(L.T("start.map_size", ("size", L.T(L.Key("map_size", size))), ("width", Format.Whole(definition.Width)), ("height", Format.Whole(definition.Height))));
-        }
+        FillMatchOptions(_data, duration, speed, mapSize);
 
         var opponents = GetNode<OptionButton>("%Opponents");
         for (var count = _data.Game.MinPlayers - 1; count <= _data.Game.MaxPlayers - 1; count++)
@@ -84,11 +99,11 @@ public partial class StartScreen : CenterContainer
         };
         CheckVillageName();
 
+        GetNode<Button>("%Host").Pressed += () => HostRequested?.Invoke();
+        GetNode<Button>("%Join").Pressed += () => JoinRequested?.Invoke();
         GetNode<Button>("%Start").Pressed += () =>
         {
-            // Unlimited comes after the durations.
-            var durations = _data.Game.MatchDurationsMinutes;
-            double? seconds = duration.Selected < durations.Count ? durations[duration.Selected] * 60 : null;
+            var seconds = ChosenDuration(_data, duration);
             var multiplier = _data.Game.SpeedMultipliers[speed.Selected];
             var settings = new GameSettings(seconds, multiplier, mapSizes[mapSize.Selected]);
             StartRequested?.Invoke(new MatchSetup(settings, _data.Game.MinPlayers - 1 + opponents.Selected, difficulties[difficulty.Selected], villageName.Text));

@@ -8,6 +8,7 @@ using Valkaris.Core.Data;
 using Valkaris.Core.Events;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Network;
 using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation.Dev;
@@ -328,6 +329,7 @@ public partial class UiTest : Control
         await TestLanguage();
 
         await TestStartVillageName();
+        await TestLobbyScreens();
         var start = Find<StartScreen>();
         await Shot("start");
 
@@ -530,6 +532,105 @@ public partial class UiTest : Control
         await Frames();
         Expect(game.CurrentView == GameScreen.MainView.Village, "M does nothing while typing in a number field");
         line.ReleaseFocus();
+    }
+
+    private async Task TestLobbyScreens()
+    {
+        var data = GameData.Load(new GodotDataSource());
+        var hash = Handshake.DataHash(new GodotDataSource());
+
+        Press(Find<StartScreen>().GetNode<Button>("%Host"));
+        await Frames();
+        var connect = Find<ConnectScreen>();
+        var carry = connect.GetNode<Button>("%Continue");
+        var player = connect.GetNode<LineEdit>("%PlayerName");
+        Expect(!connect.GetNode<Control>("%AddressRow").Visible, "Hosting asks for no address");
+        player.Text = "";
+        player.EmitSignal(LineEdit.SignalName.TextChanged, "");
+        Expect(carry.Disabled, "A name is needed to go on");
+        player.Text = "Oğuz";
+        player.EmitSignal(LineEdit.SignalName.TextChanged, "Oğuz");
+        Expect(!carry.Disabled, "A good name allows going on");
+        await Shot("connect_host");
+        Press(connect.GetNode<Button>("%Back"));
+        await Frames();
+
+        Press(Find<StartScreen>().GetNode<Button>("%Join"));
+        await Frames();
+        connect = Find<ConnectScreen>();
+        connect.GetNode<LineEdit>("%PlayerName").Text = "Ayla";
+        var address = connect.GetNode<LineEdit>("%Address");
+        address.EmitSignal(LineEdit.SignalName.TextChanged, "");
+        Expect(connect.GetNode<Button>("%Continue").Disabled, "An address is needed to join");
+        address.Text = "192.168.1.20";
+        address.EmitSignal(LineEdit.SignalName.TextChanged, "192.168.1.20");
+        Expect(!connect.GetNode<Button>("%Continue").Disabled, "A good address allows going on");
+        await Shot("connect_join");
+        Press(connect.GetNode<Button>("%Back"));
+        await Frames();
+
+        // A host's lobby, with someone joining.
+        var network = new MemoryNetwork();
+        _main.OpenHostLobby(network.Host, "Oğuz", "Evim", new[] { "192.168.1.20", "100.70.1.2" }, Handshake.DefaultPort);
+        await Frames();
+        var lobby = Find<LobbyScreen>();
+        Expect(lobby.GetNode<Button>("%Start").Disabled, "A lone host can't start");
+        Expect(lobby.GetNode<Label>("%Status").Text.Contains("100.70.1.2"), "The host sees the addresses to share");
+        var guest = new LobbyClient(network.Connect(), data, hash, "Ayla", null);
+        guest.Poll();
+        await Frames();
+        guest.Poll();
+        Expect(!lobby.GetNode<Button>("%Start").Disabled, "A second player allows starting");
+        var row = lobby.GetNode<VBoxContainer>("%Slots").GetChild(1);
+        Expect(row.GetNode<Label>("Player").Text == "Ayla" && guest.Lobby is not null, "The guest takes a seat");
+
+        var aiRow = lobby.GetNode<VBoxContainer>("%Slots").GetChild(2);
+        var kind = aiRow.GetNode<OptionButton>("Kind");
+        kind.Select(kind.ItemCount - 2);
+        kind.EmitSignal(OptionButton.SignalName.ItemSelected, kind.ItemCount - 2);
+        await Frames();
+        guest.Poll();
+        Expect(guest.Lobby!.Slots[2].Kind == SlotKind.Ai && guest.Lobby.Slots[2].Difficulty == Enum.GetValues<AiDifficulty>()[^1], "A seat can hold an AI of its own difficulty");
+        var map = lobby.GetNode<OptionButton>("%MapSize");
+        map.Select(1);
+        map.EmitSignal(OptionButton.SignalName.ItemSelected, 1);
+        await Frames();
+        guest.Poll();
+        Expect(guest.Lobby.Settings.MapSize == Enum.GetValues<MapSize>()[1], "The guest sees the host's settings");
+        await Shot("lobby_host");
+        Press(lobby.GetNode<Button>("%Leave"));
+        await Frames();
+        Expect(Find<StartScreen>() is not null, "Leaving the lobby returns to the start");
+
+        // A guest's lobby: it can look, and not touch.
+        network = new MemoryNetwork();
+        var host = new LobbyHost(network.Host, data, hash, "Oğuz", null);
+        host.SetSlot(3, SlotKind.Ai, AiDifficulty.Easy);
+        var connection = network.Connect();
+        _main.OpenClientLobby(connection, "Ayla", null);
+        await Frames();
+        lobby = Find<LobbyScreen>();
+        host.Poll();
+        await Frames();
+        Expect(lobby.GetNode<OptionButton>("%Duration").Disabled && !lobby.GetNode<Button>("%Start").Visible, "A guest can't change the settings or start");
+        Expect(!lobby.GetNode<VBoxContainer>("%Slots").GetChild(3).GetNode<OptionButton>("Kind").Visible, "A guest can't change the seats");
+        await Shot("lobby_client");
+        host.SetSlot(1, SlotKind.Closed);
+        await Frames();
+        Expect(Find<ConnectScreen>().GetNode<Label>("%Reason").Text == L.T("join.removed_by_host"), "Being removed says so");
+        Press(Find<ConnectScreen>().GetNode<Button>("%Back"));
+        await Frames();
+
+        // Different data is refused with a clear message.
+        network = new MemoryNetwork();
+        _ = new LobbyHost(network.Host, data, "other", "Oğuz", null);
+        _main.OpenClientLobby(network.Connect(), "Ayla", null);
+        await Frames();
+        network.Host.Poll();
+        await Frames();
+        Expect(Find<ConnectScreen>().GetNode<Label>("%Reason").Text == L.T("join.data_mismatch"), "Different data is refused with a reason");
+        Press(Find<ConnectScreen>().GetNode<Button>("%Back"));
+        await Frames();
     }
 
     private async Task TestThirdParty()

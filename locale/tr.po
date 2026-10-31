@@ -932,3 +932,105 @@ msgstr "Henüz haber yok."
 
 msgid "notice.attacked"
 msgstr "{attacker} köyü {target} köyüne saldırdı"
+
+msgid "ui.start.host"
+msgstr "LAN oyunu kur"
+
+msgid "ui.start.join"
+msgstr "LAN oyununa katıl"
+
+msgid "ui.connect.player_name"
+msgstr "Adın"
+
+msgid "ui.connect.address"
+msgstr "Kurucunun adresi"
+
+msgid "ui.connect.address_hint"
+msgstr "192.168.1.20 veya 192.168.1.20:24565"
+
+msgid "ui.connect.continue"
+msgstr "Devam"
+
+msgid "ui.common.back"
+msgstr "Geri"
+
+msgid "ui.lobby.title"
+msgstr "Lobi"
+
+msgid "ui.lobby.leave"
+msgstr "Ayrıl"
+
+msgid "connect.host_title"
+msgstr "Oyun kur"
+
+msgid "connect.join_title"
+msgstr "Oyuna katıl"
+
+msgid "connect.name_invalid"
+msgstr "Adın {min} ile {max} arasında harf veya rakamdan oluşmalı."
+
+msgid "connect.bad_address"
+msgstr "Bu bir adrese benzemiyor. 192.168.1.20 veya 192.168.1.20:24565 gibi yaz."
+
+msgid "connect.port_busy"
+msgstr "{port} numaralı port kullanımda. Onu kullanan programı kapatıp yeniden dene."
+
+msgid "connect.unreachable"
+msgstr "Kurucuya ulaşılamadı. Adresi ve kurucunun güvenlik duvarını kontrol et."
+
+msgid "connect.lost"
+msgstr "Kurucuyla bağlantı kesildi."
+
+msgid "lobby.open"
+msgstr "Açık"
+
+msgid "lobby.closed"
+msgstr "Kapalı"
+
+msgid "lobby.ai"
+msgstr "Yapay zekâ ({difficulty})"
+
+msgid "lobby.player_village"
+msgstr "{name} ({village})"
+
+msgid "lobby.waiting_for_player"
+msgstr "Oyuncu bekleniyor…"
+
+msgid "lobby.connecting"
+msgstr "Bağlanıyor…"
+
+msgid "lobby.waiting_for_host"
+msgstr "Kurucunun oyunu başlatması bekleniyor."
+
+msgid "lobby.share"
+msgstr "Diğerleri {addresses} adresinden, {port} portundan katılabilir."
+
+msgid "lobby.no_address"
+msgstr "Ağ bulunamadı. Bu bilgisayardakiler 127.0.0.1 adresinden, {port} portundan katılabilir."
+
+msgid "lobby.need_players"
+msgstr "Bir oyun için en az 2 oyuncu gerekir. Boş açık yerler kapalı sayılır."
+
+msgid "join.version_mismatch"
+msgstr "Kurucu oyunun başka bir sürümünü kullanıyor."
+
+msgid "join.data_mismatch"
+msgstr "Kurucu farklı oyun verileri kullanıyor."
+
+msgid "join.lobby_full"
+msgstr "Bu lobi dolu."
+
+msgid "join.match_in_progress"
+msgstr "Bu oyun çoktan başladı."
+
+msgid "join.player_name_invalid"
+msgstr "Kurucu bu adı kabul edemiyor."
+
+msgid "join.player_name_taken"
+msgstr "Lobide bu adı kullanan biri var."
+
+msgid "join.village_name_refused"
+msgstr "Kurucu bu köy adını kabul edemiyor."
+
+msgid "join.removed_by_host"
+msgstr "Kurucu seni lobiden çıkardı."

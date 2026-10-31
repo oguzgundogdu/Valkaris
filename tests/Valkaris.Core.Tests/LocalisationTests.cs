@@ -79,6 +79,7 @@ public class LocalisationTests
             .Concat(Keys<MovementType>("mission"))
             .Concat(Keys<AiDifficulty>("difficulty"))
             .Concat(Keys<MapSize>("map_size"))
+            .Concat(Keys<Valkaris.Core.Network.JoinRefusal>("join"))
             .Concat(Keys<Terrain>("terrain"))
             .Concat(Keys<CommandRejection>("rejection"))
             .Concat(TestData.Shipped.Map.Barbarians.Tiers.Select(tier => Key("tier", tier.Name)));
@@ -121,6 +122,8 @@ public class LocalisationTests
     {
         ("Main.cs", "You"), // The stored name of the local player. The UI always shows the translated word instead.
         ("MatchEndScreen.cs", "StrongLabel"), // A theme style held in a variable.
+        ("PlayerSettings.cs", "player"), // Settings file section.
+        ("PlayerSettings.cs", "name"), // Settings file key.
         ("Language.cs", "language"), // Settings file section.
         ("Language.cs", "code"), // Settings file key.
         ("Language.cs", "en"),
@@ -247,7 +250,7 @@ public class LocalisationTests
     }
 
     // Keys built from an enum or a data identifier, checked by EveryGameNameHasAKey.
-    private static readonly string[] BuiltKeyPrefixes = { "building.", "unit.", "resource.", "mission.", "tier.", "difficulty.", "map_size.", "terrain.", "rejection.", "language." };
+    private static readonly string[] BuiltKeyPrefixes = { "building.", "unit.", "resource.", "mission.", "tier.", "difficulty.", "map_size.", "terrain.", "rejection.", "language.", "join." };
 
     [Fact]
     public void EveryKeyInTheCodeExists()
@@ -362,7 +365,7 @@ public class LocalisationTests
         // Only text made up entirely of names and placeholders may match.
         Assert.Equal(new[]
         {
-            "difficulty.normal", "end.difficulty", "language.en", "language.tr", "movement.to", "queue.train_item", "report.unit_count", "scout.building_level", "start.map_size",
+            "difficulty.normal", "end.difficulty", "language.en", "language.tr", "lobby.player_village", "movement.to", "queue.train_item", "report.unit_count", "scout.building_level", "start.map_size",
         }, same);
     }
 }

@@ -935,3 +935,105 @@ msgstr "No news yet."
 
 msgid "notice.attacked"
 msgstr "{attacker} attacked {target}"
+
+msgid "ui.start.host"
+msgstr "Host a LAN game"
+
+msgid "ui.start.join"
+msgstr "Join a LAN game"
+
+msgid "ui.connect.player_name"
+msgstr "Your name"
+
+msgid "ui.connect.address"
+msgstr "Host's address"
+
+msgid "ui.connect.address_hint"
+msgstr "192.168.1.20 or 192.168.1.20:24565"
+
+msgid "ui.connect.continue"
+msgstr "Continue"
+
+msgid "ui.common.back"
+msgstr "Back"
+
+msgid "ui.lobby.title"
+msgstr "Lobby"
+
+msgid "ui.lobby.leave"
+msgstr "Leave"
+
+msgid "connect.host_title"
+msgstr "Host a game"
+
+msgid "connect.join_title"
+msgstr "Join a game"
+
+msgid "connect.name_invalid"
+msgstr "Your name needs {min} to {max} letters or digits."
+
+msgid "connect.bad_address"
+msgstr "That doesn't look like an address. Try 192.168.1.20 or 192.168.1.20:24565."
+
+msgid "connect.port_busy"
+msgstr "Port {port} is in use. Close whatever is using it, then try again."
+
+msgid "connect.unreachable"
+msgstr "Couldn't reach that host. Check the address and the host's firewall."
+
+msgid "connect.lost"
+msgstr "The connection to the host was lost."
+
+msgid "lobby.open"
+msgstr "Open"
+
+msgid "lobby.closed"
+msgstr "Closed"
+
+msgid "lobby.ai"
+msgstr "AI ({difficulty})"
+
+msgid "lobby.player_village"
+msgstr "{name} ({village})"
+
+msgid "lobby.waiting_for_player"
+msgstr "Waiting for a player…"
+
+msgid "lobby.connecting"
+msgstr "Connecting…"
+
+msgid "lobby.waiting_for_host"
+msgstr "Waiting for the host to start the match."
+
+msgid "lobby.share"
+msgstr "Others can join at {addresses}, port {port}."
+
+msgid "lobby.no_address"
+msgstr "No network found. Others on this computer can join at 127.0.0.1, port {port}."
+
+msgid "lobby.need_players"
+msgstr "A match needs at least 2 players. Empty open seats count as closed."
+
+msgid "join.version_mismatch"
+msgstr "The host is running a different version of the game."
+
+msgid "join.data_mismatch"
+msgstr "The host is using different game data."
+
+msgid "join.lobby_full"
+msgstr "That lobby is full."
+
+msgid "join.match_in_progress"
+msgstr "That match has already started."
+
+msgid "join.player_name_invalid"
+msgstr "The host can't accept that name."
+
+msgid "join.player_name_taken"
+msgstr "Someone in that lobby already uses that name."
+
+msgid "join.village_name_refused"
+msgstr "The host can't accept that village name."
+
+msgid "join.removed_by_host"
+msgstr "The host removed you from the lobby."

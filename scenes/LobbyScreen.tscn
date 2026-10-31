@@ -1,0 +1,103 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Presentation/LobbyScreen.cs" id="1"]
+
+[node name="LobbyScreen" type="CenterContainer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Card" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(640, 0)
+layout_mode = 2
+theme_type_variation = &"CardPanel"
+
+[node name="Box" type="VBoxContainer" parent="Card"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LobbyTitle" type="Label" parent="Card/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "ui.lobby.title"
+theme_type_variation = &"TitleLabel"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="Card/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+autowrap_mode = 2
+
+[node name="Body" type="VBoxContainer" parent="Card/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Slots" type="VBoxContainer" parent="Card/Box/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="DurationRow" type="HBoxContainer" parent="Card/Box/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/Body/DurationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.duration"
+
+[node name="Duration" type="OptionButton" parent="Card/Box/Body/DurationRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+
+[node name="SpeedRow" type="HBoxContainer" parent="Card/Box/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/Body/SpeedRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.speed"
+
+[node name="Speed" type="OptionButton" parent="Card/Box/Body/SpeedRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+
+[node name="MapRow" type="HBoxContainer" parent="Card/Box/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/Body/MapRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.map_size"
+
+[node name="MapSize" type="OptionButton" parent="Card/Box/Body/MapRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+
+[node name="Buttons" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Leave" type="Button" parent="Card/Box/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.lobby.leave"
+
+[node name="Start" type="Button" parent="Card/Box/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.start"

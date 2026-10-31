@@ -253,3 +253,38 @@ public class HandshakeTests
         Assert.Equal(JoinRefusal.MatchInProgress, refusals.Single().Reason);
     }
 }
+
+public class NetAddressTests
+{
+    [Theory]
+    [InlineData("192.168.1.20", "192.168.1.20", Handshake.DefaultPort)]
+    [InlineData(" 192.168.1.20:7000 ", "192.168.1.20", 7000)]
+    [InlineData("my-mac.local", "my-mac.local", Handshake.DefaultPort)]
+    public void GoodAddressesAreRead(string text, string host, int port)
+    {
+        Assert.Equal((host, port), NetAddress.Parse(text));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("1.2.3.4:")]
+    [InlineData("1.2.3.4:x")]
+    [InlineData("1.2.3.4:70000")]
+    [InlineData("1.2.3.4:-1")]
+    [InlineData(":7000")]
+    [InlineData("a b")]
+    [InlineData("::1")]
+    public void BadAddressesAreNot(string text)
+    {
+        Assert.Null(NetAddress.Parse(text));
+    }
+
+    [Fact]
+    public void OnlyAddressesOthersCanReachAreShared()
+    {
+        var addresses = new[] { "127.0.0.1", "::1", "fe80::1", "169.254.3.4", "192.168.1.20", "100.70.1.2", "192.168.1.20" };
+
+        Assert.Equal(new[] { "100.70.1.2", "192.168.1.20" }, NetAddress.Shareable(addresses));
+    }
+}

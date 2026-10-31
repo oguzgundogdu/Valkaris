@@ -144,3 +144,19 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 text = "ui.start.start"
+
+[node name="Network" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Host" type="Button" parent="Card/Box/Network"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.host"
+
+[node name="Join" type="Button" parent="Card/Box/Network"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.join"
