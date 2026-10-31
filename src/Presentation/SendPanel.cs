@@ -176,7 +176,7 @@ public partial class SendPanel : VBoxContainer
         GetNode<Control>("%Warning").Visible = false;
         var scoutRule = GetNode<Label>("%ScoutRule");
         scoutRule.Visible = type == MovementType.Scout;
-        scoutRule.Text = $"Only Scouts can scout. One gets past every {session.Data.Combat.TroopsPerScout} troops in the garrison. With too few, they all die.";
+        scoutRule.Text = "Scouts face the Scouts at home there. Equal numbers rarely get through, and those caught all die. A large majority nearly always succeeds, and the bigger the margin, the more you see.";
         _send.Text = _sendingResources ? "Send resources" : "Send troops";
 
         if (_sendingResources)

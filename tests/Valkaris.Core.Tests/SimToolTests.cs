@@ -253,7 +253,7 @@ public class SimToolTests
         match.State.Villages[1].AddTroops(UnitType.Scout, 10);
         match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Scout, 1)));
         match.Session.Tick(match.State.Movements.Single().ArrivalTime);
-        target.AddTroops(UnitType.Spearman, 1000);
+        target.AddTroops(UnitType.Scout, 1000);
         match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Scout, 2)));
         match.Send(1, new SendTroopsCommand(1, 2, MovementType.Attack, Force(UnitType.Cavalry, 1)));
 

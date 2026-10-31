@@ -167,9 +167,23 @@ public class GameDataValidationTests
     [InlineData("protectedResourceShare", -0.1)]
     [InlineData("protectedResourceShare", 1.1)]
     [InlineData("catapultsPerLevelOfDamage", 0)]
-    [InlineData("troopsPerScout", 0)]
     public void InvalidCombatValue(string field, double value) =>
         AssertCombatInvalid(r => r[field] = value, field);
+
+    [Fact]
+    public void NegativeWatchtowerBonus() => AssertCombatInvalid(r => r["scouting"]!["watchtowerBonusPerLevel"] = -0.1, "scouting.watchtowerBonusPerLevel");
+
+    [Fact]
+    public void EmptyScoutCurve() => AssertCombatInvalid(r => r["scouting"]!["successCurve"] = new JsonArray(), "scouting.successCurve");
+
+    [Fact]
+    public void ScoutCurveRatiosMustRise() => AssertCombatInvalid(r => r["scouting"]!["successCurve"]![1]!["ratio"] = 0.1, "scouting.successCurve");
+
+    [Fact]
+    public void ScoutCurveChancesMustNotFall() => AssertCombatInvalid(r => r["scouting"]!["successCurve"]![1]!["chance"] = 0.01, "scouting.successCurve");
+
+    [Fact]
+    public void ScoutCurveChancesAreAtMostOne() => AssertCombatInvalid(r => r["scouting"]!["successCurve"]![5]!["chance"] = 1.5, "scouting.successCurve");
 
     private static void AssertMapInvalid(Action<JsonNode> mutate, string expectedField) =>
         AssertInvalid(GameData.MapFile, mutate, expectedField);

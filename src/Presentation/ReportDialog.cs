@@ -47,29 +47,48 @@ public partial class ReportDialog : ColorRect
 
     public void ShowScoutReport(IGameSession session, ScoutReport report)
     {
-        var mine = report.SenderId == session.LocalPlayerId;
-        GetNode<Label>("%Result").Text = report.Succeeded ? "Scouted" : mine ? "Scouts lost" : "Scouts caught";
+        GetNode<Label>("%Result").Text = report.Succeeded ? "Scouted" : "Scouts lost";
         GetNode<Label>("%Summary").Text = $"{UiContent.ScoutHeadline(session, report)}  ·  {Format.Time(report.Time)} into the match";
 
         var sender = UiContent.OwnerName(session, report.SenderId);
         var defender = UiContent.OwnerName(session, report.DefenderId);
-        FillSide(GetNode<VBoxContainer>("%Attacker"), $"{sender} (scouting)", report.Sent, report.Succeeded ? null : report.Sent);
-
-        var side = GetNode<VBoxContainer>("%Defender");
-        FillSide(side, $"{defender} (garrison)", report.Garrison ?? new Dictionary<UnitType, int>(), null, report.Succeeded ? "No troops" : mine ? "Not seen" : "No losses");
+        FillSide(GetNode<VBoxContainer>("%Attacker"), $"{sender} (scouting)", report.Sent, new Dictionary<UnitType, int> { [UnitType.Scout] = report.ScoutsLost });
+        FillSide(GetNode<VBoxContainer>("%Defender"), $"{defender} (garrison)", report.Garrison ?? new Dictionary<UnitType, int>(), null, report.Succeeded ? "No troops" : "Not seen");
 
         GetNode<Label>("%Powers").Text = report.Succeeded
             ? $"Wall level {report.WallLevel}  ·  Troops away from the village aren't counted"
-            : mine ? $"The garrison holds more than {report.Sent.Values.Sum() * session.Data.Combat.TroopsPerScout} troops" : "Your garrison stopped them";
+            : "Their Scouts stopped yours, so nothing was seen";
 
+        ShowStock(report.Stock);
+        Visible = true;
+    }
+
+    /// <summary>What the defender knows: who came and, if they were caught, how many. Never what they saw.</summary>
+    public void ShowScoutNotice(IGameSession session, ScoutNotice notice)
+    {
+        GetNode<Label>("%Result").Text = notice.Caught ? "Scouts caught" : "Scouted by an enemy";
+        GetNode<Label>("%Summary").Text = $"{UiContent.NoticeHeadline(session, notice)}  ·  {Format.Time(notice.Time)} into the match";
+
+        var sender = UiContent.OwnerName(session, notice.SenderId);
+        var defender = UiContent.OwnerName(session, notice.DefenderId);
+        var sent = notice.ScoutsSent is { } count ? new Dictionary<UnitType, int> { [UnitType.Scout] = count } : new Dictionary<UnitType, int>();
+        FillSide(GetNode<VBoxContainer>("%Attacker"), $"{sender} (scouting)", sent, null, "How many isn't known");
+        FillSide(GetNode<VBoxContainer>("%Defender"), defender, new Dictionary<UnitType, int>(), null, notice.ScoutsLost > 0 ? $"Scouts lost: {notice.ScoutsLost}" : "No Scouts lost");
+
+        GetNode<Label>("%Powers").Text = notice.Caught ? "Your Scouts stopped them" : "Your Watchtower saw them, but they got what they came for";
+        ShowStock(null);
+        Visible = true;
+    }
+
+    private void ShowStock(Resources? seen)
+    {
         var lootLabel = GetNode<Label>("%Loot");
-        lootLabel.Visible = report.Stock is not null;
-        if (report.Stock is { } stock)
+        lootLabel.Visible = seen is not null;
+        if (seen is { } stock)
             lootLabel.Text = $"Resources: {Format.Amount(stock.Wood)} wood, {Format.Amount(stock.Stone)} stone, {Format.Amount(stock.Food)} food";
 
         GetNode<Label>("%Damage").Visible = false;
         GetNode<Label>("%Loyalty").Visible = false;
-        Visible = true;
     }
 
     /// <summary>With no losses given, it lists only the counts.</summary>

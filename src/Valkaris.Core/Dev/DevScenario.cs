@@ -42,7 +42,7 @@ public static class DevScenario
                 ApplyStrayReturn(state);
                 return true;
             case Scouting:
-                ApplyScouting(state, data);
+                ApplyScouting(state);
                 return true;
             case Empire:
                 while (state.Villages.Values.Any(v => v.IsBarbarian))
@@ -53,15 +53,15 @@ public static class DevScenario
         }
     }
 
-    /// <summary>A rival's garrison exactly at the limit for one scout, with both sides able to train more and scout each other.</summary>
-    private static void ApplyScouting(GameState state, GameData data)
+    /// <summary>A rival with no Scouts yet, with both sides able to train more and scout each other. Each side has few Scouts to start with.</summary>
+    private static void ApplyScouting(GameState state)
     {
         var rival = state.Villages[Rival];
-        SetTroops(rival, (UnitType.Spearman, data.Combat.TroopsPerScout - 2), (UnitType.Cavalry, 2), (UnitType.Scout, 4));
+        SetTroops(rival, (UnitType.Spearman, 3), (UnitType.Cavalry, 2));
         rival.SetBuildingLevel(BuildingType.Wall, 2);
 
         var home = state.Villages[Local];
-        SetTroops(home, (UnitType.Spearman, 4), (UnitType.Scout, 4));
+        SetTroops(home, (UnitType.Spearman, 4), (UnitType.Scout, 2));
 
         foreach (var village in new[] { rival, home })
         {

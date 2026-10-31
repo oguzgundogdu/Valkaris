@@ -118,6 +118,9 @@ public partial class BuildingPanel : PanelContainer
                 + $"\n{CarrierRules.Free(session.State, data, village)} free now, each carrying {capacity}";
         }
 
+        if (building == BuildingType.Watchtower)
+            return Compare(l => $"Scouts at home × {1 + data.Combat.Scouting.WatchtowerBonusPerLevel * l:0.##}");
+
         return "";
     }
 

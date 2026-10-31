@@ -242,8 +242,21 @@ internal static class GameDataValidator
             Error("protectedResourceShare", "must be between 0 and 1.");
         if (config.CatapultsPerLevelOfDamage < 1)
             Error("catapultsPerLevelOfDamage", "must be at least 1.");
-        if (config.TroopsPerScout < 1)
-            Error("troopsPerScout", "must be at least 1.");
+
+        var scouting = config.Scouting;
+        if (scouting.WatchtowerBonusPerLevel < 0)
+            Error("scouting.watchtowerBonusPerLevel", "must not be negative.");
+        if (scouting.SuccessCurve.Count == 0)
+            Error("scouting.successCurve", "must not be empty.");
+        var (lastRatio, lastChance) = (0.0, 0.0);
+        foreach (var point in scouting.SuccessCurve)
+        {
+            if (point.Ratio <= lastRatio)
+                Error("scouting.successCurve", "ratios must be positive and rising.");
+            if (point.Chance < lastChance || point.Chance > 1)
+                Error("scouting.successCurve", "chances must not fall, and must be at most 1.");
+            (lastRatio, lastChance) = (point.Ratio, point.Chance);
+        }
     }
 
     private static void ValidateMap(MapConfig config, GameConfig game, BuildingsConfig buildings, List<string> errors)

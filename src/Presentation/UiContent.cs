@@ -112,15 +112,17 @@ public static class UiContent
             : $"{result}: {report.Type} by {OwnerName(session, report.AttackerId)}";
     }
 
-    public static bool LocalLostScouts(IGameSession session, ScoutReport report) =>
-        !report.Succeeded && report.SenderId == session.LocalPlayerId;
-
     public static string ScoutHeadline(IGameSession session, ScoutReport report)
     {
         var target = session.State.Villages[report.TargetVillageId].Name;
-        return report.SenderId != session.LocalPlayerId ? $"Caught scouts from {OwnerName(session, report.SenderId)} at {target}"
-            : report.Succeeded ? $"Scouted {target}"
-            : $"Scouts lost at {target}";
+        return report.Succeeded ? $"Scouted {target}" : $"Scouts lost at {target}";
+    }
+
+    public static string NoticeHeadline(IGameSession session, ScoutNotice notice)
+    {
+        var target = session.State.Villages[notice.TargetVillageId].Name;
+        var sender = OwnerName(session, notice.SenderId);
+        return notice.Caught ? $"Caught scouts from {sender} at {target}" : $"{sender} scouted {target}";
     }
 
     /// <summary>The player's latest scouting of a village under its current owner. Null if there is none.</summary>
@@ -133,7 +135,7 @@ public static class UiContent
 
         var age = Format.Time(session.State.ElapsedTime - report.Time);
         if (!report.Succeeded)
-            return $"Scouts caught {age} ago: more than {report.Sent.Values.Sum() * session.Data.Combat.TroopsPerScout} troops";
+            return $"Scouts lost {age} ago: nothing seen";
 
         var wall = report.WallLevel > 0 ? $", Wall {report.WallLevel}" : "";
         return $"Scouted {age} ago: {report.Garrison!.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value)} troops{wall}, {Format.Total(report.Stock!.Value)} resources";

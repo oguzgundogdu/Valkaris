@@ -21,8 +21,8 @@ public sealed record Sighting(
     public Resources? Stock { get; init; }
 }
 
-/// <summary>Scouts died here, so the garrison was larger than this. The defender's owner is kept, since a new owner changes everything.</summary>
-public sealed record CaughtScouts(int OwnerId, double Time, int Scouts, int MoreThanTroops);
+/// <summary>Scouts died here, so its counter-scouting is strong. The defender's owner is kept, since a new owner changes everything.</summary>
+public sealed record CaughtScouts(int OwnerId, double Time, int Scouts);
 
 /// <summary>
 /// Everything the AI believes about other villages. It starts from beliefs in data, which stand for a player's
@@ -86,13 +86,9 @@ public sealed class AiMemory
 
     private void Remember(ScoutReport report)
     {
-        if (report.SenderId != _view.PlayerId)
-            return;
-
         if (!report.Succeeded)
         {
-            var scouts = report.Sent.Values.Sum();
-            _caught[report.TargetVillageId] = new CaughtScouts(report.DefenderId, report.Time, scouts, scouts * _view.Combat.TroopsPerScout);
+            _caught[report.TargetVillageId] = new CaughtScouts(report.DefenderId, report.Time, report.Sent.Values.Sum());
             return;
         }
 
@@ -132,7 +128,7 @@ public sealed class AiMemory
         var loyalty = report.Loyalty?.To ?? (sameOwner ? earlier!.Loyalty : null);
         var isProtected = report.Loyalty is null && (report.CapitalProtected || (sameOwner && earlier!.CapitalProtected));
 
-        _caught.Remove(report.DefenderVillageId);
+        // A battle says nothing about Scouts, so a failure there still counts.
         _sightings[report.DefenderVillageId] = new Sighting(
             report.DefenderId,
             report.Time,
@@ -157,12 +153,6 @@ public sealed class AiMemory
 
     /// <summary>The defence the AI expects there now. Unwatched villages are assumed to keep growing.</summary>
     public double EstimateDefence(KnownVillage village)
-    {
-        var floor = CaughtAt(village) is { } caught ? caught.MoreThanTroops * _view.Config.Beliefs.PowerPerTroop : 0;
-        return Math.Max(floor, EstimateFromSightings(village));
-    }
-
-    private double EstimateFromSightings(KnownVillage village)
     {
         var beliefs = _view.Config.Beliefs;
         var elapsedMinutes = _view.Now * _view.GameSpeed / 60;

@@ -67,9 +67,13 @@ public sealed class AiView
     public IEnumerable<BattleReport> ReportsSince(int reportId) =>
         _state.Reports.Where(r => r.Id > reportId && (r.AttackerId == PlayerId || r.DefenderId == PlayerId));
 
-    /// <summary>Scout reports this player may see: their own, and scouts they caught. Another player's success stays hidden.</summary>
+    /// <summary>Reports from this player's own Scouts.</summary>
     public IEnumerable<ScoutReport> ScoutReportsSince(int reportId) =>
-        _state.ScoutReports.Where(r => r.Id > reportId && r.VisibleTo(PlayerId));
+        _state.ScoutReports.Where(r => r.Id > reportId && r.SenderId == PlayerId);
+
+    /// <summary>What this player noticed of others scouting them.</summary>
+    public IEnumerable<ScoutNotice> ScoutNoticesSince(int reportId) =>
+        _state.ScoutNotices.Where(r => r.Id > reportId && r.DefenderId == PlayerId);
 
     public Terrain TerrainAt(TileCoord tile) => _state.Map.TileAt(tile).Terrain;
 

@@ -9,6 +9,7 @@ public sealed class GameState
     private readonly List<Movement> _movements = new();
     private readonly List<BattleReport> _reports = new();
     private readonly List<ScoutReport> _scoutReports = new();
+    private readonly List<ScoutNotice> _scoutNotices = new();
 
     internal GameState(GameSettings settings, GameMap map)
     {
@@ -19,6 +20,7 @@ public sealed class GameState
         Movements = _movements.AsReadOnly();
         Reports = _reports.AsReadOnly();
         ScoutReports = _scoutReports.AsReadOnly();
+        ScoutNotices = _scoutNotices.AsReadOnly();
         RngState = settings.Seed;
     }
 
@@ -36,8 +38,11 @@ public sealed class GameState
 
     public IReadOnlyList<BattleReport> Reports { get; }
 
-    /// <summary>Check ScoutReport.VisibleTo before showing one. Ids are shared with battle reports.</summary>
+    /// <summary>Show one only to its sender. Ids are shared with battle reports.</summary>
     public IReadOnlyList<ScoutReport> ScoutReports { get; }
+
+    /// <summary>Show one only to its defender. Ids are shared with battle reports.</summary>
+    public IReadOnlyList<ScoutNotice> ScoutNotices { get; }
 
     public int NextMovementId { get; internal set; } = 1;
     public int NextReportId { get; internal set; } = 1;
@@ -62,6 +67,8 @@ public sealed class GameState
 
     internal void AddScoutReport(ScoutReport report) => _scoutReports.Add(report);
 
+    internal void AddScoutNotice(ScoutNotice notice) => _scoutNotices.Add(notice);
+
     /// <summary>SplitMix64. System.Random cannot be saved and restored.</summary>
     internal ulong NextRandom()
     {
@@ -74,4 +81,7 @@ public sealed class GameState
 
     /// <summary>A random integer from 0 up to, but not including, the limit.</summary>
     internal int NextRandom(int exclusiveLimit) => (int)(NextRandom() % (ulong)exclusiveLimit);
+
+    /// <summary>From 0 up to, but not including, 1.</summary>
+    internal double NextRandomShare() => (NextRandom() >> 11) * (1.0 / (1UL << 53));
 }

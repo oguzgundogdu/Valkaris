@@ -128,9 +128,19 @@ public sealed record CombatConfig
 
     public required int CatapultsPerLevelOfDamage { get; init; }
 
-    /// <summary>Scouts succeed if the garrison is no larger than this many troops for each scout.</summary>
-    public required int TroopsPerScout { get; init; }
+    public required ScoutingConfig Scouting { get; init; }
 }
+
+public sealed record ScoutingConfig
+{
+    /// <summary>Added to the strength of the Scouts at home, per Watchtower level.</summary>
+    public required double WatchtowerBonusPerLevel { get; init; }
+
+    /// <summary>Chance of success by the strength ratio of attackers to defenders. Linear between points, from zero at ratio 0, and flat after the last.</summary>
+    public required IReadOnlyList<ScoutChancePoint> SuccessCurve { get; init; }
+}
+
+public sealed record ScoutChancePoint(double Ratio, double Chance);
 
 /// <summary>data/map.json</summary>
 public sealed record MapConfig

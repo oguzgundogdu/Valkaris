@@ -66,11 +66,7 @@ public sealed class ScoutPlanner
             || (_view.Now - sighting.Time) * _view.GameSpeed > _view.Profile.ScoutMaxAgeSeconds;
     }
 
-    /// <summary>Enough for the garrison it expects, and twice what was caught last time.</summary>
-    private int ScoutsFor(KnownVillage target)
-    {
-        var troops = _memory.EstimateDefence(target) / _view.Config.Beliefs.PowerPerTroop;
-        var scouts = Math.Max(1, (int)Math.Ceiling(troops / _view.Combat.TroopsPerScout));
-        return _memory.CaughtAt(target) is { } caught ? Math.Max(scouts, caught.Scouts * 2) : scouts;
-    }
+    /// <summary>One to look, and twice what was caught last time.</summary>
+    private int ScoutsFor(KnownVillage target) =>
+        _memory.CaughtAt(target) is { } caught ? caught.Scouts * 2 : 1;
 }

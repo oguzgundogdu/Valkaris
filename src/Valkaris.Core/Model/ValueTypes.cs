@@ -88,8 +88,8 @@ public sealed record BattleReport(
     bool CapitalProtected = false);
 
 /// <summary>
-/// What scouts found, or that they were caught. Garrison, wall and stock are set only on success.
-/// Unlike a battle report, a success stays private to the sender: the defender hears only of failures.
+/// What the sender's Scouts found, known only to the sender. Garrison, wall and stock are set only on success.
+/// What the defender may know is in a separate ScoutNotice, so neither side can read the other's.
 /// </summary>
 public sealed record ScoutReport(
     int Id,
@@ -102,10 +102,22 @@ public sealed record ScoutReport(
     bool Succeeded,
     IReadOnlyDictionary<UnitType, int>? Garrison,
     int? WallLevel,
-    Resources? Stock)
-{
-    public bool VisibleTo(int playerId) => playerId == SenderId || (!Succeeded && playerId == DefenderId);
-}
+    Resources? Stock,
+    int ScoutsLost = 0);
+
+/// <summary>
+/// What the defender learned, known only to the defender. Shares ids with reports.
+/// The count sent is known only when the Scouts failed: a Watchtower sees a success happen, but not its size.
+/// </summary>
+public sealed record ScoutNotice(
+    int Id,
+    double Time,
+    int SenderId,
+    int DefenderId,
+    int TargetVillageId,
+    bool Caught,
+    int? ScoutsSent,
+    int ScoutsLost);
 
 public sealed record PlayerScore(int PlayerId, int Villages, int Population, int Captures, double Score);
 

@@ -17,6 +17,7 @@ public partial class ReportsPanel : PanelContainer
 
     public event Action<BattleReport>? ReportOpened;
     public event Action<ScoutReport>? ScoutReportOpened;
+    public event Action<ScoutNotice>? ScoutNoticeOpened;
 
     public override void _Ready()
     {
@@ -36,12 +37,14 @@ public partial class ReportsPanel : PanelContainer
     {
         var battles = MyReports(session);
         var scouts = MyScoutReports(session);
-        _none.Visible = battles.Count + scouts.Count == 0;
+        var notices = MyScoutNotices(session);
+        _none.Visible = battles.Count + scouts.Count + notices.Count == 0;
 
         // Ids run in time order across both kinds, so each new row goes on top of the older ones.
         var rows = battles
             .Select(r => (r.Id, r.Time, Text: UiContent.ReportHeadline(session, r), Bad: !UiContent.LocalWon(session, r), Open: (Action)(() => ReportOpened?.Invoke(r))))
-            .Concat(scouts.Select(r => (r.Id, r.Time, Text: UiContent.ScoutHeadline(session, r), Bad: UiContent.LocalLostScouts(session, r), Open: (Action)(() => ScoutReportOpened?.Invoke(r)))))
+            .Concat(scouts.Select(r => (r.Id, r.Time, Text: UiContent.ScoutHeadline(session, r), Bad: !r.Succeeded, Open: (Action)(() => ScoutReportOpened?.Invoke(r)))))
+            .Concat(notices.Select(n => (n.Id, n.Time, Text: UiContent.NoticeHeadline(session, n), Bad: false, Open: (Action)(() => ScoutNoticeOpened?.Invoke(n)))))
             .Where(row => !_rows.ContainsKey(row.Id))
             .OrderBy(row => row.Id);
 
@@ -64,10 +67,14 @@ public partial class ReportsPanel : PanelContainer
     }
 
     private static IEnumerable<int> MyReportIds(IGameSession session) =>
-        MyReports(session).Select(r => r.Id).Concat(MyScoutReports(session).Select(r => r.Id));
+        MyReports(session).Select(r => r.Id).Concat(MyScoutReports(session).Select(r => r.Id)).Concat(MyScoutNotices(session).Select(n => n.Id));
 
     private static List<ScoutReport> MyScoutReports(IGameSession session) => session.State.ScoutReports
-        .Where(r => r.VisibleTo(session.LocalPlayerId))
+        .Where(r => r.SenderId == session.LocalPlayerId)
+        .ToList();
+
+    private static List<ScoutNotice> MyScoutNotices(IGameSession session) => session.State.ScoutNotices
+        .Where(n => n.DefenderId == session.LocalPlayerId)
         .ToList();
 
     private static List<BattleReport> MyReports(IGameSession session) => session.State.Reports

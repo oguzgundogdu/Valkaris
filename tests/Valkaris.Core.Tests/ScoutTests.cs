@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Valkaris.Core.Commands;
 using Valkaris.Core.Data;
 using Valkaris.Core.Events;
@@ -13,7 +14,6 @@ public class ScoutTests
     private const int Defender = 2;
 
     private static readonly GameData Data = TestData.Shipped;
-    private static readonly int PerScout = Data.Combat.TroopsPerScout;
 
     private readonly GameState _state = TestMatch.Create(duration: 36000);
     private readonly CommandHandler _handler;
@@ -49,57 +49,247 @@ public class ScoutTests
 
     private ScoutReport Report => _state.ScoutReports.Single();
 
-    [Fact]
-    public void TheGarrisonAtTheLimitIsScouted()
+    /// <summary>A flat curve, so a test can force the outcome.</summary>
+    private static GameData WithChance(double chance) => TestData.Mutated(GameData.CombatFile, root =>
+        root["scouting"]!["successCurve"] = new JsonArray(new JsonObject { ["ratio"] = 0.0001, ["chance"] = chance }));
+
+    private void Contest(GameData data, int scouts, int defenders, int watchtower = 0)
     {
-        SetTroops(_target, UnitType.Spearman, 2 * PerScout);
-
-        SendAndArrive(2);
-
-        Assert.True(Report.Succeeded);
-    }
-
-    [Fact]
-    public void OneTroopOverTheLimitCatchesTheScouts()
-    {
-        SetTroops(_target, UnitType.Spearman, 2 * PerScout + 1);
-
-        SendAndArrive(2);
-
-        Assert.False(Report.Succeeded);
+        _target.AddTroops(UnitType.Scout, defenders);
+        _target.SetBuildingLevel(BuildingType.Watchtower, watchtower);
+        Assert.True(new CommandHandler(_state, data).Handle(Sender, Scout(scouts)).Success);
+        new Simulation(_state, data).AdvanceTo(_state.Movements.Single().ArrivalTime);
     }
 
     [Fact]
     public void AnEmptyVillageIsAlwaysScouted()
     {
+        var rng = _state.RngState;
+
         SendAndArrive(1);
 
         Assert.True(Report.Succeeded);
         Assert.Empty(Report.Garrison!);
+        Assert.Equal(0, Report.ScoutsLost);
+        Assert.Equal(rng, _state.RngState);
     }
 
     [Fact]
-    public void AllUnitsPresentCountTowardsTheGarrison()
+    public void AVillageWithAGarrisonButNoScoutsIsAlwaysScouted()
     {
-        SetTroops(_target, UnitType.Spearman, PerScout);
-        _target.AddTroops(UnitType.Lord, 1);
+        SetTroops(_target, UnitType.Spearman, 5000);
 
         SendAndArrive(1);
 
-        Assert.False(Report.Succeeded);
+        Assert.True(Report.Succeeded);
     }
 
     [Fact]
-    public void ThresholdComesFromData()
+    public void TheLargerForceUsuallyWinsAndTheCurveIsUsed()
     {
-        var data = TestData.Mutated(GameData.CombatFile, root => root["troopsPerScout"] = 1);
-        var simulation = new Simulation(_state, data);
-        SetTroops(_target, UnitType.Spearman, 2);
-        _handler.Handle(Sender, Scout(1));
+        Assert.Equal(0.97, ScoutRules.SuccessChance(Data, 5), 6);
+        Assert.Equal(0.25, ScoutRules.SuccessChance(Data, 1), 6);
+        Assert.Equal(0.97, ScoutRules.SuccessChance(Data, 50), 6);
+        Assert.Equal((0.25 + 0.55) / 2, ScoutRules.SuccessChance(Data, 1.25), 6);
+        Assert.Equal(0.05 / 2, ScoutRules.SuccessChance(Data, 0.25), 6);
+        Assert.True(ScoutRules.SuccessChance(Data, 2) > 0.5);
+    }
 
-        simulation.AdvanceTo(_state.Movements.Single().ArrivalTime);
+    [Theory]
+    [InlineData(5, 1, 0, true, 300)]
+    [InlineData(1, 1, 0, false, 300)]
+    public void OutcomesFollowTheChanceAcrossSeeds(int scouts, int defenders, int tower, bool likely, int runs)
+    {
+        var wins = 0;
+        for (var seed = 0; seed < runs; seed++)
+        {
+            var state = TestMatch.Create(duration: 36000, seed: (ulong)seed);
+            state.Villages[Sender].AddTroops(UnitType.Scout, scouts);
+            state.Villages[Defender].AddTroops(UnitType.Scout, defenders);
+            state.Villages[Defender].SetBuildingLevel(BuildingType.Watchtower, tower);
+            new CommandHandler(state, Data).Handle(Sender, Scout(scouts));
+            new Simulation(state, Data).AdvanceTo(state.Movements.Single().ArrivalTime);
+            wins += state.ScoutReports.Single().Succeeded ? 1 : 0;
+        }
+
+        Assert.True(likely ? wins > runs * 0.9 : wins < runs * 0.4, $"{wins} of {runs}");
+    }
+
+    [Fact]
+    public void AWatchtowerMultipliesTheScoutsAtHome()
+    {
+        _target.AddTroops(UnitType.Scout, 10);
+        Assert.Equal(10, ScoutRules.DefendingStrength(Data, _target), 6);
+
+        _target.SetBuildingLevel(BuildingType.Watchtower, 3);
+
+        Assert.Equal(10 * (1 + 3 * Data.Combat.Scouting.WatchtowerBonusPerLevel), ScoutRules.DefendingStrength(Data, _target), 6);
+    }
+
+    [Fact]
+    public void AWatchtowerAloneStopsNobody()
+    {
+        _target.SetBuildingLevel(BuildingType.Watchtower, 10);
+
+        SendAndArrive(1);
+
+        Assert.True(Report.Succeeded);
+    }
+
+    [Fact]
+    public void FiveAgainstOneKillsTheDefenderAndCostsAboutOne()
+    {
+        Contest(WithChance(1), 5, 1);
+
+        Assert.True(Report.Succeeded);
+        Assert.Equal(1, Report.ScoutsLost);
+        Assert.Equal(0, _target.TroopCount(UnitType.Scout));
+        Assert.Equal(4, _state.Movements.Single().Troops[UnitType.Scout]);
+    }
+
+    [Fact]
+    public void OnSuccessBothLoseInProportionToTheRatio()
+    {
+        Contest(WithChance(1), 15, 5);
+
+        Assert.Equal(4, Report.ScoutsLost);
+        Assert.Equal(1, _target.TroopCount(UnitType.Scout));
+    }
+
+    [Fact]
+    public void OnFailureAllAttackersDieAndTheDefenderLosesInProportion()
+    {
+        Contest(WithChance(0), 5, 15);
 
         Assert.False(Report.Succeeded);
+        Assert.Equal(5, Report.ScoutsLost);
+        Assert.Empty(_state.Movements);
+        Assert.Equal(11, _target.TroopCount(UnitType.Scout));
+    }
+
+    [Fact]
+    public void ASuccessAlwaysBringsSomeoneHome()
+    {
+        Contest(WithChance(1), 1, 50);
+
+        Assert.True(Report.Succeeded);
+        Assert.Equal(0, Report.ScoutsLost);
+        Assert.Equal(1, _state.Movements.Single().Troops[UnitType.Scout]);
+    }
+
+    [Fact]
+    public void WatchtowerStrengthCountsInTheLosses()
+    {
+        Contest(WithChance(1), 10, 5, watchtower: 5);
+
+        Assert.Equal(5, Report.ScoutsLost);
+        Assert.Equal(2, _target.TroopCount(UnitType.Scout));
+    }
+
+    [Fact]
+    public void ScoutsAwayFromHomeDontDefend()
+    {
+        _target.AddTroops(UnitType.Scout, 5);
+        new CommandHandler(_state, Data).Handle(Defender, new SendTroopsCommand(Defender, Sender, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 5 }));
+        Assert.True(_handler.Handle(Sender, Scout(1)).Success);
+
+        var mine = _state.Movements.Single(m => m.OwnerId == Sender);
+        if (_state.Movements.Single(m => m.OwnerId == Defender).ArrivalTime < mine.ArrivalTime)
+            throw new InvalidOperationException("The defenders must still be out.");
+        _simulation.AdvanceTo(mine.ArrivalTime);
+
+        Assert.True(_state.ScoutReports.Single(r => r.SenderId == Sender).Succeeded);
+    }
+
+    // Notices.
+
+    private ScoutNotice Notice => _state.ScoutNotices.Single();
+
+    [Fact]
+    public void AFailureTellsTheDefenderWhoAndHowMany()
+    {
+        Contest(WithChance(0), 3, 9);
+
+        Assert.True(Notice.Caught);
+        Assert.Equal(Sender, Notice.SenderId);
+        Assert.Equal(Defender, Notice.DefenderId);
+        Assert.Equal(3, Notice.ScoutsSent);
+        Assert.Equal(2, Notice.ScoutsLost);
+    }
+
+    [Fact]
+    public void ASuccessWithoutAWatchtowerTellsTheDefenderNothing()
+    {
+        Contest(WithChance(1), 5, 3);
+
+        Assert.Empty(_state.ScoutNotices);
+    }
+
+    [Fact]
+    public void AnyWatchtowerNoticesASuccessButNotItsSize()
+    {
+        _target.SetBuildingLevel(BuildingType.Watchtower, 1);
+
+        var events = SendAndArrive(5);
+
+        Assert.False(Notice.Caught);
+        Assert.Equal(Sender, Notice.SenderId);
+        Assert.Null(Notice.ScoutsSent);
+        Assert.Equal(Notice.Id, Assert.Single(events.OfType<ScoutNoticed>()).NoticeId);
+    }
+
+    [Fact]
+    public void ATakenCampHasNobodyToTell()
+    {
+        var camp = _state.Villages.Values.First(v => v.IsBarbarian);
+        camp.SetBuildingLevel(BuildingType.Watchtower, 1);
+
+        Assert.True(_handler.Handle(Sender, Scout(1, to: camp.Id)).Success);
+        _simulation.AdvanceTo(_state.Movements.Single().ArrivalTime);
+
+        Assert.Empty(_state.ScoutNotices);
+    }
+
+    [Fact]
+    public void CampsStartWithNoScoutsSoTheyAreAlwaysScouted()
+    {
+        Assert.All(Data.Map.Barbarians.Tiers, tier => Assert.Equal(0, tier.Garrison[UnitType.Scout]));
+    }
+
+    [Fact]
+    public void ACampsScoutsComeBackAsItsOtherTroopsDo()
+    {
+        var data = TestData.Mutated(GameData.MapFile, root =>
+        {
+            foreach (var tier in root["barbarians"]!["tiers"]!.AsArray())
+                tier!["garrison"]!["Scout"] = 3;
+        });
+        var state = TestMatch.Create(duration: 36000, data: data);
+        var camp = state.Villages.Values.First(v => v.IsBarbarian);
+        Assert.Equal(3, camp.TroopCount(UnitType.Scout));
+        state.Villages[Sender].AddTroops(UnitType.Scout, 30);
+        new CommandHandler(state, data).Handle(Sender, Scout(30, to: camp.Id));
+        var simulation = new Simulation(state, data);
+        simulation.AdvanceTo(state.Movements.Single().ArrivalTime);
+        Assert.True(camp.TroopCount(UnitType.Scout) < 3);
+
+        simulation.AdvanceTo(state.ElapsedTime + data.Map.Barbarians.TroopRegenSeconds * 10);
+
+        Assert.Equal(3, camp.TroopCount(UnitType.Scout));
+    }
+
+    [Fact]
+    public void AnAbandonedVillageKeepsItsScoutsAndTellsNobody()
+    {
+        _target.AddTroops(UnitType.Scout, 4);
+        _target.OwnerId = Village.BarbarianOwnerId;
+        _target.BarbarianTier = null;
+
+        Contest(WithChance(0), 1, 0);
+
+        Assert.False(Report.Succeeded);
+        Assert.Empty(_state.ScoutNotices);
+        Assert.True(_target.TroopCount(UnitType.Scout) > 0);
     }
 
     [Fact]
@@ -120,7 +310,7 @@ public class ScoutTests
     {
         SetTroops(_target, UnitType.Spearman, 100);
 
-        SendAndArrive(1);
+        Contest(WithChance(0), 1, 5);
 
         Assert.Null(Report.Garrison);
         Assert.Null(Report.WallLevel);
@@ -145,31 +335,24 @@ public class ScoutTests
     [Fact]
     public void CaughtScoutsAllDie()
     {
-        SetTroops(_target, UnitType.Spearman, 100);
-
-        SendAndArrive(4);
+        Contest(WithChance(0), 4, 5);
 
         Assert.Empty(_state.Movements);
         Assert.Equal(16, _home.TroopCount(UnitType.Scout));
     }
 
-    [Theory]
-    [InlineData(4)]
-    [InlineData(1)]
-    public void TheDefenderLosesNothing(int scouts)
+    [Fact]
+    public void TheGarrisonIsUntouchedAndNoBattleIsFought()
     {
         SetTroops(_target, UnitType.Spearman, 10);
-        _target.Loyalty = Village.MaxLoyalty;
+        _target.AddTroops(UnitType.Scout, 5);
         var stock = _target.Resources;
 
-        Assert.True(_handler.Handle(Sender, Scout(scouts)).Success);
-        var rng = _state.RngState;
-        var arrival = _state.Movements.Single().ArrivalTime;
-        _simulation.AdvanceTo(arrival);
+        Assert.True(_handler.Handle(Sender, Scout(3)).Success);
+        _simulation.AdvanceTo(_state.Movements.Single().ArrivalTime);
 
         Assert.Equal(10, _target.TroopCount(UnitType.Spearman));
         Assert.Equal(Village.MaxLoyalty, _target.Loyalty, 3);
-        Assert.Equal(rng, _state.RngState);
         Assert.Empty(_state.Reports);
         Assert.True(_target.Resources.Wood >= stock.Wood);
     }
@@ -186,27 +369,6 @@ public class ScoutTests
         Assert.True(Report.Succeeded);
         Assert.Equal(Village.BarbarianOwnerId, Report.DefenderId);
         Assert.Null(camp.NextTroopRegenTime);
-    }
-
-    [Fact]
-    public void ASuccessIsKnownOnlyToTheSender()
-    {
-        SendAndArrive(1);
-
-        Assert.True(Report.VisibleTo(Sender));
-        Assert.False(Report.VisibleTo(Defender));
-    }
-
-    [Fact]
-    public void AFailureIsKnownToBothSidesButNotToOthers()
-    {
-        SetTroops(_target, UnitType.Spearman, 100);
-
-        SendAndArrive(1);
-
-        Assert.True(Report.VisibleTo(Sender));
-        Assert.True(Report.VisibleTo(Defender));
-        Assert.False(Report.VisibleTo(3));
     }
 
     [Fact]
@@ -267,9 +429,11 @@ public class ScoutTests
     }
 
     [Fact]
-    public void ReportsAndScoutsInFlightSurviveASnapshot()
+    public void ReportsNoticesAndScoutsInFlightSurviveASnapshot()
     {
+        _target.SetBuildingLevel(BuildingType.Watchtower, 1);
         SendAndArrive(1);
+        Assert.Single(_state.ScoutNotices);
         _handler.Handle(Sender, Scout(2));
 
         var json = SnapshotMapper.ToJson(SnapshotMapper.ToSnapshot(_state));
@@ -277,7 +441,7 @@ public class ScoutTests
 
         Assert.Equal(json, SnapshotMapper.ToJson(SnapshotMapper.ToSnapshot(restored)));
         Assert.Equal(_state.ScoutReports.Single().Id, restored.ScoutReports.Single().Id);
-        Assert.True(restored.ScoutReports.Single().VisibleTo(Sender));
+        Assert.Equal(_state.ScoutNotices.Single(), restored.ScoutNotices.Single());
     }
 
     [Fact]
@@ -297,15 +461,30 @@ public class ScoutTests
     [InlineData(0.25)]
     public void TheResultDoesNotDependOnTheStepSize(double step)
     {
-        SetTroops(_target, UnitType.Spearman, 3);
-        _handler.Handle(Sender, Scout(1));
+        var results = new List<string>();
+        for (ulong seed = 1; seed <= 20; seed++)
+        {
+            results.Add(Run(seed, step));
+            Assert.Equal(Run(seed, 600), results[^1]);
+        }
 
-        for (var time = step; time <= 6000; time += step)
-            _simulation.AdvanceTo(time);
+        Assert.Contains(results, r => r.StartsWith("True"));
+        Assert.Contains(results, r => r.StartsWith("False"));
+    }
 
-        Assert.True(Report.Succeeded);
-        Assert.Equal(ExpectedArrival(), Report.Time, 6);
-        Assert.Equal(20, _home.TroopCount(UnitType.Scout));
+    private static string Run(ulong seed, double step)
+    {
+        var state = TestMatch.Create(duration: 36000, seed: seed);
+        state.Villages[Sender].AddTroops(UnitType.Scout, 5);
+        state.Villages[Defender].AddTroops(UnitType.Scout, 4);
+        var simulation = new Simulation(state, Data);
+        new CommandHandler(state, Data).Handle(Sender, new SendTroopsCommand(Sender, Defender, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 5 }));
+
+        for (var time = step; time <= 1800; time += step)
+            simulation.AdvanceTo(time);
+
+        var report = state.ScoutReports.Single();
+        return $"{report.Succeeded} {report.Time:0.000} {report.ScoutsLost} {state.Villages[Defender].TroopCount(UnitType.Scout)} {state.Villages[Sender].TroopCount(UnitType.Scout)}";
     }
 
     private double ExpectedArrival() =>

@@ -1589,9 +1589,9 @@ public partial class UiTest : Control
     private static void SelectGameTile(GameScreen game, BuildingType building) =>
         game.GetNode<VillageView>("%VillageView").GetNode<BuildingTile>(building.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
 
-    private async Task TrainAndWait(LocalGameSession session, int player, int spearmen)
+    private async Task TrainAndWait(LocalGameSession session, int player, int count, UnitType unit = UnitType.Spearman)
     {
-        Expect(session.SendAs(player, new TrainCommand(player, UnitType.Spearman, spearmen)).Success, "More Spearmen are ordered");
+        Expect(session.SendAs(player, new TrainCommand(player, unit, count)).Success, $"More {unit} are ordered");
         var village = session.State.Villages[player];
         session.Tick(village.TrainingQueue[^1].FinishTime - session.State.ElapsedTime + 0.001);
         await Frames();
@@ -1619,7 +1619,7 @@ public partial class UiTest : Control
         mission.Select(2);
         await Frames();
         Expect(!intel.Visible, "No intel before any scouting");
-        Expect(rule.Visible && rule.Text.Contains($"every {data.Combat.TroopsPerScout} troops") && rule.Text.Contains("Only Scouts"), $"The form states the scouting rule, got '{rule.Text}'");
+        Expect(rule.Visible && rule.Text.Contains("Scouts at home"), $"The form states the scouting rule, got '{rule.Text}'");
         Expect(scoutRow.Visible && !unitRows.GetNode<Control>(nameof(UnitType.Spearman)).Visible, "A Scout mission offers only Scouts");
         mission.Select(0);
         await Frames();
@@ -1636,12 +1636,12 @@ public partial class UiTest : Control
         Expect(UiContent.IsVisibleMovement(session, scoutTrip), "The sender sees their scouts");
 
         await RunUntilArrived(session);
-        Expect(state.ScoutReports.Single().Succeeded, "A garrison at the limit is scouted");
+        Expect(state.ScoutReports.Single().Succeeded, "A village with no Scouts is always scouted");
         Expect(state.Reports.Count == 0, "Scouting fights no battle");
         game.ShowTab(GameScreen.SideTab.Send);
         send.SetTarget(2);
         await Frames();
-        Expect(intel.Visible && intel.Text.Contains($"{data.Combat.TroopsPerScout} troops") && intel.Text.Contains("Wall 2"), $"The form shows the latest intel, got '{intel.Text}'");
+        Expect(intel.Visible && intel.Text.Contains("5 troops") && intel.Text.Contains("Wall 2"), $"The form shows the latest intel, got '{intel.Text}'");
         await Shot("scout-intel");
 
         game.ShowTab(GameScreen.SideTab.Reports);
@@ -1656,36 +1656,57 @@ public partial class UiTest : Control
         await Shot("scout-report");
         Press(dialog.GetNode<Button>("%Close"));
 
-        // Scouts that are caught, seen from the side that sent them.
-        await TrainAndWait(session, 2, 10);
-        Expect(session.SendAs(1, new SendTroopsCommand(1, 2, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "A second scout goes out");
+        // Scouts that are caught, seen from the side that sent them. This uses up every Scout at home.
+        await TrainAndWait(session, 2, 40, UnitType.Scout);
+        Expect(session.SendAs(1, new SendTroopsCommand(1, 2, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = home.TroopCount(UnitType.Scout) })).Success, "A second scouting goes out");
         await RunUntilArrived(session);
-        Expect(!state.ScoutReports[^1].Succeeded, "A large garrison catches the scouts");
+        Expect(!state.ScoutReports[^1].Succeeded, "Many Scouts catch a few");
+        Expect(home.TroopCount(UnitType.Scout) == 0 && state.Movements.Count == 0, "Scouts that are caught all die");
         game.ShowTab(GameScreen.SideTab.Send);
         send.SetTarget(2);
         await Frames();
-        Expect(intel.Text.StartsWith("Scouts caught"), $"The form shows the failure, got '{intel.Text}'");
+        Expect(intel.Text.StartsWith("Scouts lost"), $"The form shows the failure, got '{intel.Text}'");
 
-        // Both directions, seen from the side being scouted.
-        Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "The rival sends a scout");
+        // Both directions, seen from the side being scouted. With no Watchtower, a success goes unnoticed.
+        Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "The rival sends a Scout");
         await Frames();
         var incoming = state.Movements.Single(m => m.OwnerId == 2);
         Expect(!UiContent.IsVisibleMovement(session, incoming), "Incoming scouts are hidden");
         Expect(!FindAll<ResourceBar>(game).First().GetNode<Button>("%Incoming").Visible, "Incoming scouts raise no warning");
         Expect(world.GetNode<MovementLayer>("World/Movements").Entries.All(e => e.MovementId != incoming.Id), "Incoming scouts have no marker");
-        var known = game.GetNode<ReportsPanel>("%Reports").UnreadCount(session);
+        var known = reports.UnreadCount(session);
         await RunUntilArrived(session);
-        Expect(state.ScoutReports[^1].Succeeded, "A small garrison is scouted");
-        Expect(reports.UnreadCount(session) == known, "A successful scout tells the defender nothing");
+        Expect(state.ScoutReports[^1].Succeeded, "A village with no Scouts is scouted");
+        Expect(reports.UnreadCount(session) == known, "A successful scout tells a defender with no Watchtower nothing");
 
-        await TrainAndWait(session, 1, 10);
+        // A Watchtower sees even a success, without learning what was seen.
+        Expect(session.SendAs(1, new BuildCommand(1, BuildingType.Watchtower)).Success, "A Watchtower is ordered");
+        session.Tick(home.BuildQueue[^1].FinishTime - state.ElapsedTime + 0.001);
+        await Frames();
         Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "The rival tries again");
         await RunUntilArrived(session);
-        Expect(!state.ScoutReports[^1].Succeeded, "The garrison catches the rival's scout");
+        Expect(state.ScoutReports[^1].Succeeded, "The Watchtower doesn't stop anyone by itself");
+        Expect(reports.UnreadCount(session) == known + 1, "The Watchtower tells the defender of a success");
+        game.ShowTab(GameScreen.SideTab.Reports);
+        await Frames();
+        var seen = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutNotices[^1].Id}");
+        Expect(seen.Text.StartsWith("Rival scouted"), $"The notice names the sender, got '{seen.Text}'");
+        Press(seen);
+        await Frames();
+        Expect(dialog.GetNode<Label>("%Result").Text == "Scouted by an enemy", "The Watchtower's notice opens");
+        Press(dialog.GetNode<Button>("%Close"));
+
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+        known = reports.UnreadCount(session);
+        await TrainAndWait(session, 1, 40, UnitType.Scout);
+        Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "The rival tries once more");
+        await RunUntilArrived(session);
+        Expect(!state.ScoutReports[^1].Succeeded, "The player's Scouts catch the rival's");
         Expect(reports.UnreadCount(session) == known + 1, "The defender is told about caught scouts");
         game.ShowTab(GameScreen.SideTab.Reports);
         await Frames();
-        var notice = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutReports[^1].Id}");
+        var notice = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutNotices[^1].Id}");
         Expect(notice.Text.StartsWith("Caught scouts from Rival"), $"The notice names the sender, got '{notice.Text}'");
         Press(notice);
         await Frames();

@@ -31,6 +31,7 @@ public static class SnapshotMapper
         state.Movements.ToList(),
         state.Reports.ToList(),
         state.ScoutReports.ToList(),
+        state.ScoutNotices.ToList(),
         state.NextMovementId,
         state.NextReportId,
         state.RngState,
@@ -90,6 +91,8 @@ public static class SnapshotMapper
             state.AddReport(report);
         foreach (var report in snapshot.ScoutReports)
             state.AddScoutReport(report);
+        foreach (var notice in snapshot.ScoutNotices)
+            state.AddScoutNotice(notice);
 
         foreach (var p in snapshot.Players)
         {

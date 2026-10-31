@@ -291,12 +291,18 @@ public sealed class Simulation
         }
     }
 
-    /// <summary>A plain comparison of head counts, with no battle: scouts either all come home with what they saw, or all die.</summary>
+    /// <summary>Scouts against the Scouts at home, and never a battle. An undefended village is always scouted, and nobody is lost.</summary>
     private ScoutResolved ResolveScout(Movement movement)
     {
         var target = _state.Villages[movement.ToVillageId!.Value];
-        var garrison = target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
-        var succeeded = garrison.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value) <= movement.Troops.Values.Sum() * _data.Combat.TroopsPerScout;
+        var scouts = movement.Troops.Values.Sum();
+        var defenders = target.TroopCount(UnitType.Scout);
+        var defendStrength = ScoutRules.DefendingStrength(_data, target);
+
+        var succeeded = defenders == 0 || _state.NextRandomShare() < ScoutRules.SuccessChance(_data, scouts / defendStrength);
+        var scoutsLost = defenders == 0 ? 0 : ScoutRules.AttackersLost(scouts, scouts, defendStrength, succeeded);
+        var defendersLost = defenders == 0 ? 0 : ScoutRules.DefendersLost(defenders, scouts, defendStrength);
+        target.RemoveTroops(UnitType.Scout, defendersLost);
 
         var report = new ScoutReport(
             _state.NextReportId++,
@@ -307,14 +313,27 @@ public sealed class Simulation
             target.Id,
             movement.Troops,
             succeeded,
-            succeeded ? garrison : null,
+            succeeded ? target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value) : null,
             succeeded ? target.BuildingLevel(BuildingType.Wall) : null,
-            succeeded ? target.Resources : null);
+            succeeded ? target.Resources : null,
+            scoutsLost);
         _state.AddScoutReport(report);
 
-        if (succeeded)
-            StartReturn(movement.OwnerId, target.Id, null, movement.FromVillageId, movement.Troops, Resources.Zero, movement.ArrivalTime);
+        if (target.IsBarbarian && defendersLost > 0)
+            ScheduleTroopRegen(target, movement.ArrivalTime);
+        else if (!target.IsBarbarian && (!succeeded || target.BuildingLevel(BuildingType.Watchtower) > 0))
+            NotifyDefender(report, target, scouts, defendersLost);
+
+        if (scouts > scoutsLost)
+            StartReturn(movement.OwnerId, target.Id, null, movement.FromVillageId, new Dictionary<UnitType, int> { [UnitType.Scout] = scouts - scoutsLost }, Resources.Zero, movement.ArrivalTime);
         return new ScoutResolved(movement.ArrivalTime, report.Id);
+    }
+
+    private void NotifyDefender(ScoutReport report, Village target, int scouts, int defendersLost)
+    {
+        var notice = new ScoutNotice(_state.NextReportId++, report.Time, report.SenderId, target.OwnerId, target.Id, !report.Succeeded, report.Succeeded ? null : scouts, defendersLost);
+        _state.AddScoutNotice(notice);
+        _followUps.Add(new ScoutNoticed(report.Time, notice.Id));
     }
 
     private BattleResolved ResolveBattle(Movement movement)

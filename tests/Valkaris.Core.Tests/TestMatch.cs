@@ -16,9 +16,10 @@ internal static class TestMatch
         int players = 2,
         double duration = OneHour,
         double speed = 1,
-        GameData? data = null) =>
+        GameData? data = null,
+        ulong seed = 0) =>
         GameFactory.CreateMatch(
-            new GameSettings(duration, speed, MapSize.Small),
+            new GameSettings(duration, speed, MapSize.Small, seed),
             Slots(players),
             data ?? TestData.Shipped);
 }

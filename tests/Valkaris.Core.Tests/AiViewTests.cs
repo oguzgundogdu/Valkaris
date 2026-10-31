@@ -231,24 +231,26 @@ public class AiViewTests
     }
 
     [Fact]
-    public void AnotherPlayersSuccessfulScoutingStaysHidden()
-    {
-        _state.AddScoutReport(Scouted(1, Other, Self, succeeded: true));
-        _state.AddScoutReport(Scouted(2, Other, 3, succeeded: true));
-        _state.AddScoutReport(Scouted(3, Other, 3, succeeded: false));
-
-        Assert.DoesNotContain(_view.ScoutReportsSince(0), _ => true);
-    }
-
-    [Fact]
-    public void OwnScoutingAndCaughtScoutsAreVisible()
+    public void OnlyItsOwnScoutReportsAreVisible()
     {
         _state.AddScoutReport(Scouted(1, Self, Other, succeeded: true));
         _state.AddScoutReport(Scouted(2, Self, Other, succeeded: false));
-        _state.AddScoutReport(Scouted(3, Other, Self, succeeded: false));
+        _state.AddScoutReport(Scouted(3, Other, Self, succeeded: true));
+        _state.AddScoutReport(Scouted(4, Other, Self, succeeded: false));
+        _state.AddScoutReport(Scouted(5, Other, 3, succeeded: true));
 
-        Assert.Equal(new[] { 1, 2, 3 }, _view.ScoutReportsSince(0).Select(r => r.Id));
-        Assert.Equal(new[] { 3 }, _view.ScoutReportsSince(2).Select(r => r.Id));
+        Assert.Equal(new[] { 1, 2 }, _view.ScoutReportsSince(0).Select(r => r.Id));
+        Assert.Equal(new[] { 2 }, _view.ScoutReportsSince(1).Select(r => r.Id));
+    }
+
+    [Fact]
+    public void OnlyNoticesAddressedToItAreVisible()
+    {
+        _state.AddScoutNotice(new ScoutNotice(1, 0, Other, Self, Self, true, 3, 0));
+        _state.AddScoutNotice(new ScoutNotice(2, 0, Self, Other, Other, true, 3, 0));
+        _state.AddScoutNotice(new ScoutNotice(3, 0, Other, 3, 3, false, null, 0));
+
+        Assert.Equal(new[] { 1 }, _view.ScoutNoticesSince(0).Select(n => n.Id));
     }
 
     [Fact]

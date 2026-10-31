@@ -131,8 +131,8 @@ public class AiScoutTests
     [Fact]
     public void CaughtScoutsAreFollowedByMoreAfterTheWait()
     {
-        // Enough to scout with, but too few to attack on the estimate instead.
         var match = ReadyToScout(enemyTroops: 5000, cavalry: 8, scouts: 8);
+        match.State.Villages[Enemy].AddTroops(UnitType.Scout, 2000);
         RunUntil(match, () => match.State.ScoutReports.Count > 0);
         var first = match.State.ScoutReports[0];
         Assert.False(first.Succeeded);
@@ -141,8 +141,8 @@ public class AiScoutTests
 
         var second = Scouts(match) ?? throw new Xunit.Sdk.XunitException("No second scouting.");
         var wait = (second.DepartureTime - first.Time) * match.State.Settings.SpeedMultiplier;
-        Assert.True(wait >= match.Data.Ai.ScoutRetrySeconds);
-        Assert.True(second.Troops.Values.Sum() >= first.Sent.Values.Sum() * 2);
+        Assert.True(wait >= match.Data.Ai.ScoutRetrySeconds, $"waited {wait}");
+        Assert.True(second.Troops.Values.Sum() >= first.Sent.Values.Sum() * 2, $"{second.Troops.Values.Sum()} after {first.Sent.Values.Sum()}");
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class AiScoutTests
             var match = Match(data: data);
             PastDelay(match);
             NoCamps(match);
-            SetGarrison(match.State.Villages[Enemy], UnitType.Spearman, match.Data.Combat.TroopsPerScout);
+            SetGarrison(match.State.Villages[Enemy], UnitType.Spearman, 5);
             match.State.Villages[Enemy].SetBuildingLevel(BuildingType.Wall, 10);
             match.State.Villages[Ai].AddTroops(UnitType.Scout, 3);
             match.Run(1500);

@@ -17,14 +17,14 @@
       {
         "name": "Camp",
         "weight": 3,
-        "garrison": { "Spearman": 6, "Swordsman": 2 },
+        "garrison": { "Spearman": 6, "Swordsman": 2, "Scout": 0 },
         "resources": { "wood": 500, "stone": 500, "food": 500 },
         "buildings": { "MainBuilding": 1, "Warehouse": 1 }
       },
       {
         "name": "Stronghold",
         "weight": 1,
-        "garrison": { "Spearman": 25, "Swordsman": 15, "Cavalry": 5 },
+        "garrison": { "Spearman": 25, "Swordsman": 15, "Cavalry": 5, "Scout": 0 },
         "resources": { "wood": 800, "stone": 800, "food": 800 },
         "buildings": { "MainBuilding": 3, "Warehouse": 2, "Wall": 3 }
       }

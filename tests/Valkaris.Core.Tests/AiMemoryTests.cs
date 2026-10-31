@@ -278,17 +278,18 @@ public class AiMemoryTests
     }
 
     [Fact]
-    public void CaughtScoutsSetAMinimumOnTheEstimate()
+    public void CaughtScoutsSayNothingAboutTheGarrison()
     {
+        var before = _memory.EstimateDefence(Known(Enemy));
         Scouted(Self, Enemy, Enemy, null, scouts: 100);
         _memory.Update();
 
-        var beliefs = TestData.Shipped.Ai.Beliefs;
-        Assert.Equal(100 * TestData.Shipped.Combat.TroopsPerScout * beliefs.PowerPerTroop, _memory.EstimateDefence(Known(Enemy)), 6);
+        Assert.Equal(before, _memory.EstimateDefence(Known(Enemy)), 6);
+        Assert.Equal(100, _memory.CaughtAt(Known(Enemy))!.Scouts);
     }
 
     [Fact]
-    public void ASuccessfulScoutReplacesTheMinimum()
+    public void ASuccessfulScoutReplacesTheFailure()
     {
         Scouted(Self, Enemy, Enemy, null, scouts: 100);
         Scouted(Self, Enemy, Enemy, 2);
@@ -299,22 +300,12 @@ public class AiMemoryTests
     }
 
     [Fact]
-    public void TheMinimumEndsWhenTheVillageChangesHands()
+    public void AFailureIsForgottenWhenTheVillageChangesHands()
     {
         Scouted(Self, Enemy, Enemy, null, scouts: 100);
         _memory.Update();
         _state.Villages[Enemy].OwnerId = 3;
 
         Assert.Null(_memory.CaughtAt(Known(Enemy)));
-    }
-
-    [Fact]
-    public void ScoutsCaughtByThisPlayerTeachItNothing()
-    {
-        Scouted(Enemy, Self, Self, null);
-        _memory.Update();
-
-        Assert.Null(_memory.SightingOf(Self));
-        Assert.Null(_memory.CaughtAt(Known(Self)));
     }
 }
