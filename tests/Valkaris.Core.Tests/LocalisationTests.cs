@@ -1,4 +1,7 @@
 using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text.RegularExpressions;
 using Valkaris.Core.Commands;
 using Valkaris.Core.Model;
@@ -99,5 +102,165 @@ public class LocalisationTests
         Assert.DoesNotContain(Catalogue.Load("en").Entries.Keys, key => key.StartsWith("village.name", StringComparison.Ordinal));
         Assert.Contains("Stonebridge", TestData.Shipped.Map.FoundedVillageNames);
         Assert.DoesNotContain(Catalogue.Load("en").Entries.Values.SelectMany(v => v), text => text.Contains("Stonebridge", StringComparison.Ordinal));
+    }
+
+    private static readonly Regex KeyPattern = new(@"^[a-z_]+(\.[a-z0-9_]+)+$");
+
+    // Calls whose text arguments are never shown to the player.
+    private static readonly HashSet<string> NonTextCalls = new()
+    {
+        "GetNode", "Load", "AddThemeColorOverride", "RemoveThemeColorOverride", "AddThemeConstantOverride", "AddThemeFontSizeOverride", "AddThemeStyleboxOverride",
+        "TweenProperty", "T", "N", "Key", "ResizedIcon", "GetValue", "SetValue", "Open",
+    };
+
+    // Properties whose values are never shown to the player.
+    private static readonly HashSet<string> NonTextProperties = new() { "Name", "ThemeTypeVariation", "IconPath", "SettingsPath" };
+
+    // Names in a file that are identifiers, each with the reason.
+    private static readonly (string File, string Text)[] Exceptions =
+    {
+        ("Main.cs", "You"), // The stored name of the local player. The UI always shows the translated word instead.
+        ("MatchEndScreen.cs", "StrongLabel"), // A theme style held in a variable.
+        ("Language.cs", "language"), // Settings file section.
+        ("Language.cs", "code"), // Settings file key.
+        ("Language.cs", "en"),
+        ("Language.cs", "tr"),
+    };
+
+    // Dev flags, and messages for whoever edits data/.
+    private static readonly string[] SkippedFiles = { "DevOptions.cs", "GodotDataSource.cs" };
+
+    private static string TypeOf(SyntaxNode node) => node.Ancestors().OfType<TypeDeclarationSyntax>().LastOrDefault()?.Identifier.Text ?? "";
+
+    private static bool IsNonText(SyntaxNode node)
+    {
+        foreach (var parent in node.Ancestors())
+        {
+            if (parent is InvocationExpressionSyntax call)
+            {
+                var name = call.Expression switch
+                {
+                    MemberAccessExpressionSyntax member => member.Name.Identifier.Text,
+                    GenericNameSyntax generic => generic.Identifier.Text,
+                    IdentifierNameSyntax identifier => identifier.Identifier.Text,
+                    _ => "",
+                };
+                if (NonTextCalls.Contains(name))
+                    return true;
+            }
+
+            var target = parent switch
+            {
+                AssignmentExpressionSyntax { Left: IdentifierNameSyntax left } => left.Identifier.Text,
+                AssignmentExpressionSyntax { Left: MemberAccessExpressionSyntax left } => left.Name.Identifier.Text,
+                _ => null,
+            };
+            if (target is not null)
+                return NonTextProperties.Contains(target);
+        }
+        return false;
+    }
+
+    private static IEnumerable<string> ScanSource(string file, string source)
+    {
+        var root = CSharpSyntaxTree.ParseText(source).GetRoot();
+        foreach (var node in root.DescendantNodes())
+        {
+            // Format and L are the two places allowed to build text from values.
+            if (TypeOf(node) is "Format" or "L")
+                continue;
+
+            var line = node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+            if (node is InterpolatedStringExpressionSyntax && !IsNonText(node))
+                yield return $"{file}:{line}: interpolated text: {node}";
+            else if (node is InvocationExpressionSyntax { Expression: MemberAccessExpressionSyntax { Name.Identifier.Text: "ToString" } } && !IsNonText(node))
+                yield return $"{file}:{line}: ToString() as text: {node}";
+            else if (node is LiteralExpressionSyntax literal && literal.IsKind(SyntaxKind.StringLiteralExpression))
+            {
+                var text = literal.Token.ValueText;
+                if (text.Any(char.IsLetter) && !text.StartsWith("res://", StringComparison.Ordinal) && !text.StartsWith("user://", StringComparison.Ordinal) && !KeyPattern.IsMatch(text)
+                    && !IsNonText(node) && !Exceptions.Contains((file, text)))
+                    yield return $"{file}:{line}: hard-coded text: {text}";
+            }
+        }
+    }
+
+    private static IEnumerable<string> PresentationFiles() =>
+        Directory.GetFiles(Path.Combine(Catalogue.Root, "src", "Presentation"), "*.cs")
+            .Where(file => !SkippedFiles.Contains(Path.GetFileName(file)));
+
+    [Fact]
+    public void NoHardCodedTextInTheGameCode()
+    {
+        var problems = PresentationFiles().SelectMany(file => ScanSource(Path.GetFileName(file), File.ReadAllText(file))).ToList();
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    [Theory]
+    [InlineData("""class A { void F(Label l) { l.Text = "Hello there"; } }""")]
+    [InlineData("""class A { void F(Label l, int n) { l.Text = $"{n}"; } }""")]
+    [InlineData("""class A { void F(Label l, object t) { l.Text = t.ToString(); } }""")]
+    [InlineData("""class A { void F(Button b) { b.TooltipText = "Tip"; } }""")]
+    [InlineData("""class A { string F() => "Plain words"; }""")]
+    public void TheScanCatchesNewHardCodedText(string source)
+    {
+        Assert.NotEmpty(ScanSource("New.cs", source));
+    }
+
+    [Theory]
+    [InlineData("""class A { void F(Label l) { l.Text = L.T("some.key"); } }""")]
+    [InlineData("""class A { void F() { var l = new Label { Name = "Thing" }; GetNode<Label>("%Thing"); } }""")]
+    [InlineData("""class A { void F(int n) { var l = new Label { Name = $"Row{n}" }; } }""")]
+    [InlineData("""class Format { string F(int n) => $"/ {n}"; }""")]
+    public void TheScanAllowsWhatIsNotText(string source)
+    {
+        Assert.Empty(ScanSource("New.cs", source));
+    }
+
+    [Fact]
+    public void ScenesHoldOnlyKeys()
+    {
+        var shown = new Regex("""^(text|tooltip_text|placeholder_text|title) = "(.*)"$""");
+        var problems = Directory.GetFiles(Path.Combine(Catalogue.Root, "scenes"), "*.tscn", SearchOption.AllDirectories)
+            .SelectMany(file => File.ReadAllLines(file).Select(line => (file, match: shown.Match(line))))
+            .Where(line => line.match.Success)
+            .Select(line => (line.file, text: line.match.Groups[2].Value))
+            .Where(line => line.text.Length > 0 && !KeyPattern.IsMatch(line.text) && line.text is not ("Valkaris" or "VALKARIS"))
+            .Select(line => $"{Path.GetFileName(line.file)}: {line.text}")
+            .ToList();
+
+        Assert.True(problems.Count == 0, string.Join("\n", problems));
+    }
+
+    private static IEnumerable<string> UsedKeys()
+    {
+        var code = PresentationFiles().Select(File.ReadAllText)
+            .SelectMany(source => CSharpSyntaxTree.ParseText(source).GetRoot().DescendantNodes())
+            .OfType<LiteralExpressionSyntax>()
+            .Where(literal => literal.IsKind(SyntaxKind.StringLiteralExpression))
+            .Select(literal => literal.Token.ValueText);
+        var scenes = Directory.GetFiles(Path.Combine(Catalogue.Root, "scenes"), "*.tscn", SearchOption.AllDirectories)
+            .SelectMany(File.ReadAllLines)
+            .Select(line => Regex.Match(line, "\"([a-z_]+(\\.[a-z0-9_]+)+)\"$").Groups[1].Value);
+        return code.Concat(scenes).Where(text => KeyPattern.IsMatch(text)).Distinct();
+    }
+
+    // Keys built from an enum or a data identifier, checked by EveryGameNameHasAKey.
+    private static readonly string[] BuiltKeyPrefixes = { "building.", "unit.", "resource.", "mission.", "tier.", "difficulty.", "map_size.", "terrain.", "rejection.", "language." };
+
+    [Fact]
+    public void EveryKeyInTheCodeExists()
+    {
+        var catalogue = Catalogue.Load("en");
+        Assert.Empty(UsedKeys().Where(key => !catalogue.Entries.ContainsKey(key)));
+    }
+
+    [Fact]
+    public void EveryKeyInTheFilesIsUsed()
+    {
+        var used = UsedKeys().ToHashSet();
+        Assert.Empty(Catalogue.Load("en").Entries.Keys
+            .Where(key => !used.Contains(key) && !BuiltKeyPrefixes.Any(prefix => key.StartsWith(prefix, StringComparison.Ordinal))));
     }
 }
