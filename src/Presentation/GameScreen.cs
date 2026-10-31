@@ -353,7 +353,7 @@ public partial class GameScreen : Control
                 _queuePanel.Refresh("Build queue", Session.Data.Game.MaxBuildQueueLength, Session.State.ElapsedTime, village.BuildQueue
                     .Select(item => new QueueRow(
                         UiContent.Buildings[item.Building].IconPath,
-                        $"{UiContent.Buildings[item.Building].Name} → level {item.TargetLevel}",
+                        $"{UiContent.Buildings[item.Building].Name} › level {item.TargetLevel}",
                         item.StartTime,
                         item.FinishTime))
                     .ToList());

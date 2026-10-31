@@ -96,7 +96,7 @@ public partial class BuildingPanel : PanelContainer
         var definition = data.Buildings.Buildings[building];
 
         string Compare(Func<int, string> describe) =>
-            hasNext ? $"Now {describe(level)}   →   Level {nextLevel}: {describe(nextLevel)}" : $"Now {describe(level)}";
+            hasNext ? $"Now {describe(level)}   ›   Level {nextLevel}: {describe(nextLevel)}" : $"Now {describe(level)}";
 
         if (definition.Production is { } production)
         {

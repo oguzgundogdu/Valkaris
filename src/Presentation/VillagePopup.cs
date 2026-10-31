@@ -37,7 +37,7 @@ public partial class VillagePopup : PanelContainer
         var owner = UiContent.OwnerName(session, village.OwnerId);
         var ownerLabel = GetNode<Label>("%Owner");
         ownerLabel.Visible = true;
-        ownerLabel.Text = village.BarbarianTier is { } tier ? $"{owner}  ·  {session.Data.Map.Barbarians.Tiers[tier].Name}"
+        ownerLabel.Text = village.BarbarianTier is { } tier ? $"{owner}  ·  {UiContent.TierName(session, tier)}"
             : village.IsAbandoned ? $"{owner}  ·  Abandoned"
             : LoyaltyRules.IsCapital(session.State, village) ? $"{owner}  ·  Capital"
             : owner;
@@ -64,7 +64,7 @@ public partial class VillagePopup : PanelContainer
         _tile = tile;
         var option = FoundPreview.Evaluate(session.State, session.Data, session.LocalPlayerId, currentVillage.Id, tile);
 
-        GetNode<Label>("%Name").Text = session.State.Map.TileAt(tile).Terrain.ToString();
+        GetNode<Label>("%Name").Text = L.T(L.Key("terrain", session.State.Map.TileAt(tile).Terrain));
         GetNode<Label>("%Owner").Visible = false;
 
         var distance = GetNode<Label>("%Distance");

@@ -183,7 +183,7 @@ public partial class UiTest : Control
         await Frames();
 
         Expect(queue.GetNode<Label>("%Count").Text == "2 / 2", "Queue count updates");
-        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Quarry → level 2", "First row names the build");
+        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Quarry › level 2", "First row names the build");
         Expect(queue.GetNode<Label>("Box/Rows/Row1/Top/Time").Text.StartsWith("starts in"), "Second row is waiting");
         Expect(upgrade.Disabled, "A full queue disables the button");
         Expect(panel.GetNode<Label>("%Reason").Text == "The queue is full.", "The button says why it is disabled");
@@ -198,7 +198,7 @@ public partial class UiTest : Control
         session.Tick((firstBuild.FinishTime - firstBuild.StartTime) / 2 + 0.01);
         await Frames();
         Expect(queue.GetNode<Label>("%Count").Text == "1 / 2", "Completed item leaves the queue");
-        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Farm → level 2", "Waiting item moves up");
+        Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Farm › level 2", "Waiting item moves up");
         Expect(!upgrade.Disabled, "A free slot enables the button again");
 
         session.Tick(60);
@@ -764,7 +764,7 @@ public partial class UiTest : Control
         Expect(session.State.Movements.Count == 1 && session.State.Movements[0].Type == MovementType.Raid, "The chosen mission is sent");
         Expect((int)spearmen.GetNode<SpinBox>("Amount").Value == 0, "The form resets after sending");
         var row = send.GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
-        Expect(row.GetNode<Label>("Title").Text == $"Raid → {session.State.Villages[2].Name}", "The movement is listed");
+        Expect(row.GetNode<Label>("Title").Text == $"Raid › {session.State.Villages[2].Name}", "The movement is listed");
         await Shot("moving");
 
         session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
@@ -862,7 +862,7 @@ public partial class UiTest : Control
         var dialog = game.GetNode<ReportDialog>("%ReportDialog");
         Expect(dialog.GetNode<Label>("%Result").Text == "Victory", "The report opens as a victory");
         Expect(dialog.GetNode<Label>("%Loot").Visible, "A won battle shows loot");
-        Expect(dialog.GetNode<Label>("%Damage").Text == "Catapults hit the Woodcutter: level 1 → 0", $"The report shows the damage, got '{dialog.GetNode<Label>("%Damage").Text}'");
+        Expect(dialog.GetNode<Label>("%Damage").Text == "Catapults hit the Woodcutter: level 1 › 0", $"The report shows the damage, got '{dialog.GetNode<Label>("%Damage").Text}'");
         await Shot("report-victory");
         dialog.GetNode<Button>("%Close").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -1587,7 +1587,7 @@ public partial class UiTest : Control
         Expect(wood.Value == 0, "Sending clears the form");
         var layer = world.GetNode<MovementLayer>("World/Movements");
         Expect(layer.Entries.Any(e => e.Description.StartsWith("Carrying")), "The transfer is on the map");
-        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == $"Carrying {capacity + 1} → {to.Name}", "The transfer is in the list");
+        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == $"Carrying {capacity + 1} › {to.Name}", "The transfer is in the list");
         await Shot("transfer-moving");
 
         // The overflow warning.

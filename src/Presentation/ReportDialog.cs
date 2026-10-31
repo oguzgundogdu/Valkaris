@@ -28,18 +28,18 @@ public partial class ReportDialog : ColorRect
         var loot = report.Loot;
         var lootLabel = GetNode<Label>("%Loot");
         lootLabel.Visible = report.AttackerWon;
-        lootLabel.Text = $"Loot: {Format.Amount(loot.Wood)} wood, {Format.Amount(loot.Stone)} stone, {Format.Amount(loot.Food)} food";
+        lootLabel.Text = L.T("report.loot", ("list", UiContent.ResourceList(loot)));
 
         var damage = GetNode<Label>("%Damage");
         damage.Visible = report.CatapultDamage is not null;
         if (report.CatapultDamage is { } hit)
-            damage.Text = $"Catapults hit the {UiContent.Buildings[hit.Building].Name}: level {hit.FromLevel} → {hit.ToLevel}";
+            damage.Text = $"Catapults hit the {UiContent.Buildings[hit.Building].Name}: level {hit.FromLevel} › {hit.ToLevel}";
 
         var loyalty = GetNode<Label>("%Loyalty");
         loyalty.Visible = report.Loyalty is not null || report.CapitalProtected;
         loyalty.Text = report.CapitalProtected ? "Capital protected: loyalty unchanged"
             : report.Loyalty is { Captured: true } ? "Village captured"
-            : report.Loyalty is { } change ? $"Loyalty: {Format.Amount(change.From)} → {Format.Amount(change.To)}"
+            : report.Loyalty is { } change ? $"Loyalty: {Format.Amount(change.From)} › {Format.Amount(change.To)}"
             : "";
 
         Visible = true;
@@ -105,7 +105,7 @@ public partial class ReportDialog : ColorRect
         var lootLabel = GetNode<Label>("%Loot");
         lootLabel.Visible = seen is not null;
         if (seen is { } stock)
-            lootLabel.Text = $"Resources: {Format.Amount(stock.Wood)} wood, {Format.Amount(stock.Stone)} stone, {Format.Amount(stock.Food)} food";
+            lootLabel.Text = L.T("scout.resources", ("list", UiContent.ResourceList(stock)));
 
         GetNode<Label>("%Damage").Visible = false;
         GetNode<Label>("%Loyalty").Visible = false;

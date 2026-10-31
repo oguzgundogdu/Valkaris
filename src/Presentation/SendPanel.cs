@@ -126,7 +126,7 @@ public partial class SendPanel : VBoxContainer
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         });
-        row.AddChild(new Label { Text = type.ToString(), SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        row.AddChild(new Label { Text = UiContent.ResourceName(type), SizeFlagsHorizontal = SizeFlags.ExpandFill });
 
         var amount = new SpinBox { Name = "Amount", MinValue = 0, MaxValue = 0, Step = 1, UpdateOnTextChanged = true };
         var available = new Label { Name = "Available", ThemeTypeVariation = "MutedLabel", CustomMinimumSize = new Vector2(44, 0) };
@@ -226,7 +226,7 @@ public partial class SendPanel : VBoxContainer
     private static string LossText(Resources loss) =>
         string.Join(", ", Enum.GetValues<ResourceType>()
             .Where(type => loss.Get(type) >= 1)
-            .Select(type => $"{Format.Amount(loss.Get(type))} {type.ToString().ToLowerInvariant()}")
+            .Select(type => UiContent.ResourceAmount(type, loss.Get(type)))
             .DefaultIfEmpty("a little"));
 
     private void RefreshTroopForm(IGameSession session, Village village, Village? target, MovementType type)
@@ -303,7 +303,7 @@ public partial class SendPanel : VBoxContainer
             _missions.AddRange(offered);
             _mission.Clear();
             foreach (var mission in _missions)
-                _mission.AddItem(mission == MovementType.Transfer ? "Send resources" : mission.ToString());
+                _mission.AddItem(UiContent.MissionName(mission));
         }
 
         if (_wantedMission is { } wanted && _missions.Contains(wanted))

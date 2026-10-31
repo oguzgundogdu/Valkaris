@@ -58,7 +58,7 @@ public partial class ResourceBar : PanelContainer
             CustomMinimumSize = new Vector2(26, 26),
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            TooltipText = type.ToString(),
+            TooltipText = UiContent.ResourceName(type),
         });
 
         var amount = new Label { ThemeTypeVariation = "StrongLabel", Name = "Amount" };

@@ -9,10 +9,18 @@ using Valkaris.Core.Model;
 
 namespace Valkaris.Presentation;
 
-/// <summary>Display names, descriptions and icons. Presentation content, not balance.</summary>
-public sealed record BuildingInfo(string Name, string Description, string IconPath);
+/// <summary>Icons, and display names through the translation files. Presentation content, not balance.</summary>
+public sealed record BuildingInfo(BuildingType Type, string IconPath)
+{
+    public string Name => L.T(L.Key("building", Type) + ".name");
 
-public sealed record UnitInfo(string Name, string IconPath);
+    public string Description => L.T(L.Key("building", Type) + ".description");
+}
+
+public sealed record UnitInfo(UnitType Type, string IconPath)
+{
+    public string Name => L.T(L.Key("unit", Type) + ".name");
+}
 
 public static class UiContent
 {
@@ -22,26 +30,26 @@ public static class UiContent
 
     public static readonly IReadOnlyDictionary<BuildingType, BuildingInfo> Buildings = new Dictionary<BuildingType, BuildingInfo>
     {
-        [BuildingType.MainBuilding] = new("Main Building", "The heart of the village. Its level sets how far other buildings can grow.", "res://assets/icons/main_building.svg"),
-        [BuildingType.Woodcutter] = new("Woodcutter", "Produces wood.", "res://assets/icons/woodcutter.svg"),
-        [BuildingType.Quarry] = new("Quarry", "Produces stone.", "res://assets/icons/quarry.svg"),
-        [BuildingType.Farm] = new("Farm", "Produces food, the main cost of training troops.", "res://assets/icons/farm.svg"),
-        [BuildingType.Warehouse] = new("Warehouse", "Sets how much of each resource the village can hold.", "res://assets/icons/warehouse.svg"),
-        [BuildingType.Barracks] = new("Barracks", "Trains troops. Higher levels train faster and unlock stronger units.", "res://assets/icons/barracks.svg"),
-        [BuildingType.Wall] = new("Wall", "Raises the defence of everyone stationed in the village.", "res://assets/icons/wall.svg"),
-        [BuildingType.Marketplace] = new("Marketplace", "Its carriers move resources to your other villages. Only the sending village needs one.", "res://assets/icons/marketplace.svg"),
-        [BuildingType.Watchtower] = new("Watchtower", "Strengthens the Scouts at home, and warns you of any scouting attempt.", "res://assets/icons/watchtower.svg"),
+        [BuildingType.MainBuilding] = new(BuildingType.MainBuilding, "res://assets/icons/main_building.svg"),
+        [BuildingType.Woodcutter] = new(BuildingType.Woodcutter, "res://assets/icons/woodcutter.svg"),
+        [BuildingType.Quarry] = new(BuildingType.Quarry, "res://assets/icons/quarry.svg"),
+        [BuildingType.Farm] = new(BuildingType.Farm, "res://assets/icons/farm.svg"),
+        [BuildingType.Warehouse] = new(BuildingType.Warehouse, "res://assets/icons/warehouse.svg"),
+        [BuildingType.Barracks] = new(BuildingType.Barracks, "res://assets/icons/barracks.svg"),
+        [BuildingType.Wall] = new(BuildingType.Wall, "res://assets/icons/wall.svg"),
+        [BuildingType.Marketplace] = new(BuildingType.Marketplace, "res://assets/icons/marketplace.svg"),
+        [BuildingType.Watchtower] = new(BuildingType.Watchtower, "res://assets/icons/watchtower.svg"),
     };
 
     public static readonly IReadOnlyDictionary<UnitType, UnitInfo> Units = new Dictionary<UnitType, UnitInfo>
     {
-        [UnitType.Spearman] = new("Spearman", "res://assets/icons/spearman.svg"),
-        [UnitType.Swordsman] = new("Swordsman", "res://assets/icons/swordsman.svg"),
-        [UnitType.Cavalry] = new("Cavalry", "res://assets/icons/cavalry.svg"),
-        [UnitType.Catapult] = new("Catapult", "res://assets/icons/catapult.svg"),
-        [UnitType.Settler] = new("Settler", "res://assets/icons/settler.svg"),
-        [UnitType.Lord] = new("Lord", "res://assets/icons/lord.svg"),
-        [UnitType.Scout] = new("Scout", "res://assets/icons/scout.svg"),
+        [UnitType.Spearman] = new(UnitType.Spearman, "res://assets/icons/spearman.svg"),
+        [UnitType.Swordsman] = new(UnitType.Swordsman, "res://assets/icons/swordsman.svg"),
+        [UnitType.Cavalry] = new(UnitType.Cavalry, "res://assets/icons/cavalry.svg"),
+        [UnitType.Catapult] = new(UnitType.Catapult, "res://assets/icons/catapult.svg"),
+        [UnitType.Settler] = new(UnitType.Settler, "res://assets/icons/settler.svg"),
+        [UnitType.Lord] = new(UnitType.Lord, "res://assets/icons/lord.svg"),
+        [UnitType.Scout] = new(UnitType.Scout, "res://assets/icons/scout.svg"),
     };
 
     private static readonly Color[] PlayerColours =
@@ -87,20 +95,22 @@ public static class UiContent
         if (movement.OwnerId != session.LocalPlayerId)
             return $"{movement.Type} from {OwnerName(session, movement.OwnerId)}";
         if (movement.Type == MovementType.Settle)
-            return "Settler → new village";
+            return "Settler › new village";
         if (movement.Type == MovementType.Transfer)
-            return $"Carrying {Format.Total(movement.Loot)} → {session.State.Villages[movement.ToVillageId!.Value].Name}";
+            return $"Carrying {Format.Total(movement.Loot)} › {session.State.Villages[movement.ToVillageId!.Value].Name}";
         if (movement.Type == MovementType.CarrierReturn)
             return movement.Loot == Resources.Zero ? "Carriers returning" : $"Returning with {Format.Total(movement.Loot)}";
         if (movement.Type != MovementType.Return)
-            return $"{movement.Type} → {session.State.Villages[movement.ToVillageId!.Value].Name}";
+            return $"{movement.Type} › {session.State.Villages[movement.ToVillageId!.Value].Name}";
 
         var loot = movement.Loot.Wood + movement.Loot.Stone + movement.Loot.Food;
         return loot > 0 ? $"Returning with {Format.Amount(loot)} loot" : "Returning";
     }
 
     public static string OwnerName(IGameSession session, int ownerId) =>
-        ownerId == Village.BarbarianOwnerId ? "Barbarians" : session.State.Players[ownerId].Name;
+        ownerId == Village.BarbarianOwnerId ? L.T("player.barbarians")
+        : ownerId == session.LocalPlayerId ? L.T("player.you")
+        : session.State.Players[ownerId].Name;
 
     public static bool LocalWon(IGameSession session, BattleReport report) =>
         report.AttackerId == session.LocalPlayerId ? report.AttackerWon : !report.AttackerWon;
@@ -199,6 +209,18 @@ public static class UiContent
         CommandRejection.GamePaused => "The match is paused.",
         _ => "This can't be done right now.",
     };
+
+    public static string ResourceName(ResourceType type) => L.T(L.Key("resource", type) + ".name");
+
+    public static string ResourceAmount(ResourceType type, double amount) => L.T(L.Key("resource", type) + ".amount", ("amount", Format.Amount(amount)));
+
+    /// <summary>Every resource with its amount, as in "5 wood, 3 stone, 2 grain".</summary>
+    public static string ResourceList(Resources resources) =>
+        string.Join(", ", Enum.GetValues<ResourceType>().Select(type => ResourceAmount(type, resources.Get(type))));
+
+    public static string MissionName(MovementType type) => L.T(L.Key("mission", type));
+
+    public static string TierName(IGameSession session, int tier) => L.T(L.Key("tier", session.Data.Map.Barbarians.Tiers[tier].Name));
 
     public static string ResourceIconPath(ResourceType type) => type switch
     {

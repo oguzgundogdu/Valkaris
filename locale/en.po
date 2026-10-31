@@ -12,10 +12,882 @@ msgstr "English"
 msgid "language.tr"
 msgstr "Türkçe"
 
-msgid "ui.start.language"
-msgstr "Language"
-
 msgid "common.minutes"
 msgid_plural "common.minutes"
 msgstr[0] "{count} minute"
 msgstr[1] "{count} minutes"
+
+msgid "common.max"
+msgstr "Max"
+
+msgid "common.level"
+msgstr "Level {level}"
+
+msgid "common.not_built"
+msgstr "Not built"
+
+msgid "common.and"
+msgstr "{first} and {second}"
+
+msgid "common.tiles"
+msgstr "{distance} tiles"
+
+msgid "common.tiles_away"
+msgstr "{distance} tiles away"
+
+msgid "player.you"
+msgstr "You"
+
+msgid "player.barbarians"
+msgstr "Barbarians"
+
+msgid "building.main_building.name"
+msgstr "Main Building"
+
+msgid "building.woodcutter.name"
+msgstr "Woodcutter"
+
+msgid "building.quarry.name"
+msgstr "Quarry"
+
+msgid "building.farm.name"
+msgstr "Farm"
+
+msgid "building.warehouse.name"
+msgstr "Warehouse"
+
+msgid "building.barracks.name"
+msgstr "Barracks"
+
+msgid "building.wall.name"
+msgstr "Wall"
+
+msgid "building.marketplace.name"
+msgstr "Marketplace"
+
+msgid "building.watchtower.name"
+msgstr "Watchtower"
+
+msgid "building.main_building.description"
+msgstr "The heart of the village. Its level sets how far other buildings can grow."
+
+msgid "building.woodcutter.description"
+msgstr "Produces wood."
+
+msgid "building.quarry.description"
+msgstr "Produces stone."
+
+msgid "building.farm.description"
+msgstr "Produces grain, the main cost of training troops."
+
+msgid "building.warehouse.description"
+msgstr "Sets how much of each resource the village can hold."
+
+msgid "building.barracks.description"
+msgstr "Trains troops. Higher levels train faster and unlock stronger units."
+
+msgid "building.wall.description"
+msgstr "Raises the defence of everyone stationed in the village."
+
+msgid "building.marketplace.description"
+msgstr "Its carriers move resources to your other villages. Only the sending village needs one."
+
+msgid "building.watchtower.description"
+msgstr "Strengthens the Scouts at home, and warns you of any scouting attempt."
+
+msgid "unit.spearman.name"
+msgstr "Spearman"
+
+msgid "unit.swordsman.name"
+msgstr "Swordsman"
+
+msgid "unit.cavalry.name"
+msgstr "Cavalry"
+
+msgid "unit.catapult.name"
+msgstr "Catapult"
+
+msgid "unit.settler.name"
+msgstr "Settler"
+
+msgid "unit.lord.name"
+msgstr "Lord"
+
+msgid "unit.scout.name"
+msgstr "Scout"
+
+msgid "resource.wood.name"
+msgstr "Wood"
+
+msgid "resource.stone.name"
+msgstr "Stone"
+
+msgid "resource.food.name"
+msgstr "Grain"
+
+msgid "resource.wood.amount"
+msgstr "{amount} wood"
+
+msgid "resource.stone.amount"
+msgstr "{amount} stone"
+
+msgid "resource.food.amount"
+msgstr "{amount} grain"
+
+msgid "mission.attack"
+msgstr "Attack"
+
+msgid "mission.raid"
+msgstr "Raid"
+
+msgid "mission.reinforce"
+msgstr "Reinforce"
+
+msgid "mission.scout"
+msgstr "Scout"
+
+msgid "mission.transfer"
+msgstr "Send resources"
+
+msgid "mission.settle"
+msgstr "Settle"
+
+msgid "mission.return"
+msgstr "Return"
+
+msgid "mission.carrier_return"
+msgstr "Carrier return"
+
+msgid "tier.camp"
+msgstr "Camp"
+
+msgid "tier.stronghold"
+msgstr "Stronghold"
+
+msgid "difficulty.easy"
+msgstr "Easy"
+
+msgid "difficulty.normal"
+msgstr "Normal"
+
+msgid "difficulty.hard"
+msgstr "Hard"
+
+msgid "map_size.small"
+msgstr "Small"
+
+msgid "map_size.medium"
+msgstr "Medium"
+
+msgid "terrain.grass"
+msgstr "Grass"
+
+msgid "terrain.forest"
+msgstr "Forest"
+
+msgid "terrain.hills"
+msgstr "Hills"
+
+msgid "terrain.water"
+msgstr "Water"
+
+msgid "rejection.unknown_command"
+msgstr "This can't be done right now."
+
+msgid "rejection.village_not_found"
+msgstr "This can't be done right now."
+
+msgid "rejection.already_out_of_the_match"
+msgstr "This can't be done right now."
+
+msgid "rejection.invalid_count"
+msgstr "Choose how many."
+
+msgid "rejection.barracks_level_too_low"
+msgstr "Upgrade the Barracks to train this unit."
+
+msgid "rejection.invalid_mission"
+msgstr "That mission can't go to this target."
+
+msgid "rejection.no_troops_selected"
+msgstr "Choose some troops to send."
+
+msgid "rejection.not_enough_troops"
+msgstr "You don't have that many troops here."
+
+msgid "rejection.catapults_cannot_raid"
+msgstr "Catapults can't go on a raid."
+
+msgid "rejection.settlers_cannot_fight"
+msgstr "Settlers can't go on an attack or raid."
+
+msgid "rejection.scouts_cannot_fight"
+msgstr "Scouts can't go on an attack or raid."
+
+msgid "rejection.lords_cannot_raid"
+msgstr "Lords can't go on a raid."
+
+msgid "rejection.only_scouts_can_scout"
+msgstr "Only Scouts can scout."
+
+msgid "rejection.no_settler_here"
+msgstr "Train a Settler in this village first."
+
+msgid "rejection.tile_outside_map"
+msgstr "That's outside the map."
+
+msgid "rejection.tile_is_water"
+msgstr "Villages can't be founded on water."
+
+msgid "rejection.tile_taken"
+msgstr "A village already stands here."
+
+msgid "rejection.too_close_to_village"
+msgstr "Too close to another village."
+
+msgid "rejection.village_limit_reached"
+msgstr "Upgrade your capital's Main Building to found more villages."
+
+msgid "rejection.no_capital_choice_pending"
+msgstr "There's no capital to choose right now."
+
+msgid "rejection.no_capital"
+msgstr "Choose a new capital first."
+
+msgid "rejection.not_owner"
+msgstr "That isn't your village."
+
+msgid "rejection.target_not_yours"
+msgstr "Resources can only go to your own villages."
+
+msgid "rejection.same_village"
+msgstr "The resources are already in this village."
+
+msgid "rejection.no_resources_selected"
+msgstr "Choose some resources to send."
+
+msgid "rejection.no_marketplace"
+msgstr "Build a Marketplace in this village first."
+
+msgid "rejection.not_enough_carriers"
+msgstr "Not enough free carriers for this load."
+
+msgid "rejection.insufficient_resources"
+msgstr "Not enough resources yet."
+
+msgid "rejection.queue_full"
+msgstr "The queue is full."
+
+msgid "rejection.main_building_level_too_low"
+msgstr "Upgrade the Main Building to go higher."
+
+msgid "rejection.max_level_reached"
+msgstr "Maximum level reached."
+
+msgid "rejection.match_over"
+msgstr "The match is over."
+
+msgid "rejection.game_paused"
+msgstr "The match is paused."
+
+msgid "movement.from"
+msgstr "{mission} from {owner}"
+
+msgid "movement.settler"
+msgstr "Settler › new village"
+
+msgid "movement.carrying"
+msgstr "Carrying {amount} › {target}"
+
+msgid "movement.carriers_returning"
+msgstr "Carriers returning"
+
+msgid "movement.returning_with"
+msgstr "Returning with {amount}"
+
+msgid "movement.to"
+msgstr "{mission} › {target}"
+
+msgid "movement.returning_loot"
+msgstr "Returning with {amount} loot"
+
+msgid "movement.returning"
+msgstr "Returning"
+
+msgid "report.won"
+msgstr "Won"
+
+msgid "report.lost"
+msgstr "Lost"
+
+msgid "report.headline_attacker"
+msgstr "{result}: {mission} on {target}"
+
+msgid "report.headline_defender"
+msgstr "{result}: {mission} by {attacker}"
+
+msgid "report.victory"
+msgstr "Victory"
+
+msgid "report.defeat"
+msgstr "Defeat"
+
+msgid "report.time"
+msgstr "{headline}  ·  {time} into the match"
+
+msgid "report.attacking"
+msgstr "{owner} (attacking)"
+
+msgid "report.defending"
+msgstr "{owner} (defending)"
+
+msgid "report.powers"
+msgstr "Attack {attack}  vs  defence {defence}"
+
+msgid "report.powers_wall"
+msgstr "Attack {attack}  vs  defence {defence}  (Wall level {level})"
+
+msgid "report.loot"
+msgstr "Loot: {list}"
+
+msgid "report.catapults"
+msgstr "Catapults hit the {building}: level {from} › {to}"
+
+msgid "report.capital_protected"
+msgstr "Capital protected: loyalty unchanged"
+
+msgid "report.captured"
+msgstr "Village captured"
+
+msgid "report.loyalty_change"
+msgstr "Loyalty: {from} › {to}"
+
+msgid "report.no_troops"
+msgstr "No troops"
+
+msgid "report.unit_count"
+msgstr "{unit}: {count}"
+
+msgid "report.unit_lost"
+msgstr "{unit}: {count}, lost {lost}"
+
+msgid "scout.headline_seen"
+msgstr "Scouted {target}"
+
+msgid "scout.headline_lost"
+msgstr "Scouts lost at {target}"
+
+msgid "scout.result_narrow"
+msgstr "Scouted: a rough look"
+
+msgid "scout.result_clear"
+msgstr "Scouted"
+
+msgid "scout.result_full"
+msgstr "Scouted in full"
+
+msgid "scout.result_lost"
+msgstr "Scouts lost"
+
+msgid "scout.scouting"
+msgstr "{owner} (scouting)"
+
+msgid "scout.garrison"
+msgstr "{owner} (garrison)"
+
+msgid "scout.not_seen"
+msgstr "Not seen"
+
+msgid "scout.range_troops"
+msgstr "{range} troops, not counted exactly"
+
+msgid "scout.wall_level"
+msgstr "Wall level {level}"
+
+msgid "scout.seen_note"
+msgstr "{wall}  ·  Troops away from the village aren't counted"
+
+msgid "scout.stopped"
+msgstr "Their Scouts stopped yours, so nothing was seen"
+
+msgid "scout.buildings"
+msgstr "Buildings: {list}"
+
+msgid "scout.building_level"
+msgstr "{building} {level}"
+
+msgid "scout.loyalty"
+msgstr "Loyalty {value}"
+
+msgid "scout.resources"
+msgstr "Resources: {list}"
+
+msgid "notice.caught"
+msgstr "Caught scouts from {sender} at {target}"
+
+msgid "notice.seen"
+msgstr "{sender} scouted {target}"
+
+msgid "notice.result_caught"
+msgstr "Scouts caught"
+
+msgid "notice.result_seen"
+msgstr "Scouted by an enemy"
+
+msgid "notice.unknown_count"
+msgstr "How many isn't known"
+
+msgid "notice.scouts_lost"
+msgstr "Scouts lost: {count}"
+
+msgid "notice.no_scouts_lost"
+msgstr "No Scouts lost"
+
+msgid "notice.stopped"
+msgstr "Your Scouts stopped them"
+
+msgid "notice.watchtower"
+msgstr "Your Watchtower saw them, but they got what they came for"
+
+msgid "intel.lost_only"
+msgstr "Scouts lost {age} ago: nothing seen"
+
+msgid "intel.seen"
+msgstr "Scouted {age} ago: {seen}"
+
+msgid "intel.seen_then_lost"
+msgstr "{intel}. Scouts lost {age} ago"
+
+msgid "intel.narrow"
+msgstr "{troops} troops, Wall {wall}"
+
+msgid "intel.troops"
+msgid_plural "intel.troops"
+msgstr[0] "{count} troop"
+msgstr[1] "{count} troops"
+
+msgid "intel.wall"
+msgstr "Wall {level}"
+
+msgid "intel.resources"
+msgstr "{amount} resources"
+
+msgid "intel.loyalty"
+msgstr "loyalty {value}"
+
+msgid "toast.building_done"
+msgstr "{building} reached level {level}"
+
+msgid "toast.see_reports"
+msgstr "{headline}. See Reports."
+
+msgid "toast.troops_returned_loot"
+msgstr "Troops returned with {amount} loot"
+
+msgid "toast.troops_returned"
+msgstr "Troops returned"
+
+msgid "toast.trained"
+msgstr "{unit} × {count} trained"
+
+msgid "toast.troops_arrived"
+msgstr "Troops arrived at {village}"
+
+msgid "toast.founded"
+msgstr "{village} was founded"
+
+msgid "toast.settler_back"
+msgstr "Settler turned back. {reason}"
+
+msgid "toast.you_captured"
+msgstr "You captured {village}"
+
+msgid "toast.captured_by"
+msgstr "{village} was captured by {owner}"
+
+msgid "toast.surrendered"
+msgstr "{owner} surrendered"
+
+msgid "toast.eliminated"
+msgstr "{owner} was eliminated"
+
+msgid "toast.delivered"
+msgstr "{amount} delivered to {village}"
+
+msgid "toast.delivered_lost"
+msgstr "{amount} delivered to {village}, {lost} lost: warehouse full"
+
+msgid "tab.village"
+msgstr "Village"
+
+msgid "tab.troops"
+msgstr "Troops"
+
+msgid "tab.send"
+msgstr "Send"
+
+msgid "tab.reports"
+msgstr "Reports"
+
+msgid "tab.reports_unread"
+msgstr "Reports ({count})"
+
+msgid "overlay.paused.title"
+msgstr "Paused"
+
+msgid "overlay.paused.message"
+msgstr "The match is on hold. Press P to resume."
+
+msgid "overlay.resume"
+msgstr "Resume"
+
+msgid "overlay.leave"
+msgstr "Leave match"
+
+msgid "overlay.keep_playing"
+msgstr "Keep playing"
+
+msgid "overlay.leave.title"
+msgstr "Leave match?"
+
+msgid "overlay.leave.message"
+msgstr "Your progress in this match will be lost."
+
+msgid "overlay.surrender.title"
+msgstr "Surrender?"
+
+msgid "overlay.surrender.message"
+msgstr "You lose this match. Your villages stay on the map as barbarian villages, with their troops and resources, for others to raid or capture. Troops on the way are lost."
+
+msgid "overlay.surrender"
+msgstr "Surrender"
+
+msgid "overlay.eliminated.title"
+msgstr "You were eliminated"
+
+msgid "overlay.eliminated.message"
+msgstr "You have no villages left. The match goes on without you."
+
+msgid "overlay.keep_watching"
+msgstr "Keep watching"
+
+msgid "overlay.surrendered.title"
+msgstr "You surrendered"
+
+msgid "overlay.surrendered.message"
+msgstr "Your villages now belong to the barbarians. The match goes on without you."
+
+msgid "village.info"
+msgstr "{village}  ·  Loyalty {loyalty}"
+
+msgid "village.capital_protected"
+msgstr "Capital: protected while its Main Building is above level {level}"
+
+msgid "village.capital_unprotected"
+msgstr "Capital: not protected until its Main Building is above level {level}"
+
+msgid "queue.build"
+msgstr "Build queue"
+
+msgid "queue.training"
+msgstr "Training"
+
+msgid "queue.build_item"
+msgstr "{building} › level {level}"
+
+msgid "queue.train_item"
+msgstr "{unit} × {count}"
+
+msgid "queue.starts_in"
+msgstr "starts in {time}"
+
+msgid "queue.empty"
+msgstr "Empty slot"
+
+msgid "bar.choose_capital"
+msgstr "Choose a capital {time}"
+
+msgid "bar.incoming"
+msgstr "{mission} arriving in {time}"
+
+msgid "strip.threat"
+msgstr "Under threat"
+
+msgid "capital.message"
+msgstr "Choose a new capital. Its Main Building drops to level {level}. If you don't choose, {village} is picked."
+
+msgid "capital.row"
+msgstr "{village}  ·  Main Building level {level}"
+
+msgid "end.draw"
+msgstr "Draw"
+
+msgid "end.header.rank"
+msgstr "#"
+
+msgid "end.header.player"
+msgstr "Player"
+
+msgid "end.header.villages"
+msgstr "Villages"
+
+msgid "end.header.population"
+msgstr "Population"
+
+msgid "end.header.captured"
+msgstr "Captured"
+
+msgid "end.header.score"
+msgstr "Score"
+
+msgid "end.you_last"
+msgstr "You are the last player standing."
+
+msgid "end.other_last"
+msgstr "{names} is the last player standing."
+
+msgid "end.tied"
+msgstr "Time ran out with {names} tied for the highest score."
+
+msgid "end.you_highest"
+msgstr "Time ran out. You have the highest score."
+
+msgid "end.other_highest"
+msgstr "Time ran out. {names} has the highest score."
+
+msgid "end.difficulty"
+msgstr "{name} ({difficulty})"
+
+msgid "end.surrendered"
+msgstr "{name} (surrendered)"
+
+msgid "end.eliminated"
+msgstr "{name} (eliminated)"
+
+msgid "effect.now"
+msgstr "Now {value}"
+
+msgid "effect.compare"
+msgstr "Now {now}   ›   Level {level}: {next}"
+
+msgid "effect.holds"
+msgstr "holds {amount}"
+
+msgid "effect.others"
+msgstr "others up to level {level}"
+
+msgid "effect.carriers"
+msgid_plural "effect.carriers"
+msgstr[0] "{count} carrier"
+msgstr[1] "{count} carriers"
+
+msgid "effect.carriers_free"
+msgstr "{free} free now, each carrying {capacity}"
+
+msgid "effect.watchtower"
+msgstr "Scouts at home × {value}"
+
+msgid "upgrade.max"
+msgstr "Max level"
+
+msgid "upgrade.unavailable"
+msgstr "Unavailable"
+
+msgid "upgrade.build"
+msgstr "Build"
+
+msgid "upgrade.to_level"
+msgstr "Upgrade to level {level}"
+
+msgid "upgrade.warehouse_small"
+msgstr "This costs more than your Warehouse can hold. Upgrade the Warehouse first."
+
+msgid "troops.stats"
+msgstr "Attack {attack}  ·  Defence {infantry} inf / {cavalry} cav  ·  Carry {carry}"
+
+msgid "troops.requires"
+msgstr "Requires Barracks level {level}"
+
+msgid "troops.train"
+msgstr "Train {count}"
+
+msgid "popup.abandoned"
+msgstr "Abandoned"
+
+msgid "popup.capital"
+msgstr "Capital"
+
+msgid "popup.settler_arrives"
+msgstr "A Settler arrives in {time}"
+
+msgid "send.from"
+msgstr "From {village}"
+
+msgid "send.scout_rule"
+msgstr "Scouts face the Scouts at home there. Equal numbers rarely get through, and those caught all die. A large majority nearly always succeeds, and the bigger the margin, the more you see."
+
+msgid "send.resources"
+msgstr "Send resources"
+
+msgid "send.troops"
+msgstr "Send troops"
+
+msgid "send.carriers_preview"
+msgstr "Uses {used} of {free} free carriers  ·  Arrives in {time}"
+
+msgid "send.pick_own"
+msgstr "Pick one of your villages on the map."
+
+msgid "send.needs_carriers"
+msgstr "This needs {needed} carriers, and {free} are free."
+
+msgid "send.warning"
+msgstr "About {loss} will be lost: {village}'s warehouse will be full."
+
+msgid "send.a_little"
+msgstr "a little"
+
+msgid "send.arrives"
+msgstr "Arrives in {time}"
+
+msgid "send.pick_target"
+msgstr "Pick a target on the world map."
+
+msgid "send.already_here"
+msgstr "Troops are already in this village."
+
+msgid "send.no_target"
+msgstr "No target yet"
+
+msgid "send.pick_village"
+msgstr "Pick a village on the map"
+
+msgid "send.change_target"
+msgstr "Change target on the map"
+
+msgid "send.random"
+msgstr "Random"
+
+msgid "start.unlimited"
+msgstr "Unlimited"
+
+msgid "start.map_size"
+msgstr "{size} ({width} × {height})"
+
+msgid "error.data"
+msgstr "The game data could not be loaded"
+
+msgid "ui.start.language"
+msgstr "Language"
+
+msgid "ui.start.tagline"
+msgstr "Build your village. Hold your ground."
+
+msgid "ui.start.duration"
+msgstr "Match length"
+
+msgid "ui.start.speed"
+msgstr "Game speed"
+
+msgid "ui.start.map_size"
+msgstr "Map size"
+
+msgid "ui.start.opponents"
+msgstr "AI opponents"
+
+msgid "ui.start.difficulty"
+msgstr "AI difficulty"
+
+msgid "ui.start.start"
+msgstr "Start match"
+
+msgid "ui.capital.title"
+msgstr "Your capital has fallen"
+
+msgid "ui.capital.later"
+msgstr "Decide later"
+
+msgid "ui.end.back"
+msgstr "Back to start"
+
+msgid "ui.building.cost"
+msgstr "Cost"
+
+msgid "ui.building.time"
+msgstr "Time"
+
+msgid "ui.building.train"
+msgstr "Train troops"
+
+msgid "ui.send_resources"
+msgstr "Send resources"
+
+msgid "ui.reports.title"
+msgstr "Reports"
+
+msgid "ui.reports.none"
+msgstr "No battles yet."
+
+msgid "ui.report.close"
+msgstr "Close"
+
+msgid "ui.send.target"
+msgstr "Target"
+
+msgid "ui.send.mission"
+msgstr "Mission"
+
+msgid "ui.send.catapults"
+msgstr "Catapults aim at"
+
+msgid "ui.send.troops"
+msgstr "Send troops"
+
+msgid "ui.send.moving"
+msgstr "On the way"
+
+msgid "ui.send.none"
+msgstr "Nothing on the move."
+
+msgid "ui.bar.village_tip"
+msgstr "Village view (M)"
+
+msgid "ui.bar.village"
+msgstr "Village"
+
+msgid "ui.bar.world_tip"
+msgstr "World map (M)"
+
+msgid "ui.bar.world"
+msgstr "World"
+
+msgid "ui.bar.capital_tip"
+msgstr "Choose a new capital"
+
+msgid "ui.bar.incoming_tip"
+msgstr "Show on the map"
+
+msgid "ui.bar.pause_tip"
+msgstr "Pause the match (P)"
+
+msgid "ui.bar.pause"
+msgstr "Pause"
+
+msgid "ui.bar.clock_tip"
+msgstr "Time left in the match"
+
+msgid "ui.popup.send"
+msgstr "Send troops"
+
+msgid "ui.popup.enter"
+msgstr "Enter village"
+
+msgid "ui.popup.reinforce"
+msgstr "Reinforce"
+
+msgid "ui.popup.resources"
+msgstr "Send resources"
+
+msgid "ui.popup.settler"
+msgstr "Send settler"
+

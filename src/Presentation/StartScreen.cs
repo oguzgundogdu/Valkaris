@@ -45,7 +45,7 @@ public partial class StartScreen : CenterContainer
         foreach (var size in mapSizes)
         {
             var definition = _data.Game.MapSizes[size];
-            mapSize.AddItem($"{size} ({definition.Width} × {definition.Height})");
+            mapSize.AddItem(L.T("start.map_size", ("size", L.T(L.Key("map_size", size))), ("width", Format.Whole(definition.Width)), ("height", Format.Whole(definition.Height))));
         }
 
         var opponents = GetNode<OptionButton>("%Opponents");
@@ -55,7 +55,7 @@ public partial class StartScreen : CenterContainer
         var difficulties = Enum.GetValues<AiDifficulty>();
         var difficulty = GetNode<OptionButton>("%Difficulty");
         foreach (var level in difficulties)
-            difficulty.AddItem(level.ToString());
+            difficulty.AddItem(L.T(L.Key("difficulty", level)));
         difficulty.Select(Array.IndexOf(difficulties, AiDifficulty.Normal));
 
         if (_choices is { } choices)
@@ -69,7 +69,7 @@ public partial class StartScreen : CenterContainer
 
         var language = GetNode<OptionButton>("%Language");
         foreach (var code in Language.Codes)
-            language.AddItem(L.T($"language.{code}"));
+            language.AddItem(L.T(L.Key("language", code)));
         language.Select(Array.IndexOf(Language.Codes, Language.Current));
         language.ItemSelected += index =>
         {
