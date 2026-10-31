@@ -34,9 +34,10 @@ public static class BuildPreview
         if (village.OwnerId != playerId)
             return new BuildOption { Rejection = CommandRejection.NotOwner };
 
+        var god = GodRules.Applies(state, playerId);
         var queuedUpgrades = village.BuildQueue.Count(item => item.Building == building);
         var targetLevel = village.BuildingLevel(building) + queuedUpgrades + 1;
-        var queueFull = village.BuildQueue.Count >= data.Game.MaxBuildQueueLength;
+        var queueFull = !god && village.BuildQueue.Count >= data.Game.MaxBuildQueueLength;
 
         if (targetLevel > data.Buildings.Buildings[building].MaxLevel)
         {
@@ -47,7 +48,7 @@ public static class BuildPreview
             };
         }
 
-        var cost = BuildingRules.UpgradeCost(data, building, targetLevel);
+        var cost = god ? Resources.Zero : BuildingRules.UpgradeCost(data, building, targetLevel);
         var capacity = BuildingRules.VillageCapacity(data, village);
 
         return new BuildOption
@@ -58,7 +59,7 @@ public static class BuildPreview
 
             // One builder per village: this item starts when the one before it finishes.
             StartTime = village.BuildQueue.Count > 0 ? village.BuildQueue[^1].FinishTime : state.ElapsedTime,
-            DurationSeconds = BuildingRules.BuildTimeSeconds(data, building, targetLevel) / state.Settings.SpeedMultiplier,
+            DurationSeconds = god ? 0 : BuildingRules.BuildTimeSeconds(data, building, targetLevel) / state.Settings.SpeedMultiplier,
             CostExceedsCapacity = cost.Wood > capacity || cost.Stone > capacity || cost.Food > capacity,
         };
     }

@@ -55,6 +55,23 @@ public sealed class GameState
 
     public bool IsMatchOver => Outcome is not null;
 
+#if VALKARIS_DEV
+    /// <summary>Dev only: the player god mode applies to. Deliberately left out of snapshots.</summary>
+    internal int? GodPlayerId { get; set; }
+
+    /// <summary>Everything this player has under way is due now.</summary>
+    internal void RushWork(int playerId)
+    {
+        foreach (var village in _villages.Values.Where(v => v.OwnerId == playerId))
+            village.RushQueues(ElapsedTime);
+        for (var i = 0; i < _movements.Count; i++)
+        {
+            if (_movements[i].OwnerId == playerId)
+                _movements[i] = _movements[i] with { ArrivalTime = ElapsedTime };
+        }
+    }
+#endif
+
     internal void AddPlayer(Player player) => _players.Add(player.Id, player);
 
     internal void AddVillage(Village village) => _villages.Add(village.Id, village);

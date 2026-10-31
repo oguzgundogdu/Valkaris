@@ -49,6 +49,16 @@ public sealed class Village
 
     internal void SetBuildingLevel(BuildingType type, int level) => _buildings[type] = level;
 
+#if VALKARIS_DEV
+    internal void RushQueues(double now)
+    {
+        for (var i = 0; i < _buildQueue.Count; i++)
+            _buildQueue[i] = _buildQueue[i] with { FinishTime = now };
+        for (var i = 0; i < _trainingQueue.Count; i++)
+            _trainingQueue[i] = _trainingQueue[i] with { FinishTime = now };
+    }
+#endif
+
     internal void EnqueueBuild(BuildQueueItem item) => _buildQueue.Add(item);
 
     internal void DequeueBuild() => _buildQueue.RemoveAt(0);

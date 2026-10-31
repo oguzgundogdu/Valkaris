@@ -33,6 +33,28 @@ public sealed class LocalGameSession : IGameSession
 
     public void SetPaused(bool paused) => IsPaused = paused;
 
+#if VALKARIS_DEV
+    public bool IsGodMode => State.GodPlayerId == LocalPlayerId;
+
+    /// <summary>
+    /// Dev only, and deliberately not on IGameSession, so a multiplayer session can never offer it. Turning it on finishes
+    /// the player's work under way, so an old queue can't undo an instant upgrade. Returns false while paused or after the match.
+    /// </summary>
+    public bool SetGodMode(bool active)
+    {
+        if (IsPaused || State.IsMatchOver)
+            return false;
+
+        State.GodPlayerId = active ? LocalPlayerId : null;
+        if (active)
+        {
+            State.RushWork(LocalPlayerId);
+            Tick(0);
+        }
+        return true;
+    }
+#endif
+
     public void Send(ICommand command)
     {
         if (IsPaused)
@@ -62,6 +84,10 @@ public sealed class LocalGameSession : IGameSession
                 agent.OnEvent(gameEvent);
             EventRaised?.Invoke(gameEvent);
         }
+
+        // Only the player's own command: an AI acting in the middle of a tick must not start another.
+        if (result.Success && playerId == LocalPlayerId && GodRules.Applies(State, playerId))
+            Tick(0);
         return result;
     }
 
