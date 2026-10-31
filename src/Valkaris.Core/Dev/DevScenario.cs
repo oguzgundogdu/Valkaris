@@ -17,6 +17,7 @@ public static class DevScenario
     public const string Empire = "empire";
     public const string StrayReturn = "strayreturn";
     public const string Scouting = "scouting";
+    public const string CounterScouting = "counterscouting";
 
     private const int Local = 1;
     private const int Rival = 2;
@@ -44,6 +45,9 @@ public static class DevScenario
             case Scouting:
                 ApplyScouting(state);
                 return true;
+            case CounterScouting:
+                ApplyCounterScouting(state);
+                return true;
             case Empire:
                 while (state.Villages.Values.Any(v => v.IsBarbarian))
                     Take(state, data, Local, 2);
@@ -69,6 +73,16 @@ public static class DevScenario
             village.SetBuildingLevel(BuildingType.Warehouse, 8);
             village.Resources = new Resources(5000, 5000, 5000);
         }
+    }
+
+    /// <summary>A rival with Scouts and a Watchtower, with plenty of your own Scouts to try different margins against it.</summary>
+    private static void ApplyCounterScouting(GameState state)
+    {
+        ApplyScouting(state);
+        var rival = state.Villages[Rival];
+        rival.AddTroops(UnitType.Scout, 20);
+        rival.SetBuildingLevel(BuildingType.Watchtower, 2);
+        state.Villages[Local].AddTroops(UnitType.Scout, 300);
     }
 
     /// <summary>Several villages and a big army against a protected capital, while your own capital is weak and nearly disloyal.</summary>

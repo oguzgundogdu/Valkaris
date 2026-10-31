@@ -1133,6 +1133,8 @@ public partial class UiTest : Control
         Expect(ordered[1] < 16, $"AI thinking fits within a frame, second slowest {ordered[1]:0.00} ms");
         Expect(session.State.Reports.Any(r => r.AttackerId != 1), "The opponents really played");
         Expect(session.State.Players.Values.Where(p => p.IsAi).All(p => p.Difficulty == AiDifficulty.Hard), "The opponents are Hard");
+        Expect(session.State.ScoutReports.Any(r => r.SenderId != 1 && r.Sent.Keys.All(u => u == UnitType.Scout)), "The opponents really scouted, with Scouts");
+        Expect(session.State.Villages.Values.Any(v => v.OwnerId != 1 && v.BuildingLevel(BuildingType.Watchtower) > 0), "The opponents really built a Watchtower");
         var end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
         Expect(end.Visible, "A live AI match reaches the results");
         await Shot("live-ai-end");
