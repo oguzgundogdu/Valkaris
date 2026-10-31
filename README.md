@@ -8,6 +8,7 @@ Build a village, train troops, raid barbarians, found and capture villages, and 
 - Resources, buildings, troops and attacks with travel time, in real time with low event frequency
 - A world map with terrain, barbarian camps that slowly recover, and villages you can found or capture
 - Settlers, Lords and loyalty, with a protected capital and a timed choice of a new one if it falls
+- Timed or Unlimited matches, with surrender for when a position is lost
 - Scouting, so you can check a target's garrison, Wall and resources before you attack
 - Resource transfers between your own villages through a Marketplace
 - Rule-based AI opponents (Easy, Normal, Hard) that play by the same rules and see only what a player sees
@@ -26,7 +27,7 @@ Multiplayer and nation bonuses are planned. See [GDD.md](GDD.md) for the full de
 godot-mono --path .
 ```
 
-Debug builds also accept `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai` and `--dev-scenario=`, for example:
+All balance values assume the default 1× speed. Debug builds also accept `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai` and `--dev-scenario=`, for example:
 
 ```sh
 godot-mono --path . -- --dev-speed=5
@@ -46,8 +47,10 @@ Runs seeded AI-only matches in parallel and reports match length, winners, growt
 
 ```sh
 dotnet run -c Release --project tools/Valkaris.Sim -- \
-  --matches=200 --players=4 --difficulty=Normal --minutes=30 --speed=3 --out=report.json
+  --matches=200 --players=4 --difficulty=Normal --minutes=30 --out=report.json
 ```
+
+Use `--minutes=unlimited` for Unlimited matches, which stop at `--cap-minutes` (240 by default) and count as unfinished if still going. `--efficiency=true` prints the combat cost table instead of running matches.
 
 ## Project layout
 

@@ -53,6 +53,8 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
 4. **AI (`Valkaris.Ai`, a separate assembly with no access to Core's internals)**
    - AI players issue the same commands as human players through the same `CommandHandler`, and check the same previews first.
    - Decisions see the game only through `AiView`: what a player's own UI shows. It never exposes other players' garrisons, resources, buildings or loyalty, troop counts in incoming attacks, or whether a player is human. A guard test enforces this. The AI learns about targets from its own battle and scout reports, starting from beliefs in `data/ai.json`, which stand for experience and are separate from the real garrison data. It scouts its next target through the same command when its news is older than the profile allows, and allows for troops that were away when reading a player's scout report. Difficulty is data only: Easy keeps the smallest garrison share, builds no Wall, and has a limit on its army size, so it is the softest level to attack.
+   - **War:** at the start every AI works out the same pairing from the match seed and start positions, favouring nearby players, so each player is the rival of exactly one other. Most attacks go to the rival. An AI picks again when its rival is out or reports show it is much stronger. It never reads other players' movements. Spare troops gather in one staging village, including Lords and Catapults, and a side strikes one wave at a time with its whole spare army, after a mass time from its profile. Lords take camps first, and outlying villages come before capitals.
+   - **Surrender:** an AI gives up through the same command when it has lost a capital or holds one village, holds at most a profile share of its most villages, and has been far weaker than the strongest force in its own reports for a profile time. It also knows abandoned villages as such, assumes they don't regrow, and scouts one before raiding it.
    - `LocalGameSession` runs agents (`IMatchAgent`) and stops at every event and decision, so what they do does not depend on the frame rate. Same seed, same match. AI memory lives on the host and is not in snapshots.
    - Difficulty (Easy, Normal, Hard) is one profile per level in `ai.json`, on one code path, with no rule or information advantage. A test confirms the AI code never branches on the level.
    - `tools/Valkaris.Sim` runs seeded AI-only matches headlessly and reports stats for balance work.
@@ -139,7 +141,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 ## 4. Match Settings (chosen in lobby)
 
 - Number of players: 2–4 (human or AI slots; limits in `data/game.json`). A single slot is not allowed, since a player with no opponents would win instantly. The start screen offers 1–3 AI opponents at one difficulty until the lobby exists.
-- Match duration: configurable (e.g. 20 / 30 / 45 / 60 minutes)
+- Match duration: 30 / 45 / 60 minutes or Unlimited (`data/game.json`). An Unlimited match has no timer and no score win, and ends only when one player remains. Its top bar shows elapsed time, and the end screen still shows the score table for information.
 - Game speed multiplier (optional). Scales production, build, training and travel speed and loyalty regeneration. It does not scale match duration: a 30-minute match lasts 30 real minutes.
 - Map size (small / medium), set on the start screen until the lobby exists
 
@@ -192,7 +194,7 @@ Each building has levels with increasing cost and build time (defined in JSON).
 
 Each unit has: class (infantry or cavalry), attack, defence vs infantry, defence vs cavalry, speed, loot capacity, cost, training time, required Barracks level (`data/units.json`).
 
-**Rock-paper-scissors:** Spearman is strong against Cavalry, Swordsman is the best infantry attacker, and Cavalry is fast and good against infantry-light defence such as Swordsmen. Catapults count as infantry. Food is the largest cost of every unit.
+**Rock-paper-scissors:** Spearman is the best defender against Cavalry, Swordsman is the best infantry attacker and the most cost-efficient defender against infantry, and Cavalry is fast and good against defenders such as Swordsmen. **Balance rules, held by a test against the real resolver, with Wall costs counted as defence spending:** an attacker spending 1.25× the defender's resources beats every defence except pure Spearmen against pure Cavalry, and at equal spending a defender with half Spearmen and half Swordsmen wins narrowly, with defence over attack between 1.0 and 1.1. Catapults count as infantry. Food is the largest cost of every unit.
 
 **Training:** paid in full when queued, one batch at a time per village, FIFO, with a queue length from data and no cancel. A batch arrives all at once when it finishes. Barracks upgrades shorten training and unlock units; an upgrade finishing mid-batch does not change that batch. Settler and Lord are trained like other units (Barracks level 3 and 5).
 
@@ -322,7 +324,7 @@ Players must be able to manage their villages from both views.
 
 ### 11.2 Loyalty
 - Every village has Loyalty (0–100).
-- If an attack is won and at least one Lord survives, loyalty drops once by a seeded 20–30, however many Lords survive. Lords are not consumed. Values are in `data/villages.json`.
+- If an attack is won and at least one Lord survives, loyalty drops once by a seeded amount (35–45), however many Lords survive. Lords are not consumed. Values are in `data/villages.json`.
 - Catapults land first, so one wave can lower a capital's Main Building to the threshold and then its loyalty.
 - At 0 loyalty the village changes owner. Its loyalty resets to a data-defined value, its queues are cleared with no refund and the surviving attackers return home. Stored resources and buildings stay.
 - A captured barbarian village becomes a normal village: recovery stops, and it has no production until those buildings are built.
@@ -336,7 +338,8 @@ Players must be able to manage their villages from both views.
 
 ### 11.4 Win Conditions
 - Last player standing wins, and the match ends at that moment. Barbarians don't count.
-- If time runs out: highest score among surviving players wins (villages + population + captured villages), with weights in `data/scoring.json`. A tie is a draw between the tied leaders.
+- **Surrender:** any player still in the match can send `SurrenderCommand`, from the pause menu with a confirmation. Their villages become barbarian villages with no tier: buildings, troops and resources stay, loyalty is 100, and queues are cleared. All their movements are removed, so troops on the way are lost, while other players' movements aimed at those villages carry on. These abandoned villages don't regenerate, can be raided, scouted and captured, and a capture counts as normal. The player is out (Defeat), and if one player remains, the match ends at once. Multiplayer has no pause, so the button must move to a menu in the Multiplayer milestone.
+- If time runs out (timed matches only): highest score among surviving players wins (villages + population + captured villages), with weights in `data/scoring.json`. A tie is a draw between the tied leaders.
 - Population is the sum of a village's building levels, weighted by data.
 - A village counts as a capture at most once per player, so trading a village back and forth can't farm score. Barbarian villages count, and captures are kept if the village is lost again.
 
@@ -364,6 +367,7 @@ Players must be able to manage their villages from both views.
 5.5. **Resource transfers:** Marketplace, carriers, sending resources between your own villages.
 6. **AI:** rule-based AI playing the full game, difficulty levels, and a headless simulation tool.
 6.5. **Scouting and an easier Easy:** the Scout mission, AI scouting, and Easy as the softest target to attack.
+6.6. **Pacing, combat balance, real war, Unlimited matches and surrender.**
 7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
 8. **Nations:** passive bonuses.
 9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).
