@@ -75,6 +75,13 @@ public sealed class AiView
     public IEnumerable<ScoutNotice> ScoutNoticesSince(int reportId) =>
         _state.ScoutNotices.Where(r => r.Id > reportId && r.DefenderId == PlayerId);
 
+    /// <summary>The same as a player's map shows. AI decisions don't use these yet, so its play is unchanged.</summary>
+    public IReadOnlyList<SightedMovement> SightedMovements => Visibility.SightedMovements(_state, _data, PlayerId);
+
+    public IEnumerable<PublicNotice> PublicNotices => Visibility.PublicNotices(_state, PlayerId);
+
+    public IEnumerable<Clash> ClashesSeen(double after) => Visibility.Clashes(_state, _data, PlayerId, after);
+
     public Terrain TerrainAt(TileCoord tile) => _state.Map.TileAt(tile).Terrain;
 
     public BuildOption PreviewBuild(int villageId, BuildingType building) =>

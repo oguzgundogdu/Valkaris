@@ -261,4 +261,24 @@ public class AiViewTests
 
         Assert.Empty(_view.Incoming);
     }
+
+    [Fact]
+    public void TheAiSeesTheSameThirdPartyInformationAsAPlayer()
+    {
+        var state = TestMatch.Create(players: 3, duration: 36000);
+        var data = TestData.Shipped;
+        var view = new AiView(state, data, 1, _ => CommandResult.Ok);
+        var near = state.Villages[1].Position;
+        var troops = new Dictionary<UnitType, int> { [UnitType.Spearman] = 5 };
+        state.AddMovement(new Movement(1, 2, 2, null, MovementType.Settle, troops, Resources.Zero, 0, 100, null, near, near));
+        state.AddBattleArrival(new BattleArrival(5, 2, 3, "A", 3, "B"));
+        state.AddBattleArrival(new BattleArrival(6, 2, 1, "A", 1, "C"));
+
+        Assert.Equal(Visibility.SightedMovements(state, data, 1), view.SightedMovements);
+        Assert.Single(view.SightedMovements);
+        Assert.Equal(Visibility.PublicNotices(state, 1), view.PublicNotices);
+        Assert.Equal("B", view.PublicNotices.Single().TargetVillageName);
+        Assert.Equal(Visibility.Clashes(state, data, 1, 0), view.ClashesSeen(0));
+        Assert.Equal(1, view.ClashesSeen(5).Single().VillageId);
+    }
 }

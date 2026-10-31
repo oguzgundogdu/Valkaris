@@ -59,6 +59,12 @@ public static class Visibility
             .Where(a => a.DefenderId != Village.BarbarianOwnerId && a.AttackerId != playerId && a.DefenderId != playerId)
             .Select(a => new PublicNotice(a.Time, a.FromVillageName, a.TargetVillageId, a.TargetVillageName));
 
+    /// <summary>Battles this player saw happen after a given time, oldest first.</summary>
+    public static IEnumerable<Clash> Clashes(GameState state, GameData data, int playerId, double after) =>
+        state.BattleArrivals
+            .Where(a => a.Time > after && SeesClash(state, data, playerId, a))
+            .Select(a => new Clash(a.Time, a.TargetVillageId));
+
     /// <summary>Would this player see this battle happen: their own, or at a village in their sight.</summary>
     public static bool SeesClash(GameState state, GameData data, int playerId, BattleArrival arrival)
     {
