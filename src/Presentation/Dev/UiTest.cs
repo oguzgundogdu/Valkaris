@@ -217,6 +217,7 @@ public partial class UiTest : Control
             }
             await Frames();
             Expect(tiles.All(t => t.Stage == stage), $"Every building shows stage {stage}");
+            Expect((Find<VillageView>().Ring.Count > 0) == (stage > 0), $"The Wall's ring shows only once built, stage {stage}");
             var houses = Find<VillageView>().Scenery.Count(item => item.Sprite.Contains("house_"));
             Expect(houses >= lastHouses, $"The village never loses houses as it grows, went {lastHouses} to {houses}");
             lastHouses = houses;

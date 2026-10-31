@@ -13,12 +13,17 @@ public partial class VillageView : Control
     private static readonly PackedScene TileScene = GD.Load<PackedScene>("res://scenes/BuildingTile.tscn");
     private readonly Dictionary<BuildingType, BuildingTile> _tiles = new();
     private readonly List<VillageScenery> _layers = new();
+    private readonly VillageScenery _ring = new() { MouseFilter = MouseFilterEnum.Ignore };
     private List<Placed> _scenery = new();
+    private int _wallStage;
     private (int Seed, int Total, int Farm) _sceneryFor;
     private int _seed;
 
     /// <summary>How many things stand on the ground, so tests can watch the village grow.</summary>
     public IReadOnlyList<Placed> Scenery => _scenery;
+
+    /// <summary>The pieces of the Wall's ring on show, for tests.</summary>
+    public IReadOnlyList<Placed> Ring { get; private set; } = Array.Empty<Placed>();
 
     /// <summary>The ground in use, so tests can see it stays the same.</summary>
     public Texture2D Ground => VillageGround.For(_seed, Size);
@@ -36,6 +41,8 @@ public partial class VillageView : Control
             AddChild(tile);
             _tiles[building] = tile;
         }
+
+        AddChild(_ring);
 
         // A layer sits before each tile and one after them all, so scenery sorts between the buildings.
         for (var i = 0; i <= _tiles.Count; i++)
@@ -67,6 +74,13 @@ public partial class VillageView : Control
             SortScenery();
         }
 
+        var wall = VillageArt.Stage(village.BuildingLevel(BuildingType.Wall), session.Data.Buildings.Buildings[BuildingType.Wall].MaxLevel);
+        if (wall != _wallStage)
+        {
+            _wallStage = wall;
+            ShowRing();
+        }
+
         var now = session.State.ElapsedTime;
         var showPlates = Input.IsKeyPressed(Key.Alt);
         foreach (var (building, tile) in _tiles)
@@ -81,7 +95,16 @@ public partial class VillageView : Control
             tile.Position = new Vector2(VillageArt.Plots[building].X, VillageArt.Plots[building].Y) * Size - tile.Size / 2;
 
         SortScenery();
+        ShowRing();
         QueueRedraw();
+    }
+
+    /// <summary>Under everything else, so it can't cover a building, a label or a click.</summary>
+    private void ShowRing()
+    {
+        Ring = VillageArt.Ring(_wallStage, Size.X, Size.Y);
+        _ring.Show(new List<Placed>(Ring));
+        MoveChild(_ring, 0);
     }
 
     /// <summary>Further down the ground draws on top, so nearer things overlap farther ones.</summary>
@@ -90,7 +113,7 @@ public partial class VillageView : Control
         if (_layers.Count == 0)
             return;
 
-        var order = 0;
+        var order = 1;
         var left = _scenery.OrderBy(item => item.Y).ToList();
         var from = 0;
         var plots = VillageArt.Plots.OrderBy(p => p.Value.Y).ToList();

@@ -73,7 +73,7 @@ public static class VillageArt
     /// <summary>Crops by the Farm: one more patch for each Farm stage.</summary>
     public static readonly IReadOnlyList<(float X, float Y)> CropSpots = new (float X, float Y)[]
     {
-        (0.05f, 0.6f), (0.3f, 0.665f), (0.06f, 0.69f),
+        (0.085f, 0.625f), (0.3f, 0.665f), (0.085f, 0.7f),
     };
 
     private static readonly string[] Trees = { "res://assets/village/tree_1.png", "res://assets/village/tree_2.png", "res://assets/village/tree_3.png", "res://assets/village/tree_4.png" };
@@ -81,6 +81,51 @@ public static class VillageArt
     private static readonly string[] Houses = { "res://assets/village/house_1.png", "res://assets/village/house_2.png", "res://assets/village/house_3.png", "res://assets/village/house_4.png" };
     private static readonly string[] Crops = { "res://assets/village/crops_1.png", "res://assets/village/crops_2.png" };
     private static readonly string[] Extras = { "res://assets/village/flowers_1.png", "res://assets/village/flowers_2.png", "res://assets/village/fence_1.png" };
+
+    // How the ring lies on the ground, as fractions of it, and how far apart its pieces go on screen.
+    private const float RingLeft = 0.03f;
+    private const float RingRight = 0.97f;
+    private const float RingBack = 0.12f;
+    private const float PieceAcross = 37;
+    private const float PieceAlong = 19;
+    private static readonly string[] RingAcross = { "res://assets/village/ring_across_1.png", "res://assets/village/ring_across_2.png", "res://assets/village/ring_across_3.png" };
+    private static readonly string[] RingAlong = { "res://assets/village/ring_along_1.png", "res://assets/village/ring_along_2.png", "res://assets/village/ring_along_3.png" };
+    private static readonly string[] RingPost = { "res://assets/village/ring_post_1.png", "res://assets/village/ring_post_2.png", "res://assets/village/ring_post_3.png" };
+    private static readonly float[] GateHalfWidth = { 42, 62, 92 };
+
+    /// <summary>The Wall's ring, back to front, leaving a gap for the gatehouse. Nothing until the Wall is built.</summary>
+    public static List<Placed> Ring(int wallStage, float width, float height)
+    {
+        var pieces = new List<Placed>();
+        if (wallStage <= 0)
+            return pieces;
+
+        var tier = wallStage - 1;
+        var front = Plots[BuildingType.Wall].Y + TileGroundBelowCentre / height;
+        var gate = GateHalfWidth[tier] / width;
+
+        void Across(float from, float to, float y)
+        {
+            var count = (int)MathF.Ceiling((to - from) * width / PieceAcross);
+            for (var i = 0; i < count; i++)
+                pieces.Add(new Placed(RingAcross[tier], from + (to - from) * (i + 0.5f) / count, y, false));
+        }
+
+        Across(RingLeft, RingRight, RingBack);
+        var steps = (int)MathF.Ceiling((front - RingBack) * height / PieceAlong);
+        for (var i = 0; i < steps; i++)
+        {
+            var y = RingBack + (front - RingBack) * (i + 0.5f) / steps;
+            pieces.Add(new Placed(RingAlong[tier], RingLeft, y, false));
+            pieces.Add(new Placed(RingAlong[tier], RingRight, y, false));
+        }
+        Across(RingLeft, 0.5f - gate, front);
+        Across(0.5f + gate, RingRight, front);
+
+        foreach (var (x, y) in new[] { (RingLeft, RingBack), (RingRight, RingBack), (RingLeft, front), (RingRight, front) })
+            pieces.Add(new Placed(RingPost[tier], x, y, false));
+        return pieces.OrderBy(piece => piece.Y).ToList();
+    }
 
     public static int HouseCount(int totalLevels) => Math.Min(HouseSpots.Count, totalLevels / LevelsPerHouse);
 
@@ -129,7 +174,7 @@ public static class VillageArt
         var found = new List<(float X, float Y)>();
         for (var i = 0; i < Attempts && found.Count < count; i++)
         {
-            var spot = (X: 0.05f + (float)random.NextDouble() * 0.9f, Y: 0.08f + (float)random.NextDouble() * 0.82f);
+            var spot = (X: 0.07f + (float)random.NextDouble() * 0.86f, Y: 0.16f + (float)random.NextDouble() * 0.72f);
             if (!IsClear(spot.X, spot.Y) || taken.Any(other => Distance(spot, other) < SceneryGap))
                 continue;
             taken.Add(spot);

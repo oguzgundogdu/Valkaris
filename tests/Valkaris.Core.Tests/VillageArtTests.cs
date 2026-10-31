@@ -133,6 +133,42 @@ public class VillageArtTests
     }
 
     [Fact]
+    public void AnUnbuiltWallHasNoRing()
+    {
+        Assert.Empty(VillageArt.Ring(0, VillageArt.SmallestWidth, VillageArt.SmallestHeight));
+    }
+
+    [Theory]
+    [InlineData(832, 633)]
+    [InlineData(1200, 800)]
+    public void TheRingStaysInViewAndLeavesRoomForTheGate(float width, float height)
+    {
+        var gateY = VillageArt.Plots[BuildingType.Wall].Y + VillageArt.TileGroundBelowCentre / height;
+        for (var stage = 1; stage <= VillageArt.StageCount; stage++)
+        {
+            var ring = VillageArt.Ring(stage, width, height);
+
+            Assert.NotEmpty(ring);
+            Assert.All(ring, piece =>
+            {
+                Assert.InRange(piece.X, 0, 1);
+                Assert.InRange(piece.Y, 0, 1);
+                Assert.True(File.Exists(Path.Combine(Catalogue.Root, piece.Sprite.Replace("res://", ""))), piece.Sprite);
+            });
+            Assert.DoesNotContain(ring, piece => piece.Y == gateY && Math.Abs(piece.X - 0.5f) * width < 30);
+        }
+    }
+
+    [Fact]
+    public void TheRingChangesWithEachStage()
+    {
+        var sprites = Enumerable.Range(1, VillageArt.StageCount)
+            .Select(stage => VillageArt.Ring(stage, VillageArt.SmallestWidth, VillageArt.SmallestHeight)[0].Sprite).ToList();
+
+        Assert.Equal(VillageArt.StageCount, sprites.Distinct().Count());
+    }
+
+    [Fact]
     public void AVillageKeepsItsLookAndDiffersFromOthers()
     {
         Assert.Equal(VillageArt.Seed(5, 1), VillageArt.Seed(5, 1));

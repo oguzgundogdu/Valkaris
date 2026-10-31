@@ -8,15 +8,17 @@ const ALL := [
 	"plot", "scaffold",
 	"house_1", "house_2", "house_3", "house_4", "tree_1", "tree_2", "tree_3", "tree_4", "bush_1", "bush_2", "rock_1", "rock_2",
 	"flowers_1", "flowers_2", "fence_1", "crops_1", "crops_2",
+	"ring_across_1", "ring_across_2", "ring_across_3", "ring_along_1", "ring_along_2", "ring_along_3", "ring_post_1", "ring_post_2", "ring_post_3",
 ]
 
 # One roof colour per building, so it stays recognisable at every stage. Sprites without a name here keep the kit's colours.
 const ROOFS := {
 	"main": Color("c8503f"), "woodcutter": Color("5f8f4e"), "quarry": Color("6f7a8c"), "farm": Color("d0a040"),
 	"warehouse": Color("b5683c"), "barracks": Color("3f5f96"), "wall": Color("565d6b"), "watchtower": Color("2f9a8c"),
-	"house": Color("9c7050"),
+	"house": Color("9c7050"), "ring": Color("565d6b"),
 }
 
+const STONE := Color(0.62, 0.68, 0.76)
 const LEAF := Color(0.66, 0.72, 0.46)
 
 var r
@@ -279,11 +281,11 @@ func bush_2() -> void:
 	r.shadow(1.2, 1.2)
 	r.tinted("n:plant_bush", Vector3.ZERO, 0, 2.8, LEAF)
 func rock_1() -> void:
-	r.shadow(1.3, 1.3)
-	r.part("rock-small", Vector3.ZERO, 0, 1.0)
+	r.shadow(1.5, 1.5)
+	r.tinted("n:rock_smallA", Vector3.ZERO, 0, 2.6, STONE)
 func rock_2() -> void:
 	r.shadow(1.5, 1.5)
-	r.part("rock-wide", Vector3.ZERO, 50, 0.6)
+	r.tinted("n:rock_smallF", Vector3.ZERO, 50, 2.4, STONE)
 func flowers_1() -> void:
 	r.part("n:flower_yellowA", Vector3(0.3, 0, 0), 0, 2.2)
 	r.part("n:flower_redA", Vector3(-0.3, 0, 0.3), 0, 2.2)
@@ -298,3 +300,27 @@ func crops_1() -> void:
 	field(Vector3(-0.42, 0, -0.42), 2, "n:crops_wheatStageB", 2)
 func crops_2() -> void:
 	field(Vector3(-0.42, 0, -0.42), 2, "n:crops_cornStageD", 2)
+
+# The Wall's ring, drawn piece by piece around the village: "across" runs along the screen, "along" runs away from the viewer.
+# Timber fence, then a low stone wall, then a full wall. No shadows, since the pieces overlap each other.
+func ring_piece(turn: float, offset: Vector3, piece: String) -> void:
+	r.face_camera()
+	r.part(piece, offset, turn, 1.02)
+func ring_across_1() -> void:
+	ring_piece(0, Vector3.ZERO, "fence")
+func ring_across_2() -> void:
+	ring_piece(0, Vector3(-0.5, 0, 0), "wall-half")
+func ring_across_3() -> void:
+	ring_piece(0, Vector3(-0.5, 0, 0), "wall")
+func ring_along_1() -> void:
+	ring_piece(90, Vector3.ZERO, "fence")
+func ring_along_2() -> void:
+	r.part("wall-block-half", Vector3.ZERO, 0, 0.72)
+func ring_along_3() -> void:
+	r.part("wall-block", Vector3.ZERO, 0, 0.72)
+func ring_post_1() -> void:
+	r.part("pillar-wood", Vector3.ZERO, 0, 1.4)
+func ring_post_2() -> void:
+	r.part("pillar-stone", Vector3.ZERO, 0, 1.5)
+func ring_post_3() -> void:
+	r.house(Vector3.ZERO, 1, 1, 2, true, "roof-point", 0.78, "window-stone", false)
