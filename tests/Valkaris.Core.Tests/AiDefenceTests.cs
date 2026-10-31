@@ -286,4 +286,32 @@ public class AiDefenceTests
 
     [Fact]
     public void WithNoLimitFightersAreTrained() => Assert.True(FightersAfterTraining(null, false) > 0);
+
+    [Fact]
+    public void WithFewSpearmenSwordsmenMakeUpTheGarrison()
+    {
+        var match = Match(AiDifficulty.Normal);
+        var village = match.State.Villages[Ai];
+        foreach (var (unit, count) in village.Troops.ToList())
+            village.RemoveTroops(unit, count);
+        village.AddTroops(UnitType.Swordsman, 100);
+
+        var spare = new Forces(match.Views[Ai]).Spare(village);
+
+        var kept = 100 - spare[UnitType.Swordsman];
+        Assert.Equal((int)Math.Ceiling(100 * match.Data.Ai.Difficulties[AiDifficulty.Normal].GarrisonShare), kept);
+    }
+
+    [Fact]
+    public void WithEnoughSpearmenAllSwordsmenAreSpare()
+    {
+        var match = Match(AiDifficulty.Normal);
+        var village = match.State.Villages[Ai];
+        foreach (var (unit, count) in village.Troops.ToList())
+            village.RemoveTroops(unit, count);
+        village.AddTroops(UnitType.Spearman, 100);
+        village.AddTroops(UnitType.Swordsman, 10);
+
+        Assert.Equal(10, new Forces(match.Views[Ai]).Spare(village)[UnitType.Swordsman]);
+    }
 }

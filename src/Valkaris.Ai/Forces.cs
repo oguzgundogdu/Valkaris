@@ -12,7 +12,7 @@ public sealed class Forces
     public double AttackOf(IReadOnlyDictionary<UnitType, int> troops) =>
         troops.Sum(t => t.Value * _view.Units.Units[t.Key].Attack);
 
-    /// <summary>Fighting troops beyond the garrison the profile keeps home. Spearmen are the garrison, so they go last.</summary>
+    /// <summary>Fighting troops beyond the garrison the profile keeps home. Spearmen stay first, and Swordsmen make up any shortfall.</summary>
     public Dictionary<UnitType, int> Spare(Village village)
     {
         var spears = village.TroopCount(UnitType.Spearman);
@@ -23,7 +23,7 @@ public sealed class Forces
         var spare = new Dictionary<UnitType, int>
         {
             [UnitType.Cavalry] = cavalry,
-            [UnitType.Swordsman] = swords,
+            [UnitType.Swordsman] = Math.Max(0, swords - Math.Max(0, keep - spears)),
             [UnitType.Spearman] = Math.Max(0, spears - keep),
         };
         return spare.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
