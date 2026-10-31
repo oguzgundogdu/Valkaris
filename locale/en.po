@@ -792,6 +792,24 @@ msgstr "{size} ({width} × {height})"
 msgid "error.data"
 msgstr "The game data could not be loaded"
 
+msgid "ui.start.village_name"
+msgstr "Village name"
+
+msgid "ui.start.village_hint"
+msgstr "Random if left empty"
+
+msgid "rename.edit"
+msgstr "Rename village"
+
+msgid "rename.hint"
+msgstr "New name"
+
+msgid "rename.save"
+msgstr "Save"
+
+msgid "rename.cancel"
+msgstr "Cancel"
+
 msgid "ui.start.language"
 msgstr "Language"
 

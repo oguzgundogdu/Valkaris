@@ -789,6 +789,24 @@ msgstr "{size} ({width} × {height})"
 msgid "error.data"
 msgstr "Oyun verileri yüklenemedi"
 
+msgid "ui.start.village_name"
+msgstr "Köy adı"
+
+msgid "ui.start.village_hint"
+msgstr "Boşsa rastgele"
+
+msgid "rename.edit"
+msgstr "Köyü yeniden adlandır"
+
+msgid "rename.hint"
+msgstr "Yeni ad"
+
+msgid "rename.save"
+msgstr "Kaydet"
+
+msgid "rename.cancel"
+msgstr "İptal"
+
 msgid "ui.start.language"
 msgstr "Dil"
 

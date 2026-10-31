@@ -2,14 +2,15 @@ using System;
 using Godot;
 using Valkaris.Core.Data;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
 /// <summary>What the start screen asks for.</summary>
-public sealed record MatchSetup(GameSettings Settings, int Opponents, AiDifficulty Difficulty);
+public sealed record MatchSetup(GameSettings Settings, int Opponents, AiDifficulty Difficulty, string? VillageName = null);
 
 /// <summary>What is selected on the start screen, kept when a language change rebuilds it.</summary>
-public sealed record StartChoices(int Duration, int Speed, int MapSize, int Opponents, int Difficulty);
+public sealed record StartChoices(int Duration, int Speed, int MapSize, int Opponents, int Difficulty, string VillageName);
 
 /// <summary>Match settings. The options come from data/game.json.</summary>
 public partial class StartScreen : CenterContainer
@@ -58,8 +59,13 @@ public partial class StartScreen : CenterContainer
             difficulty.AddItem(L.T(L.Key("difficulty", level)));
         difficulty.Select(Array.IndexOf(difficulties, AiDifficulty.Normal));
 
+        var villageName = GetNode<LineEdit>("%VillageName");
+        villageName.MaxLength = _data.Game.VillageNames.MaxLength;
+        villageName.TextChanged += _ => CheckVillageName();
+
         if (_choices is { } choices)
         {
+            villageName.Text = choices.VillageName;
             duration.Select(choices.Duration);
             speed.Select(choices.Speed);
             mapSize.Select(choices.MapSize);
@@ -74,8 +80,9 @@ public partial class StartScreen : CenterContainer
         language.ItemSelected += index =>
         {
             Language.Choose(Language.Codes[index]);
-            LanguageChanged?.Invoke(new StartChoices(duration.Selected, speed.Selected, mapSize.Selected, opponents.Selected, difficulty.Selected));
+            LanguageChanged?.Invoke(new StartChoices(duration.Selected, speed.Selected, mapSize.Selected, opponents.Selected, difficulty.Selected, villageName.Text));
         };
+        CheckVillageName();
 
         GetNode<Button>("%Start").Pressed += () =>
         {
@@ -84,7 +91,19 @@ public partial class StartScreen : CenterContainer
             double? seconds = duration.Selected < durations.Count ? durations[duration.Selected] * 60 : null;
             var multiplier = _data.Game.SpeedMultipliers[speed.Selected];
             var settings = new GameSettings(seconds, multiplier, mapSizes[mapSize.Selected]);
-            StartRequested?.Invoke(new MatchSetup(settings, _data.Game.MinPlayers - 1 + opponents.Selected, difficulties[difficulty.Selected]));
+            StartRequested?.Invoke(new MatchSetup(settings, _data.Game.MinPlayers - 1 + opponents.Selected, difficulties[difficulty.Selected], villageName.Text));
         };
+    }
+
+    /// <summary>Empty is fine, and means a random name from data.</summary>
+    private void CheckVillageName()
+    {
+        var name = VillageNameRules.Clean(GetNode<LineEdit>("%VillageName").Text);
+        var rejection = name.Length == 0 ? null : VillageNameRules.Rejection(_data, Array.Empty<string>(), name);
+
+        var reason = GetNode<Label>("%VillageNameReason");
+        reason.Visible = rejection is not null;
+        reason.Text = rejection is { } value ? UiContent.RejectionText(value) : "";
+        GetNode<Button>("%Start").Disabled = rejection is not null;
     }
 }

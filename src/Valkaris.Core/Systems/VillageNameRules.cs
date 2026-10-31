@@ -68,8 +68,9 @@ public static class VillageNameRules
             .Any(listed => listed == folded || listed == withoutNumber);
     }
 
+    /// <summary>Latin letters, including Turkish ones, that the bundled font can draw. The UI test checks the font.</summary>
     private static bool IsLetter(char character) =>
-        char.IsAsciiLetter(character) || (character >= 'À' && character <= 'ſ' && character is not ('×' or '÷'));
+        char.IsAsciiLetter(character) || (character >= 'À' && character <= 'ſ' && character is not ('×' or '÷' or 'ĳ' or 'ſ'));
 
     private static bool IsAllowed(char character) =>
         IsLetter(character) || char.IsAsciiDigit(character) || character is ' ' or '-' or '\'';

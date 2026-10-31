@@ -39,6 +39,7 @@ public partial class GameScreen : Control
     private int? _currentVillageId;
     private VillageStrip _villageStrip = null!;
     private Label _villageInfo = null!;
+    private RenamePanel _renamePanel = null!;
     private Tween? _viewTween;
 
     public IGameSession Session { get; private set; } = null!;
@@ -62,6 +63,8 @@ public partial class GameScreen : Control
         _resourceBar = GetNode<ResourceBar>("%ResourceBar");
         _villageStrip = GetNode<VillageStrip>("%VillageStrip");
         _villageInfo = GetNode<Label>("%VillageInfo");
+        _renamePanel = new RenamePanel { Name = "RenamePanel" };
+        _villageInfo.AddSibling(_renamePanel);
         _villageStrip.VillageSelected += SwitchVillage;
         _villageView = GetNode<VillageView>("%VillageView");
         _worldMap = GetNode<WorldMapView>("%WorldMapView");
@@ -351,6 +354,7 @@ public partial class GameScreen : Control
         {
             case SideTab.Village:
                 RefreshVillageInfo(village);
+                _renamePanel.Refresh(Session, village);
                 _buildingPanel.Refresh(Session, village, _selected);
                 _queuePanel.Refresh(L.T("queue.build"), Session.Data.Game.MaxBuildQueueLength, Session.State.ElapsedTime, village.BuildQueue
                     .Select(item => new QueueRow(

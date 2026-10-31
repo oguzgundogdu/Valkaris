@@ -46,6 +46,7 @@ public class VillageNameTests
     [InlineData("123", CommandRejection.VillageNameInvalid)]
     [InlineData("---", CommandRejection.VillageNameInvalid)]
     [InlineData("A×B", CommandRejection.VillageNameInvalid)]
+    [InlineData("Aĳb", CommandRejection.VillageNameInvalid)]
     public void BadNamesAreRejected(string typed, CommandRejection expected)
     {
         var before = _state.Villages[1].Name;

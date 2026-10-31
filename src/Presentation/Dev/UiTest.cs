@@ -74,6 +74,110 @@ public partial class UiTest : Control
     private static string RaidOnBarbarians() =>
         L.T("report.headline_attacker", ("result", ""), ("mission", UiContent.MissionName(MovementType.Raid)), ("target", L.T("player.barbarians"))).TrimStart(' ', ':');
 
+    private async Task TestStartVillageName()
+    {
+        var start = Find<StartScreen>();
+        var field = start.GetNode<LineEdit>("%VillageName");
+        var button = start.GetNode<Button>("%Start");
+        var reason = start.GetNode<Label>("%VillageNameReason");
+        void Type(string text)
+        {
+            field.Text = text;
+            field.EmitSignal(LineEdit.SignalName.TextChanged, text);
+        }
+
+        Expect(!button.Disabled && !reason.Visible, "An empty name is allowed");
+
+        foreach (var (typed, rejection) in new[]
+        {
+            ("Ab", CommandRejection.VillageNameTooShort),
+            ("B<a>d", CommandRejection.VillageNameInvalid),
+            ("Ashfort", CommandRejection.VillageNameTaken),
+        })
+        {
+            Type(typed);
+            Expect(button.Disabled && reason.Visible && reason.Text == UiContent.RejectionText(rejection), $"'{typed}' is refused, got '{reason.Text}'");
+        }
+
+        Type("Twenty One Characters");
+        Expect(field.Text.Length == field.MaxLength && field.MaxLength > 0, "The field stops at the limit");
+
+        const string turkish = "\u0130\u015f\u0131kl\u0131 K\u00f6y";
+        Type($"  {turkish} ");
+        Expect(!button.Disabled && !reason.Visible, "A Turkish name is allowed");
+
+        var languages = Language.Codes;
+        start.GetNode<OptionButton>("%Language").EmitSignal(OptionButton.SignalName.ItemSelected, Array.IndexOf(languages, Language.Current));
+        await Frames();
+        start = Find<StartScreen>();
+        Expect(start.GetNode<LineEdit>("%VillageName").Text.Trim() == turkish, "The typed name survives a language change");
+
+        // A real match with that name, then the rename form in its Village tab.
+        start.GetNode<Button>("%Start").EmitSignal(BaseButton.SignalName.Pressed);
+        await Frames();
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var village = session.State.Villages[1];
+        Expect(village.Name == turkish, $"The match uses the typed name, got '{village.Name}'");
+
+        var panel = game.GetNode<RenamePanel>("%Side/Village/Box/RenamePanel");
+        var edit = panel.GetNode<Button>("Edit");
+        var form = panel.GetNode<Control>("Form");
+        var rename = panel.GetNode<LineEdit>("Form/Field");
+        var save = panel.GetNode<Button>("Form/Save");
+        var why = panel.GetNode<Label>("Reason");
+        void Rename(string text)
+        {
+            rename.Text = text;
+            rename.EmitSignal(LineEdit.SignalName.TextChanged, text);
+        }
+
+        Press(edit);
+        await Frames();
+        Expect(form.Visible && !edit.Visible && rename.Text == turkish && save.Disabled && !why.Visible, "Rename opens on the current name, without a complaint");
+
+        rename.GrabFocus();
+        await Frames();
+        var paused = session.IsPaused;
+        GetViewport().PushInput(new InputEventKey { Pressed = true, Keycode = Key.P, Unicode = 'p' });
+        await Frames();
+        Expect(session.IsPaused == paused && rename.Text.Contains('p'), "Typing P in the field goes to the field, not the pause key");
+
+        foreach (var (typed, rejection) in new[]
+        {
+            ("Ab", CommandRejection.VillageNameTooShort),
+            ("B<a>d", CommandRejection.VillageNameInvalid),
+            ("Karvik", CommandRejection.VillageNameTaken),
+            (session.State.Villages[2].Name, CommandRejection.VillageNameTaken),
+        })
+        {
+            Rename(typed);
+            Expect(save.Disabled && why.Visible && why.Text == UiContent.RejectionText(rejection), $"'{typed}' is refused, got '{why.Text}'");
+        }
+
+        Press(panel.GetNode<Button>("Form/Cancel"));
+        await Frames();
+        Expect(edit.Visible && !form.Visible && village.Name == turkish, "Cancel keeps the name");
+
+        Press(edit);
+        await Frames();
+        Rename("\u00c7\u0131nar\u00fcst\u00fc");
+        Expect(!save.Disabled && !why.Visible, "A new name can be saved");
+        await Shot("rename_form");
+        Press(save);
+        await Frames();
+        Expect(village.Name == "\u00c7\u0131nar\u00fcst\u00fc" && edit.Visible && !form.Visible, $"Save renames the village, got '{village.Name}'");
+        Expect(game.GetNode<Label>("%VillageInfo").Text.Contains(village.Name), "The Village tab shows the new name");
+
+        // Godot draws these with the bundled font, so any letter the rules allow must be in it.
+        var font = ThemeDB.GetProjectTheme().DefaultFont;
+        var undrawable = Enumerable.Range(0xC0, 0x17F - 0xC0 + 1).Select(c => (char)c).Where(c => VillageNameRules.FormatRejection(session.Data.Game.VillageNames, $"Ab{c}") is null).Where(c => !font.HasChar(c)).ToList();
+        Expect(undrawable.Count == 0, $"The font draws every letter a name may use, missing '{string.Concat(undrawable)}'");
+
+        game.ExitToStart();
+        await Frames();
+    }
+
     private async Task TestLanguage()
     {
         var language = Language.Current;
@@ -127,6 +231,7 @@ public partial class UiTest : Control
         TestCulture();
         await TestLanguage();
 
+        await TestStartVillageName();
         var start = Find<StartScreen>();
         await Shot("start");
 

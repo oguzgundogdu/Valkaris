@@ -23,13 +23,13 @@ public sealed record GameConfig
     public required IReadOnlyDictionary<MapSize, MapSizeDefinition> MapSizes { get; init; }
 }
 
-/// <summary>What a Settler's new village starts with.</summary>
 public sealed record VillageNameConfig
 {
     public required int MinLength { get; init; }
     public required int MaxLength { get; init; }
 }
 
+/// <summary>What a Settler's new village starts with.</summary>
 public sealed record FoundedVillageConfig
 {
     public required Resources Resources { get; init; }

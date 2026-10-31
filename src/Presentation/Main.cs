@@ -81,7 +81,7 @@ public partial class Main : Control
     private void StartMatch(MatchSetup setup)
     {
         var nations = new[] { Nation.Karuk, Nation.Solari, Nation.Valdren };
-        var slots = new List<PlayerSlot> { new("You", Nation.Valdren, IsAi: false) };
+        var slots = new List<PlayerSlot> { new("You", Nation.Valdren, IsAi: false, VillageName: setup.VillageName) };
         for (var i = 0; i < setup.Opponents; i++)
             slots.Add(new PlayerSlot(_data.Ai.Names[i], nations[i % nations.Length], IsAi: true, setup.Difficulty));
 
