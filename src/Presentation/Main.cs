@@ -98,6 +98,15 @@ public partial class Main : Control
         var screen = GameScene.Instantiate<GameScreen>();
         screen.Init(session);
         screen.ExitRequested += ShowStartScreen;
+#if VALKARIS_DEV
+        if (devOptions.God)
+        {
+            session.SetGodMode(true);
+            var godMode = new GodModeControl();
+            godMode.Init(session);
+            screen.AddChild(godMode);
+        }
+#endif
         SwitchTo(screen);
     }
 

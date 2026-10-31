@@ -1080,6 +1080,7 @@ public partial class UiTest : Control
         await TestCapitalTimeout(data);
         await TestWatchingAfterElimination(data);
         await TestMatchResults(data);
+        await TestGodMode(data);
         await TestLiveAi();
     }
 
@@ -1754,6 +1755,77 @@ public partial class UiTest : Control
         Expect(clear.Quality == ScoutQuality.Clear && clear.Buildings is null && clear.Garrison![UnitType.Spearman] == 3, "A clear success gives exact troops, without buildings");
         await Frames();
         Expect(intel.Text.Contains("5 troops") && intel.Text.Contains("Wall 2"), $"The form shows the exact numbers, got '{intel.Text}'");
+    }
+
+    private async Task TestGodMode(GameData data)
+    {
+        var god = new[] { "--dev-god" };
+        Expect(DevOptions.Parse(god, isDebugBuild: true).God, "The god mode argument applies in debug builds");
+        Expect(!DevOptions.Parse(god, isDebugBuild: false).God, "The god mode argument is ignored in release builds");
+        Expect(!DevOptions.Parse(Array.Empty<string>(), isDebugBuild: true).God, "God mode needs its argument");
+
+        var (game, session) = await StartMatch(data, null);
+        var control = new GodModeControl();
+        control.Init(session);
+        game.AddChild(control);
+        await Frames();
+        var badge = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Label>("Box/GodBadge");
+        Expect(!badge.Visible, "No badge while god mode is off");
+
+        void PressF9() => control._Input(new InputEventKey { Keycode = Key.F9, Pressed = true });
+
+        PressF9();
+        await Frames();
+        Expect(session.IsGodMode && badge.Visible && badge.Text == "GOD MODE", "F9 turns god mode on, with a badge");
+        await Shot("god-mode");
+
+        var state = session.State;
+        var home = state.Villages[1];
+        var capacity = BuildingRules.VillageCapacity(data, home);
+        Expect(home.Resources.Wood == capacity && home.Resources.Food == capacity, "Resources show as full");
+
+        var panel = FindAll<BuildingPanel>(game).First();
+        SelectGameTile(game, BuildingType.Barracks);
+        await Frames();
+        var level = home.BuildingLevel(BuildingType.Barracks);
+        Press(panel.GetNode<Button>("%Upgrade"));
+        await Frames();
+        Expect(home.BuildingLevel(BuildingType.Barracks) == level + 1 && home.BuildQueue.Count == 0, "The upgrade button works instantly");
+        Expect(home.Resources.Wood == capacity, "Upgrading spends nothing");
+
+        for (var i = 0; i < 5; i++)
+        {
+            if (!panel.GetNode<Button>("%Upgrade").Disabled)
+                Press(panel.GetNode<Button>("%Upgrade"));
+            await Frames(1);
+        }
+        await Frames();
+        var limit = BuildingRules.MaxOtherBuildingLevel(data, home.BuildingLevel(BuildingType.MainBuilding));
+        Expect(home.BuildingLevel(BuildingType.Barracks) == limit && panel.GetNode<Button>("%Upgrade").Disabled, "The Main Building limit still disables the button");
+
+        game.ShowTab(GameScreen.SideTab.Troops);
+        await Frames();
+        var row = game.GetNode<TroopsPanel>("%Troops").GetNode<VBoxContainer>("%Rows").GetNode(nameof(UnitType.Swordsman));
+        Press(row.GetNode<Button>("Controls/Actions/Max"));
+        await Frames();
+        Expect((int)row.GetNode<SpinBox>("Controls/Actions/Amount").Value == 9999, "Max offers the largest batch");
+        row.GetNode<SpinBox>("Controls/Actions/Amount").Value = 500;
+        await Frames();
+        Press(row.GetNode<Button>("Controls/Actions/Train"));
+        await Frames();
+        Expect(home.TroopCount(UnitType.Swordsman) == 500 && home.TrainingQueue.Count == 0, "Training is instant");
+
+        session.Send(new SendTroopsCommand(1, 2, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 500 }));
+        await Frames();
+        Expect(state.Reports.Count == 1 && state.Movements.Count == 0, "An attack arrives and returns instantly");
+
+        PressF9();
+        await Frames();
+        Expect(!session.IsGodMode && !badge.Visible, "F9 turns god mode off, and the badge goes");
+        Expect(home.BuildingLevel(BuildingType.Barracks) == limit, "Levels stay after turning it off");
+        session.Send(new SendTroopsCommand(1, 2, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 1 }));
+        await Frames();
+        Expect(state.Movements.Count == 1, "Travel takes time again");
     }
 
     private async Task TestSurrender(GameData data)
