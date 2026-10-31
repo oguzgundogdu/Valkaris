@@ -1,3 +1,4 @@
+using Valkaris.Ai;
 using Valkaris.Core.Model;
 
 namespace Valkaris.Core.Tests;
@@ -177,6 +178,108 @@ public class AiScoutTests
         }
 
         Assert.True(ScoutingsWith(60) > ScoutingsWith(100000));
+    }
+
+    [Fact]
+    public void ItSendsEnoughToBeatWhatItCountedByItsMargin()
+    {
+        var match = ReadyToScout();
+        var enemy = match.State.Villages[Enemy];
+        match.State.AddScoutReport(new ScoutReport(
+            1000, match.State.ElapsedTime, Ai, Enemy, Ai, Enemy,
+            new Dictionary<UnitType, int> { [UnitType.Scout] = 1 }, true,
+            new Dictionary<UnitType, int> { [UnitType.Scout] = 4 }, 0, Resources.Zero,
+            Quality: ScoutQuality.Overwhelming,
+            Buildings: new Dictionary<BuildingType, int> { [BuildingType.Watchtower] = 5 },
+            Loyalty: 100));
+        var view = match.Views[Ai];
+        var memory = new AiMemory(view);
+        memory.Update();
+
+        var known = view.KnownVillages.First(v => v.Id == enemy.Id);
+
+        Assert.Equal(4 * (1 + 5 * match.Data.Combat.Scouting.WatchtowerBonusPerLevel), memory.ExpectedScoutStrength(known), 6);
+    }
+
+    [Fact]
+    public void CampsAreExpectedToHaveNoScouts()
+    {
+        var match = Match();
+        var view = match.Views[Ai];
+        var camp = view.KnownVillages.First(v => v.BarbarianTier is not null);
+
+        Assert.Equal(0, new AiMemory(view).ExpectedScoutStrength(camp));
+    }
+
+    [Fact]
+    public void PlayersAreExpectedToHaveMoreScoutsAsTimeGoesOn()
+    {
+        var match = Match();
+        var view = match.Views[Ai];
+        var memory = new AiMemory(view);
+        var enemy = view.KnownVillages.First(v => v.Id == Enemy);
+        var early = memory.ExpectedScoutStrength(enemy);
+
+        match.Run(1200);
+
+        Assert.True(memory.ExpectedScoutStrength(enemy) > early);
+    }
+
+    [Fact]
+    public void ForceSizeStopsAtTheProfilesLimit()
+    {
+        var match = ReadyToScout(enemyTroops: 5, cavalry: 0, scouts: 500);
+        match.State.Villages[Enemy].AddTroops(UnitType.Scout, 5000);
+
+        match.Run(3000);
+
+        var limit = match.Data.Ai.Difficulties[AiDifficulty.Hard].MaxScoutForce;
+        Assert.All(match.State.ScoutReports.Where(r => r.SenderId == Ai), r => Assert.True(r.Sent.Values.Sum() <= limit));
+        Assert.Contains(match.State.ScoutReports, r => r.SenderId == Ai && !r.Succeeded);
+    }
+
+    [Theory]
+    [InlineData(AiDifficulty.Normal)]
+    [InlineData(AiDifficulty.Hard)]
+    public void ItBuildsAWatchtowerWithinItsProfile(AiDifficulty difficulty)
+    {
+        var match = new AiMatch(new[] { difficulty, AiDifficulty.Normal }, idle: new[] { Enemy });
+
+        match.Run(1800);
+
+        var limit = match.Data.Ai.Difficulties[difficulty].MaxWatchtowerLevel;
+        var levels = match.State.Villages.Values.Where(v => v.OwnerId == Ai).Select(v => v.BuildingLevel(BuildingType.Watchtower)).ToList();
+        Assert.Contains(levels, l => l > 0);
+        Assert.All(levels, l => Assert.True(l <= limit));
+    }
+
+    [Fact]
+    public void EasyBuildsNoWatchtowerBecauseItsDataSaysSo()
+    {
+        var match = new AiMatch(new[] { AiDifficulty.Easy, AiDifficulty.Normal }, idle: new[] { Enemy });
+
+        match.Run(1800);
+
+        Assert.All(match.State.Villages.Values.Where(v => v.OwnerId == Ai), v => Assert.Equal(0, v.BuildingLevel(BuildingType.Watchtower)));
+    }
+
+    [Fact]
+    public void ItKeepsItsHomeScoutsOutOfMissions()
+    {
+        var data = TestData.Mutated("ai.json", r =>
+        {
+            r["difficulties"]!["Hard"]!["homeScoutsAtStart"] = 3;
+            r["difficulties"]!["Hard"]!["homeScoutsPerMinute"] = 0;
+            r["difficulties"]!["Hard"]!["maxHomeScouts"] = 3;
+        });
+        var match = new AiMatch(new[] { AiDifficulty.Hard, AiDifficulty.Normal }, idle: new[] { Enemy }, data: data);
+        var village = match.State.Villages[Ai];
+
+        for (var time = 0; time < 900 && Scouts(match) is null; time += 5)
+            match.Run(5);
+
+        Assert.NotNull(Scouts(match));
+        Assert.True(village.TroopCount(UnitType.Scout) >= 3, $"{village.TroopCount(UnitType.Scout)} at home");
     }
 
     [Fact]

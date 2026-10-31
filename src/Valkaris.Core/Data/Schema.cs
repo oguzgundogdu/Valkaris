@@ -338,6 +338,11 @@ public sealed record AiBeliefs
     /// <summary>What a scouted player's defence is multiplied by, for troops that were away when the scouts came.</summary>
     public required double ScoutedPlayerAllowance { get; init; }
 
+    /// <summary>Scouts a player is expected to keep home, before anyone has counted them.</summary>
+    public required double ScoutsAtStart { get; init; }
+
+    public required double ScoutsPerMinute { get; init; }
+
     /// <summary>Defence one troop is assumed to bring, to turn power into a head count and back when scouting.</summary>
     public required double PowerPerTroop { get; init; }
 
@@ -397,6 +402,18 @@ public sealed record AiProfile
 
     /// <summary>The most Scouts it will send on one mission, however many it thinks are needed.</summary>
     public required int MaxScoutForce { get; init; }
+
+    /// <summary>Scouts it sends for each one it expects to meet.</summary>
+    public required double ScoutMargin { get; init; }
+
+    public required int MaxWatchtowerLevel { get; init; }
+
+    /// <summary>Scouts each village keeps home against scouting: a starting number that grows up to a cap.</summary>
+    public required double HomeScoutsAtStart { get; init; }
+
+    public required double HomeScoutsPerMinute { get; init; }
+
+    public required int MaxHomeScouts { get; init; }
 
     /// <summary>Game seconds that news of a target stays good enough to attack on. Older than this, it scouts first.</summary>
     public required double ScoutMaxAgeSeconds { get; init; }

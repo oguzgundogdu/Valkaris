@@ -94,6 +94,7 @@
       "building": "Wall",
       "level": 1
     },
+    { "building": "Watchtower", "level": 1 },
     {
       "building": "Warehouse",
       "level": 2
@@ -118,6 +119,7 @@
       "building": "Wall",
       "level": 3
     },
+    { "building": "Watchtower", "level": 2 },
     {
       "building": "Warehouse",
       "level": 3
@@ -142,6 +144,7 @@
       "building": "Wall",
       "level": 5
     },
+    { "building": "Watchtower", "level": 3 },
     {
       "building": "Warehouse",
       "level": 5
@@ -182,6 +185,8 @@
     "abandonedLoot": 600,
     "powerPerTroop": 20,
     "scoutedPlayerAllowance": 1.25,
+      "scoutsAtStart": 1,
+      "scoutsPerMinute": 0.2,
     "growthAfterSightingPerMinute": 0.75,
     "barbarianLootRecoveryPerMinute": 180
   },
@@ -209,6 +214,11 @@
       "massSeconds": 240,
       "maxWallLevel": 0,
       "maxScoutForce": 6,
+      "scoutMargin": 2,
+      "maxWatchtowerLevel": 0,
+      "homeScoutsAtStart": 0,
+      "homeScoutsPerMinute": 0.1,
+      "maxHomeScouts": 2,
       "maxFightersPerMinute": 1.5
     },
     "Normal": {
@@ -233,7 +243,12 @@
       "rivalStrongerRatio": 5.0,
       "massSeconds": 90,
       "maxWallLevel": 5,
-      "maxScoutForce": 20
+      "maxScoutForce": 20,
+      "scoutMargin": 2.5,
+      "maxWatchtowerLevel": 2,
+      "homeScoutsAtStart": 1,
+      "homeScoutsPerMinute": 0.2,
+      "maxHomeScouts": 10
     },
     "Hard": {
       "decisionSeconds": 3,
@@ -257,7 +272,12 @@
       "rivalStrongerRatio": 6.0,
       "massSeconds": 75,
       "maxWallLevel": 5,
-      "maxScoutForce": 30
+      "maxScoutForce": 30,
+      "scoutMargin": 3,
+      "maxWatchtowerLevel": 3,
+      "homeScoutsAtStart": 1,
+      "homeScoutsPerMinute": 0.25,
+      "maxHomeScouts": 12
     }
   }
 }

@@ -325,6 +325,16 @@ public class GameDataValidationTests
     [InlineData("capitalTargetPenalty", 0.5)]
     public void InvalidWarValue(string field, double value) => AssertAiInvalid(r => r[field] = value, field);
 
+    [Theory]
+    [InlineData("maxScoutForce", 0)]
+    [InlineData("scoutMargin", 0.5)]
+    [InlineData("maxWatchtowerLevel", -1)]
+    [InlineData("homeScoutsAtStart", -1)]
+    [InlineData("homeScoutsPerMinute", -1)]
+    [InlineData("maxHomeScouts", -1)]
+    public void InvalidScoutProfileValue(string field, double value) =>
+        AssertAiInvalid(r => r["difficulties"]!["Normal"]![field] = value, field);
+
     [Fact]
     public void ScoutRetryNegative() => AssertAiInvalid(r => r["scoutRetrySeconds"] = -1, "scoutRetrySeconds");
 

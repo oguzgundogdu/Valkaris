@@ -10,12 +10,14 @@ public sealed class ScoutPlanner
     private readonly AiView _view;
     private readonly AiMemory _memory;
     private readonly WarPlanner _war;
+    private readonly Forces _forces;
 
     public ScoutPlanner(AiView view, AiMemory memory, WarPlanner war)
     {
         _view = view;
         _memory = memory;
         _war = war;
+        _forces = new Forces(view);
     }
 
     public void Plan(Village village)
@@ -38,7 +40,7 @@ public sealed class ScoutPlanner
         _memory.ScoutsWanted = wanted;
 
         // A first look goes with what there is, since the army waits for it. After a failure, only the full force will do.
-        var scouts = Math.Min(wanted, village.TroopCount(UnitType.Scout));
+        var scouts = Math.Min(wanted, village.TroopCount(UnitType.Scout) - _forces.HomeScouts());
         if (scouts < 1 || (scouts < wanted && _memory.CaughtAt(target) is not null))
             return;
 
@@ -66,7 +68,10 @@ public sealed class ScoutPlanner
             || (_view.Now - sighting.Time) * _view.GameSpeed > _view.Profile.ScoutMaxAgeSeconds;
     }
 
-    /// <summary>One to look, and twice what was caught last time.</summary>
-    private int ScoutsFor(KnownVillage target) =>
-        _memory.CaughtAt(target) is { } caught ? caught.Scouts * 2 : 1;
+    /// <summary>Enough to beat what it expects there by its margin, and twice what was caught last time.</summary>
+    private int ScoutsFor(KnownVillage target)
+    {
+        var scouts = Math.Max(1, (int)Math.Ceiling(_memory.ExpectedScoutStrength(target) * _view.Profile.ScoutMargin));
+        return _memory.CaughtAt(target) is { } caught ? Math.Max(scouts, caught.Scouts * 2) : scouts;
+    }
 }

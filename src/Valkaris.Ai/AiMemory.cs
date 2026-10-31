@@ -199,6 +199,23 @@ public sealed class AiMemory
             : beliefs.PlayerPowerAtStart + beliefs.PlayerPowerPerMinute * elapsedMinutes;
     }
 
+    /// <summary>
+    /// The strength of the Scouts it expects to meet there: what its scouts counted, with what it knows of the
+    /// Watchtower, or else its belief about players. A camp is taken to have none until scouts say otherwise.
+    /// </summary>
+    public double ExpectedScoutStrength(KnownVillage village)
+    {
+        var beliefs = _view.Config.Beliefs;
+        if (_sightings.TryGetValue(village.Id, out var sighting) && sighting.OwnerId == village.OwnerId && sighting is { FromScouts: true, DefenceCeiling: null })
+        {
+            var growth = village.IsBarbarian ? 0 : beliefs.ScoutsPerMinute * (_view.Now - sighting.Time) * _view.GameSpeed / 60;
+            var scouts = sighting.Remaining.GetValueOrDefault(UnitType.Scout) + growth;
+            return scouts * (1 + _view.Combat.Scouting.WatchtowerBonusPerLevel * (sighting.WatchtowerLevel ?? 0));
+        }
+
+        return village.BarbarianTier is not null ? 0 : beliefs.ScoutsAtStart + beliefs.ScoutsPerMinute * _view.Now * _view.GameSpeed / 60;
+    }
+
     /// <summary>Resources a barbarian village should hold. It refills after a raid, up to what the tier is believed to hold.</summary>
     public double ExpectedBarbarianLoot(KnownVillage village)
     {

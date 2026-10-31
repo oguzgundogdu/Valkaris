@@ -9,11 +9,13 @@ public sealed class TrainingPlanner
 {
     private readonly AiView _view;
     private readonly AiMemory _memory;
+    private readonly Forces _forces;
 
     public TrainingPlanner(AiView view, AiMemory memory)
     {
         _view = view;
         _memory = memory;
+        _forces = new Forces(view);
     }
 
     /// <summary>True while the army is smaller than the profile wants by now, across all villages.</summary>
@@ -71,13 +73,12 @@ public sealed class TrainingPlanner
         }
     }
 
-    /// <summary>The capital keeps the Scouts, so they are in one place when a mission needs them.</summary>
+    /// <summary>Every village keeps its home Scouts, and the capital the ones for missions as well, so they are in one place.</summary>
     private bool TrainScouts(Village village, Resources available)
     {
-        if (village.Id != (_view.CapitalVillageId ?? _view.OwnVillages[0].Id))
-            return false;
-
-        var count = Math.Min(Math.Min(_memory.ScoutsWanted - CountEverywhere(UnitType.Scout), Affordable(UnitType.Scout, available)), _view.Config.TrainingBatchMax);
+        var isBase = village.Id == (_view.CapitalVillageId ?? _view.OwnVillages[0].Id);
+        var wanted = _forces.HomeScouts() + (isBase ? _memory.ScoutsWanted : 0);
+        var count = Math.Min(Math.Min(wanted - Count(village, UnitType.Scout), Affordable(UnitType.Scout, available)), _view.Config.TrainingBatchMax);
         if (count < 1 || !_view.PreviewTrain(village.Id, UnitType.Scout, count).CanTrain)
             return false;
 

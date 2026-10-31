@@ -74,6 +74,8 @@ public sealed class BuildPlanner
                 continue;
             if (step.Building == BuildingType.Wall && PlannedLevel(village, BuildingType.Wall) >= _view.Profile.MaxWallLevel)
                 continue;
+            if (step.Building == BuildingType.Watchtower && PlannedLevel(village, BuildingType.Watchtower) >= _view.Profile.MaxWatchtowerLevel)
+                continue;
 
             var option = _view.PreviewBuild(village.Id, step.Building);
             if (option.CostExceedsCapacity)

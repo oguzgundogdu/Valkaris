@@ -29,6 +29,13 @@ public sealed class Forces
         return spare.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
     }
 
+    /// <summary>Scouts every village keeps home against scouting, by the profile. They don't go on missions.</summary>
+    public int HomeScouts()
+    {
+        var wanted = _view.Profile.HomeScoutsAtStart + _view.Profile.HomeScoutsPerMinute * _view.Now * _view.GameSpeed / 60;
+        return Math.Min((int)wanted, _view.Profile.MaxHomeScouts);
+    }
+
     /// <summary>The smallest group from these troops with at least the given attack, strongest units first. Null if they fall short.</summary>
     public Dictionary<UnitType, int>? Pick(IReadOnlyDictionary<UnitType, int> available, double attack)
     {

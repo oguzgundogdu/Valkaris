@@ -273,7 +273,7 @@ public class AiDefenceTests
         village.Resources = new Resources(5000, 5000, 5000);
         foreach (var (unit, count) in village.Troops.ToList())
             village.RemoveTroops(unit, count);
-        village.AddTroops(UnitType.Scout, 1);
+        village.AddTroops(UnitType.Scout, 10);
 
         new TrainingPlanner(match.Views[Ai], new AiMemory(match.Views[Ai])).Plan(village, threatened, Resources.Zero);
         return village.TrainingQueue.Sum(q => q.Count);
