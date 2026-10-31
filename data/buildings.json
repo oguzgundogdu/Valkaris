@@ -46,6 +46,11 @@
       "maxLevel": 10,
       "cost": { "base": { "wood": 100, "stone": 80, "food": 40 }, "growth": 1.5 },
       "buildTime": { "base": 17, "growth": 1.4 }
+    },
+    "Watchtower": {
+      "maxLevel": 10,
+      "cost": { "base": { "wood": 70, "stone": 50, "food": 20 }, "growth": 1.5 },
+      "buildTime": { "base": 17, "growth": 1.4 }
     }
   }
 }

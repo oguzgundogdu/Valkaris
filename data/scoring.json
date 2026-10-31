@@ -10,6 +10,7 @@
     "Warehouse": 1,
     "Barracks": 2,
     "Wall": 2,
-    "Marketplace": 1
+    "Marketplace": 1,
+    "Watchtower": 2
   }
 }

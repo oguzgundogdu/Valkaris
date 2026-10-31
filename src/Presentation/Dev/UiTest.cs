@@ -172,6 +172,14 @@ public partial class UiTest : Control
         Expect(wall.GetNode<Label>("%Level").Text == "Not built", "Unbuilt building says so");
         Expect(wall.GetNode<TextureRect>("%Icon").Modulate.A < 1, "Unbuilt building is dimmed");
 
+        var tiles = Find<VillageView>().GetChildren().OfType<BuildingTile>().ToList();
+        Expect(tiles.Count == Enum.GetValues<BuildingType>().Length, "Every building has a tile");
+        Expect(!tiles.Any(t => tiles.Any(o => o != t && t.GetRect().Intersects(o.GetRect()))), "No building tiles overlap");
+        SelectTile(BuildingType.Watchtower);
+        await Frames();
+        Expect(panel.GetNode<Label>("%Name").Text == "Watchtower", "The Watchtower can be selected");
+        Expect(panel.GetNode<Button>("%Upgrade").Text == "Build", $"The Watchtower can be built, got '{panel.GetNode<Button>("%Upgrade").Text}'");
+
         SelectTile(BuildingType.Wall);
         await Frames();
         panel.GetNode<Button>("%Upgrade").EmitSignal(BaseButton.SignalName.Pressed);

@@ -8,7 +8,8 @@
     "Warehouse": 1,
     "Barracks": 0,
     "Wall": 0,
-    "Marketplace": 0
+    "Marketplace": 0,
+    "Watchtower": 0
   },
   "startingTroops": { "Spearman": 10 },
   "foundedVillage": {
@@ -21,7 +22,8 @@
       "Warehouse": 1,
       "Barracks": 0,
       "Wall": 0,
-      "Marketplace": 0
+      "Marketplace": 0,
+      "Watchtower": 0
     },
     "troops": {}
   },

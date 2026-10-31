@@ -10,6 +10,7 @@ public enum BuildingType
     Barracks,
     Wall,
     Marketplace,
+    Watchtower,
 }
 
 public enum UnitType

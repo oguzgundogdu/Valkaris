@@ -16,14 +16,15 @@ public partial class VillageView : Control
     // Tile centres as fractions of the ground, so the layout follows the window size.
     private static readonly Dictionary<BuildingType, Vector2> Layout = new()
     {
-        [BuildingType.Woodcutter] = new(0.125f, 0.27f),
-        [BuildingType.MainBuilding] = new(0.375f, 0.27f),
-        [BuildingType.Quarry] = new(0.625f, 0.27f),
-        [BuildingType.Marketplace] = new(0.875f, 0.27f),
-        [BuildingType.Farm] = new(0.125f, 0.74f),
-        [BuildingType.Warehouse] = new(0.375f, 0.74f),
-        [BuildingType.Barracks] = new(0.625f, 0.74f),
-        [BuildingType.Wall] = new(0.875f, 0.74f),
+        [BuildingType.Woodcutter] = new(0.1f, 0.27f),
+        [BuildingType.MainBuilding] = new(0.3f, 0.27f),
+        [BuildingType.Quarry] = new(0.5f, 0.27f),
+        [BuildingType.Marketplace] = new(0.7f, 0.27f),
+        [BuildingType.Watchtower] = new(0.9f, 0.27f),
+        [BuildingType.Farm] = new(0.2f, 0.74f),
+        [BuildingType.Warehouse] = new(0.4f, 0.74f),
+        [BuildingType.Barracks] = new(0.6f, 0.74f),
+        [BuildingType.Wall] = new(0.8f, 0.74f),
     };
 
     private readonly Dictionary<BuildingType, BuildingTile> _tiles = new();
