@@ -47,6 +47,9 @@ public sealed class ClientGameSession : IGameSession
     public event Action<CommandRejection>? CommandRejected;
     public event Action? ConnectionLost;
 
+    /// <summary>Each whole view as it is applied. Lets tests compare it with what the host meant to send.</summary>
+    internal event Action<PlayerViewSnapshot>? ViewApplied;
+
     public IReadOnlyList<Clash> Clashes(double after) => _clashes.Where(c => c.Time > after).ToList();
 
     public void SetPaused(bool paused) => throw new InvalidOperationException("A multiplayer match cannot be paused.");
@@ -86,6 +89,7 @@ public sealed class ClientGameSession : IGameSession
         SightedMovements = LastView.Sightings;
         PublicNotices = LastView.Notices;
         _clashes = LastView.Clashes;
+        ViewApplied?.Invoke(LastView);
     }
 
     private void OnDisconnected()

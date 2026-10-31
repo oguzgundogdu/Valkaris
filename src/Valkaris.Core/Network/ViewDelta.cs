@@ -3,7 +3,7 @@ using Valkaris.Core.Snapshots;
 
 namespace Valkaris.Core.Network;
 
-/// <summary>The host's side: the map goes once, and each report and notice goes once. Those lists only ever grow.</summary>
+/// <summary>The host's side: the terrain goes once, and each report and notice goes once. Those lists only ever grow.</summary>
 public sealed class ViewTrimmer
 {
     private static readonly GameMapSnapshot NoMap = new(0, 0, Array.Empty<MapTileSnapshot>());
@@ -45,10 +45,12 @@ public sealed class ViewMerger
     private readonly List<ScoutNotice> _scoutNotices = new();
     private readonly List<PublicNotice> _notices = new();
     private GameMapSnapshot? _map;
+    private int _villagesOnMap;
 
     public PlayerViewSnapshot Merge(PlayerViewSnapshot trimmed)
     {
         _map ??= trimmed.State.Map;
+        PlaceNewVillages(trimmed.State.Villages);
         _reports.AddRange(trimmed.State.Reports);
         _scoutReports.AddRange(trimmed.State.ScoutReports);
         _scoutNotices.AddRange(trimmed.State.ScoutNotices);
@@ -59,5 +61,21 @@ public sealed class ViewMerger
             State = trimmed.State with { Map = _map, Reports = _reports, ScoutReports = _scoutReports, ScoutNotices = _scoutNotices },
             Notices = _notices,
         };
+    }
+
+    /// <summary>Terrain never changes, but a founded village takes a tile. Villages are never removed, only added.</summary>
+    private void PlaceNewVillages(IReadOnlyList<VillageSnapshot> villages)
+    {
+        if (villages.Count == _villagesOnMap)
+            return;
+
+        var tiles = _map!.Tiles.ToArray();
+        foreach (var village in villages)
+        {
+            var index = village.Position.Y * _map.Width + village.Position.X;
+            tiles[index] = tiles[index] with { VillageId = village.Id };
+        }
+        _map = _map with { Tiles = tiles };
+        _villagesOnMap = villages.Count;
     }
 }
