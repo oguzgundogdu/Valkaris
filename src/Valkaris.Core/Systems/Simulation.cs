@@ -304,6 +304,12 @@ public sealed class Simulation
         var defendersLost = defenders == 0 ? 0 : ScoutRules.DefendersLost(defenders, scouts, defendStrength);
         target.RemoveTroops(UnitType.Scout, defendersLost);
 
+        ScoutQuality? quality = !succeeded ? null
+            : defenders == 0 ? ScoutQuality.Overwhelming
+            : ScoutRules.Quality(_data, scouts / defendStrength);
+        var exact = quality is ScoutQuality.Clear or ScoutQuality.Overwhelming;
+        var overwhelming = quality == ScoutQuality.Overwhelming;
+
         var report = new ScoutReport(
             _state.NextReportId++,
             movement.ArrivalTime,
@@ -313,10 +319,15 @@ public sealed class Simulation
             target.Id,
             movement.Troops,
             succeeded,
-            succeeded ? target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value) : null,
-            succeeded ? target.BuildingLevel(BuildingType.Wall) : null,
-            succeeded ? target.Resources : null,
-            scoutsLost);
+            exact ? target.Troops.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value) : null,
+            exact ? target.BuildingLevel(BuildingType.Wall) : null,
+            exact ? target.Resources : null,
+            scoutsLost,
+            quality,
+            quality == ScoutQuality.Narrow ? TroopRangeOf(target) : null,
+            quality == ScoutQuality.Narrow ? WallRangeOf(target) : null,
+            overwhelming ? target.Buildings.ToDictionary(b => b.Key, b => b.Value) : null,
+            overwhelming ? target.Loyalty : null);
         _state.AddScoutReport(report);
 
         if (target.IsBarbarian && defendersLost > 0)
@@ -327,6 +338,20 @@ public sealed class Simulation
         if (scouts > scoutsLost)
             StartReturn(movement.OwnerId, target.Id, null, movement.FromVillageId, new Dictionary<UnitType, int> { [UnitType.Scout] = scouts - scoutsLost }, Resources.Zero, movement.ArrivalTime);
         return new ScoutResolved(movement.ArrivalTime, report.Id);
+    }
+
+    /// <summary>Fighting troops only. Scouts are a separate question, and the contest already told the sender roughly how many.</summary>
+    private ValueRange TroopRangeOf(Village target)
+    {
+        var troops = target.Troops.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value);
+        var width = ScoutRules.TroopRangeWidth(_data, troops);
+        return ScoutRules.Range(troops, width, _state.NextRandom(width + 1));
+    }
+
+    private ValueRange WallRangeOf(Village target)
+    {
+        var width = _data.Combat.Scouting.WallRangeWidth;
+        return ScoutRules.Range(target.BuildingLevel(BuildingType.Wall), width, _state.NextRandom(width + 1), _data.Buildings.Buildings[BuildingType.Wall].MaxLevel);
     }
 
     private void NotifyDefender(ScoutReport report, Village target, int scouts, int defendersLost)

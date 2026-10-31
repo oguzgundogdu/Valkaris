@@ -246,6 +246,16 @@ internal static class GameDataValidator
         var scouting = config.Scouting;
         if (scouting.WatchtowerBonusPerLevel < 0)
             Error("scouting.watchtowerBonusPerLevel", "must not be negative.");
+        if (scouting.ClearRatio <= 0)
+            Error("scouting.clearRatio", "must be positive.");
+        if (scouting.OverwhelmingRatio <= scouting.ClearRatio)
+            Error("scouting.overwhelmingRatio", "must be above clearRatio.");
+        if (scouting.TroopRangeShare < 0)
+            Error("scouting.troopRangeShare", "must not be negative.");
+        if (scouting.TroopRangeMinWidth < 1)
+            Error("scouting.troopRangeMinWidth", "must be at least 1.");
+        if (scouting.WallRangeWidth < 1)
+            Error("scouting.wallRangeWidth", "must be at least 1.");
         if (scouting.SuccessCurve.Count == 0)
             Error("scouting.successCurve", "must not be empty.");
         var (lastRatio, lastChance) = (0.0, 0.0);

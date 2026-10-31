@@ -47,19 +47,39 @@ public partial class ReportDialog : ColorRect
 
     public void ShowScoutReport(IGameSession session, ScoutReport report)
     {
-        GetNode<Label>("%Result").Text = report.Succeeded ? "Scouted" : "Scouts lost";
+        GetNode<Label>("%Result").Text = UiContent.ScoutResultName(report);
         GetNode<Label>("%Summary").Text = $"{UiContent.ScoutHeadline(session, report)}  ·  {Format.Time(report.Time)} into the match";
 
         var sender = UiContent.OwnerName(session, report.SenderId);
         var defender = UiContent.OwnerName(session, report.DefenderId);
         FillSide(GetNode<VBoxContainer>("%Attacker"), $"{sender} (scouting)", report.Sent, new Dictionary<UnitType, int> { [UnitType.Scout] = report.ScoutsLost });
-        FillSide(GetNode<VBoxContainer>("%Defender"), $"{defender} (garrison)", report.Garrison ?? new Dictionary<UnitType, int>(), null, report.Succeeded ? "No troops" : "Not seen");
 
+        var empty = !report.Succeeded ? "Not seen"
+            : report.TroopRange is { } range ? $"{UiContent.RangeText(range)} troops, not counted exactly"
+            : "No troops";
+        FillSide(GetNode<VBoxContainer>("%Defender"), $"{defender} (garrison)", report.Garrison ?? new Dictionary<UnitType, int>(), null, empty);
+
+        var wall = report.WallRange is { } wallRange ? $"Wall level {UiContent.RangeText(wallRange)}" : $"Wall level {report.WallLevel}";
         GetNode<Label>("%Powers").Text = report.Succeeded
-            ? $"Wall level {report.WallLevel}  ·  Troops away from the village aren't counted"
+            ? $"{wall}  ·  Troops away from the village aren't counted"
             : "Their Scouts stopped yours, so nothing was seen";
 
         ShowStock(report.Stock);
+
+        if (report.Buildings is { } buildings)
+        {
+            var damage = GetNode<Label>("%Damage");
+            damage.Visible = true;
+            damage.Text = "Buildings: " + string.Join(", ", buildings.Where(b => b.Value > 0).OrderBy(b => b.Key).Select(b => $"{UiContent.Buildings[b.Key].Name} {b.Value}"));
+        }
+
+        if (report.Loyalty is { } loyalty)
+        {
+            var label = GetNode<Label>("%Loyalty");
+            label.Visible = true;
+            label.Text = $"Loyalty {loyalty:0}";
+        }
+
         Visible = true;
     }
 

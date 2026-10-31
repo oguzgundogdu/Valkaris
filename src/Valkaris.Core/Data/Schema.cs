@@ -138,6 +138,19 @@ public sealed record ScoutingConfig
 
     /// <summary>Chance of success by the strength ratio of attackers to defenders. Linear between points, from zero at ratio 0, and flat after the last.</summary>
     public required IReadOnlyList<ScoutChancePoint> SuccessCurve { get; init; }
+
+    /// <summary>A success at this strength ratio or more gives exact numbers. Below it, ranges.</summary>
+    public required double ClearRatio { get; init; }
+
+    /// <summary>A success at this strength ratio or more also shows buildings and loyalty.</summary>
+    public required double OverwhelmingRatio { get; init; }
+
+    /// <summary>A troop range is this share of the true total wide, and at least TroopRangeMinWidth.</summary>
+    public required double TroopRangeShare { get; init; }
+
+    public required int TroopRangeMinWidth { get; init; }
+
+    public required int WallRangeWidth { get; init; }
 }
 
 public sealed record ScoutChancePoint(double Ratio, double Chance);

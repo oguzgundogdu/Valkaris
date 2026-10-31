@@ -31,5 +31,25 @@ public static class ScoutRules
     public static int DefendersLost(int defenders, double attackStrength, double defendStrength) =>
         Rounded(defenders * attackStrength / (attackStrength + defendStrength));
 
+    public static ScoutQuality Quality(GameData data, double ratio) =>
+        ratio >= data.Combat.Scouting.OverwhelmingRatio ? ScoutQuality.Overwhelming
+        : ratio >= data.Combat.Scouting.ClearRatio ? ScoutQuality.Clear
+        : ScoutQuality.Narrow;
+
+    public static int TroopRangeWidth(GameData data, int troops) =>
+        Math.Max(data.Combat.Scouting.TroopRangeMinWidth, (int)Math.Ceiling(troops * data.Combat.Scouting.TroopRangeShare));
+
+    /// <summary>
+    /// A range of this width around the true value, which always contains it. Where the value sits is chosen by
+    /// the offset, from 0 to width, so the middle gives nothing away. It stays between zero and the maximum, if there is one.
+    /// </summary>
+    public static ValueRange Range(int value, int width, int offset, int? max = null)
+    {
+        var low = Math.Max(0, value - offset);
+        if (max is { } limit)
+            low = Math.Max(0, Math.Min(low, limit - width));
+        return new ValueRange(low, max is { } top ? Math.Min(top, low + width) : low + width);
+    }
+
     private static int Rounded(double value) => (int)Math.Round(value, MidpointRounding.AwayFromZero);
 }

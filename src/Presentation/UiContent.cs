@@ -125,20 +125,43 @@ public static class UiContent
         return notice.Caught ? $"Caught scouts from {sender} at {target}" : $"{sender} scouted {target}";
     }
 
-    /// <summary>The player's latest scouting of a village under its current owner. Null if there is none.</summary>
+    public static string ScoutResultName(ScoutReport report) => report.Quality switch
+    {
+        ScoutQuality.Narrow => "Scouted: a rough look",
+        ScoutQuality.Clear => "Scouted",
+        ScoutQuality.Overwhelming => "Scouted in full",
+        _ => "Scouts lost",
+    };
+
+    public static string RangeText(ValueRange range) => $"{range.Low}-{range.High}";
+
+    /// <summary>What the player last learned of a village under its current owner, and any failure since. Null if there is neither.</summary>
     public static string? LatestIntel(IGameSession session, Village target)
     {
-        var report = session.State.ScoutReports.LastOrDefault(r =>
-            r.SenderId == session.LocalPlayerId && r.TargetVillageId == target.Id && r.DefenderId == target.OwnerId);
-        if (report is null)
+        var reports = session.State.ScoutReports
+            .Where(r => r.SenderId == session.LocalPlayerId && r.TargetVillageId == target.Id && r.DefenderId == target.OwnerId)
+            .ToList();
+        if (reports.Count == 0)
             return null;
 
-        var age = Format.Time(session.State.ElapsedTime - report.Time);
-        if (!report.Succeeded)
-            return $"Scouts lost {age} ago: nothing seen";
+        string Age(ScoutReport report) => Format.Time(session.State.ElapsedTime - report.Time);
+        var seen = reports.LastOrDefault(r => r.Succeeded);
+        var lost = reports[^1].Succeeded ? null : reports[^1];
+        if (seen is null)
+            return $"Scouts lost {Age(lost!)} ago: nothing seen";
+
+        var intel = $"Scouted {Age(seen)} ago: {SeenText(seen)}";
+        return lost is null ? intel : $"{intel}. Scouts lost {Age(lost)} ago";
+    }
+
+    private static string SeenText(ScoutReport report)
+    {
+        if (report.Quality == ScoutQuality.Narrow)
+            return $"{RangeText(report.TroopRange!)} troops, Wall {RangeText(report.WallRange!)}";
 
         var wall = report.WallLevel > 0 ? $", Wall {report.WallLevel}" : "";
-        return $"Scouted {age} ago: {report.Garrison!.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value)} troops{wall}, {Format.Total(report.Stock!.Value)} resources";
+        var loyalty = report.Loyalty is { } value ? $", loyalty {value:0}" : "";
+        return $"{report.Garrison!.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value)} troops{wall}, {Format.Total(report.Stock!.Value)} resources{loyalty}";
     }
 
     public static string RejectionText(CommandRejection rejection) => rejection switch

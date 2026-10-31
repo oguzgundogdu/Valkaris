@@ -371,6 +371,141 @@ public class ScoutTests
         Assert.Null(camp.NextTroopRegenTime);
     }
 
+    // Report quality.
+
+    [Theory]
+    [InlineData(19, 10, ScoutQuality.Narrow)]
+    [InlineData(20, 10, ScoutQuality.Clear)]
+    [InlineData(39, 10, ScoutQuality.Clear)]
+    [InlineData(40, 10, ScoutQuality.Overwhelming)]
+    [InlineData(1, 0, ScoutQuality.Overwhelming)]
+    public void TheMarginSetsTheQuality(int scouts, int defenders, ScoutQuality expected)
+    {
+        _home.AddTroops(UnitType.Scout, 40);
+
+        Contest(WithChance(1), scouts, defenders);
+
+        Assert.Equal(expected, Report.Quality);
+    }
+
+    [Fact]
+    public void AWatchtowerLowersTheMargin()
+    {
+        _home.AddTroops(UnitType.Scout, 40);
+
+        Contest(WithChance(1), 20, 5, watchtower: 5);
+
+        Assert.Equal(ScoutQuality.Clear, Report.Quality);
+    }
+
+    [Fact]
+    public void ANarrowSuccessGivesRangesAndOmitsResources()
+    {
+        SetTroops(_target, UnitType.Spearman, 30);
+        _target.SetBuildingLevel(BuildingType.Wall, 2);
+
+        Contest(WithChance(1), 1, 1);
+
+        Assert.Null(Report.Garrison);
+        Assert.Null(Report.WallLevel);
+        Assert.Null(Report.Stock);
+        Assert.Null(Report.Buildings);
+        Assert.Null(Report.Loyalty);
+        Assert.InRange(30, Report.TroopRange!.Low, Report.TroopRange.High);
+        Assert.InRange(2, Report.WallRange!.Low, Report.WallRange.High);
+    }
+
+    [Fact]
+    public void AClearSuccessGivesExactNumbersWithoutBuildingsOrLoyalty()
+    {
+        SetTroops(_target, UnitType.Spearman, 30);
+        _target.SetBuildingLevel(BuildingType.Wall, 2);
+
+        Contest(WithChance(1), 8, 3);
+
+        Assert.Equal(30, Report.Garrison![UnitType.Spearman]);
+        Assert.Equal(_target.TroopCount(UnitType.Scout), Report.Garrison[UnitType.Scout]);
+        Assert.Equal(2, Report.WallLevel);
+        Assert.Equal(_target.Resources, Report.Stock);
+        Assert.Null(Report.TroopRange);
+        Assert.Null(Report.WallRange);
+        Assert.Null(Report.Buildings);
+        Assert.Null(Report.Loyalty);
+    }
+
+    [Fact]
+    public void AnOverwhelmingSuccessAlsoGivesBuildingsAndLoyalty()
+    {
+        _target.SetBuildingLevel(BuildingType.Wall, 2);
+        _target.Loyalty = 77;
+
+        SendAndArrive(1);
+
+        Assert.Equal(2, Report.Buildings![BuildingType.Wall]);
+        Assert.Equal(_target.BuildingLevel(BuildingType.MainBuilding), Report.Buildings[BuildingType.MainBuilding]);
+        Assert.Equal(_target.Loyalty, Report.Loyalty!.Value, 6);
+        Assert.NotNull(Report.Garrison);
+    }
+
+    [Fact]
+    public void AFailureSeesNothingAtAll()
+    {
+        Contest(WithChance(0), 1, 5);
+
+        Assert.Null(Report.Quality);
+        Assert.Null(Report.TroopRange);
+        Assert.Null(Report.WallRange);
+    }
+
+    [Fact]
+    public void RangesAlwaysContainTheTruthAcrossValuesAndOffsets()
+    {
+        for (var value = 0; value <= 400; value++)
+        {
+            var width = ScoutRules.TroopRangeWidth(Data, value);
+            for (var offset = 0; offset <= width; offset++)
+            {
+                var range = ScoutRules.Range(value, width, offset);
+                Assert.InRange(value, range.Low, range.High);
+                Assert.True(range.Low >= 0);
+                Assert.Equal(width, range.High - range.Low);
+            }
+        }
+
+        var maxWall = Data.Buildings.Buildings[BuildingType.Wall].MaxLevel;
+        for (var wall = 0; wall <= maxWall; wall++)
+        {
+            foreach (var offset in new[] { 0, 1 })
+            {
+                var range = ScoutRules.Range(wall, 1, offset, maxWall);
+                Assert.InRange(wall, range.Low, range.High);
+                Assert.True(range.Low >= 0 && range.High <= maxWall && range.High > range.Low);
+            }
+        }
+    }
+
+    [Fact]
+    public void WhereTheTruthSitsInTheRangeVaries()
+    {
+        var lows = new HashSet<int>();
+        for (ulong seed = 0; seed < 40; seed++)
+        {
+            var state = TestMatch.Create(duration: 36000, seed: seed);
+            var target = state.Villages[Defender];
+            foreach (var (unit, count) in target.Troops.ToList())
+                target.RemoveTroops(unit, count);
+            target.AddTroops(UnitType.Spearman, 30);
+            target.AddTroops(UnitType.Scout, 1);
+            state.Villages[Sender].AddTroops(UnitType.Scout, 1);
+            var data = WithChance(1);
+            new CommandHandler(state, data).Handle(Sender, Scout(1));
+            new Simulation(state, data).AdvanceTo(state.Movements.Single().ArrivalTime);
+            lows.Add(state.ScoutReports.Single().TroopRange!.Low);
+        }
+
+        Assert.True(lows.Count > 3, $"{lows.Count} different ranges");
+    }
+
     [Fact]
     public void AnEventNamesTheReport()
     {
@@ -440,6 +575,8 @@ public class ScoutTests
         var restored = SnapshotMapper.Restore(SnapshotMapper.FromJson(json));
 
         Assert.Equal(json, SnapshotMapper.ToJson(SnapshotMapper.ToSnapshot(restored)));
+        Assert.Equal(_target.Loyalty, restored.ScoutReports.Single().Loyalty!.Value, 3);
+        Assert.Equal(_target.BuildingLevel(BuildingType.Watchtower), restored.ScoutReports.Single().Buildings![BuildingType.Watchtower]);
         Assert.Equal(_state.ScoutReports.Single().Id, restored.ScoutReports.Single().Id);
         Assert.Equal(_state.ScoutNotices.Single(), restored.ScoutNotices.Single());
     }

@@ -1650,9 +1650,11 @@ public partial class UiTest : Control
         Expect(row.Text.StartsWith($"Scouted {rival.Name}"), $"The scout report is listed, got '{row.Text}'");
         Press(row);
         await Frames();
-        Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == "Scouted", "The scout report opens");
+        Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == "Scouted in full", "An undefended village gives the full report");
         Expect(dialog.GetNode<Label>("%Powers").Text.StartsWith("Wall level 2"), "The report gives the Wall level");
         Expect(dialog.GetNode<Label>("%Loot").Text.StartsWith("Resources:"), "The report gives the resources");
+        Expect(dialog.GetNode<Label>("%Damage").Visible && dialog.GetNode<Label>("%Damage").Text.Contains("Wall 2"), "The full report gives the buildings");
+        Expect(dialog.GetNode<Label>("%Loyalty").Text.StartsWith("Loyalty"), "The full report gives the loyalty");
         await Shot("scout-report");
         Press(dialog.GetNode<Button>("%Close"));
 
@@ -1665,7 +1667,7 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         send.SetTarget(2);
         await Frames();
-        Expect(intel.Text.StartsWith("Scouts lost"), $"The form shows the failure, got '{intel.Text}'");
+        Expect(intel.Text.Contains("Scouts lost"), $"The form shows the failure, got '{intel.Text}'");
 
         // Both directions, seen from the side being scouted. With no Watchtower, a success goes unnoticed.
         Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "The rival sends a Scout");
@@ -1713,6 +1715,43 @@ public partial class UiTest : Control
         Expect(dialog.GetNode<Label>("%Result").Text == "Scouts caught", "The notice opens");
         await Shot("scout-caught");
         Press(dialog.GetNode<Button>("%Close"));
+
+        // The margin decides how much is seen. The ratios stay inside each quality's limits, and it tries until one succeeds.
+        async Task<ScoutReport> ScoutedAt(double ratio)
+        {
+            for (var attempt = 0; attempt < 60; attempt++)
+            {
+                if (rival.TroopCount(UnitType.Scout) < 10)
+                    await TrainAndWait(session, 2, 40, UnitType.Scout);
+                var scouts = (int)Math.Ceiling(rival.TroopCount(UnitType.Scout) * ratio);
+                if (home.TroopCount(UnitType.Scout) < scouts)
+                    await TrainAndWait(session, 1, scouts, UnitType.Scout);
+                Expect(session.SendAs(1, new SendTroopsCommand(1, 2, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = scouts })).Success, "Another scouting goes out");
+                await RunUntilArrived(session);
+                if (state.ScoutReports[^1] is { Succeeded: true } report && report.SenderId == 1)
+                    return report;
+            }
+            throw new InvalidOperationException("No scouting succeeded.");
+        }
+
+        var narrow = await ScoutedAt(1.5);
+        Expect(narrow.Quality == ScoutQuality.Narrow && narrow.Stock is null, "A narrow success gives no exact numbers");
+        game.ShowTab(GameScreen.SideTab.Send);
+        send.SetTarget(2);
+        await Frames();
+        Expect(intel.Text.Contains($"{narrow.TroopRange!.Low}-{narrow.TroopRange.High} troops") && intel.Text.Contains($"Wall {narrow.WallRange!.Low}-{narrow.WallRange.High}"), $"The form shows the ranges, got '{intel.Text}'");
+        Expect(narrow.TroopRange!.Low <= 5 && 5 <= narrow.TroopRange.High && narrow.WallRange!.Low <= 2 && 2 <= narrow.WallRange.High, "The ranges contain the truth");
+        dialog.ShowScoutReport(session, narrow);
+        await Frames();
+        Expect(dialog.GetNode<Label>("%Result").Text == "Scouted: a rough look", "The report names a narrow success");
+        Expect(dialog.GetNode<Label>("%Powers").Text.Contains($"{narrow.WallRange!.Low}-{narrow.WallRange.High}") && !dialog.GetNode<Label>("%Loot").Visible, "The narrow report gives a range and no resources");
+        await Shot("scout-narrow");
+        Press(dialog.GetNode<Button>("%Close"));
+
+        var clear = await ScoutedAt(3);
+        Expect(clear.Quality == ScoutQuality.Clear && clear.Buildings is null && clear.Garrison![UnitType.Spearman] == 3, "A clear success gives exact troops, without buildings");
+        await Frames();
+        Expect(intel.Text.Contains("5 troops") && intel.Text.Contains("Wall 2"), $"The form shows the exact numbers, got '{intel.Text}'");
     }
 
     private async Task TestSurrender(GameData data)

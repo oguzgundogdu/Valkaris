@@ -5,6 +5,11 @@
   "catapultsPerLevelOfDamage": 5,
   "scouting": {
     "watchtowerBonusPerLevel": 0.2,
+    "clearRatio": 2,
+    "overwhelmingRatio": 4,
+    "troopRangeShare": 0.6,
+    "troopRangeMinWidth": 4,
+    "wallRangeWidth": 1,
     "successCurve": [
       { "ratio": 0.5, "chance": 0.05 },
       { "ratio": 1, "chance": 0.25 },

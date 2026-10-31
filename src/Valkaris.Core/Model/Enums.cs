@@ -24,6 +24,14 @@ public enum UnitType
     Scout,
 }
 
+/// <summary>How much a successful scouting saw, by its margin.</summary>
+public enum ScoutQuality
+{
+    Narrow,
+    Clear,
+    Overwhelming,
+}
+
 public enum UnitClass
 {
     Infantry,

@@ -92,7 +92,14 @@ public sealed class AiMemory
             return;
         }
 
-        // Scouts see no loyalty or capital protection, and fight nothing, so what was known of those still stands.
+        // Ranges aren't used yet.
+        if (report.Garrison is null)
+        {
+            _caught.Remove(report.TargetVillageId);
+            return;
+        }
+
+        // Scouts see no capital protection, and fight nothing, so what was known of that still stands.
         var earlier = _sightings.GetValueOrDefault(report.TargetVillageId);
         var known = earlier?.OwnerId == report.DefenderId ? earlier : null;
         var defence = DefenceOf(report.Garrison!, report.WallLevel!.Value);

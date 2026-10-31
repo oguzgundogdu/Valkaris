@@ -173,6 +173,15 @@ public class GameDataValidationTests
     [Fact]
     public void NegativeWatchtowerBonus() => AssertCombatInvalid(r => r["scouting"]!["watchtowerBonusPerLevel"] = -0.1, "scouting.watchtowerBonusPerLevel");
 
+    [Theory]
+    [InlineData("clearRatio", 0)]
+    [InlineData("overwhelmingRatio", 1)]
+    [InlineData("troopRangeShare", -0.1)]
+    [InlineData("troopRangeMinWidth", 0)]
+    [InlineData("wallRangeWidth", 0)]
+    public void InvalidScoutingValue(string field, double value) =>
+        AssertCombatInvalid(r => r["scouting"]![field] = value, $"scouting.{field}");
+
     [Fact]
     public void EmptyScoutCurve() => AssertCombatInvalid(r => r["scouting"]!["successCurve"] = new JsonArray(), "scouting.successCurve");
 

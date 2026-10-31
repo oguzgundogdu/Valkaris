@@ -87,8 +87,12 @@ public sealed record BattleReport(
     LoyaltyChange? Loyalty = null,
     bool CapitalProtected = false);
 
+/// <summary>A value only known to lie between these, inclusive.</summary>
+public sealed record ValueRange(int Low, int High);
+
 /// <summary>
-/// What the sender's Scouts found, known only to the sender. Garrison, wall and stock are set only on success.
+/// What the sender's Scouts found, known only to the sender. Nothing is seen on a failure, and what a success sees
+/// depends on its quality: ranges for Narrow, exact garrison, wall and stock for Clear, and buildings and loyalty as well for Overwhelming.
 /// What the defender may know is in a separate ScoutNotice, so neither side can read the other's.
 /// </summary>
 public sealed record ScoutReport(
@@ -103,7 +107,12 @@ public sealed record ScoutReport(
     IReadOnlyDictionary<UnitType, int>? Garrison,
     int? WallLevel,
     Resources? Stock,
-    int ScoutsLost = 0);
+    int ScoutsLost = 0,
+    ScoutQuality? Quality = null,
+    ValueRange? TroopRange = null,
+    ValueRange? WallRange = null,
+    IReadOnlyDictionary<BuildingType, int>? Buildings = null,
+    double? Loyalty = null);
 
 /// <summary>
 /// What the defender learned, known only to the defender. Shares ids with reports.
