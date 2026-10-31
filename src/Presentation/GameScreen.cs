@@ -42,6 +42,11 @@ public partial class GameScreen : Control
     private RenamePanel _renamePanel = null!;
     private Tween? _viewTween;
 
+#if VALKARIS_DEV
+    /// <summary>How long this screen's update took on the last frame, for the frame report.</summary>
+    public double LastFrameSeconds { get; private set; }
+#endif
+
     public IGameSession Session { get; private set; } = null!;
 
     public MainView CurrentView { get; private set; } = MainView.Village;
@@ -164,6 +169,9 @@ public partial class GameScreen : Control
 
     public override void _Process(double delta)
     {
+#if VALKARIS_DEV
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
         Session.Tick(delta);
 
         var village = ResolveCurrentVillage();
@@ -180,6 +188,9 @@ public partial class GameScreen : Control
         _leaveOverlay.Visible = _confirmingLeave;
         _surrenderOverlay.Visible = _confirmingSurrender;
         RefreshDialogs();
+#if VALKARIS_DEV
+        LastFrameSeconds = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds;
+#endif
     }
 
     private void RefreshDialogs()

@@ -33,7 +33,10 @@ public partial class UiTest : Control
 
         try
         {
-            await Run();
+            if (OS.GetCmdlineUserArgs().Contains("--frame-report"))
+                await FrameReport();
+            else
+                await Run();
         }
         catch (Exception ex)
         {
@@ -218,6 +221,38 @@ public partial class UiTest : Control
         Find<StartScreen>().GetNode<OptionButton>("%Duration").Select(0);
         Find<StartScreen>().GetNode<OptionButton>("%Language").EmitSignal(OptionButton.SignalName.ItemSelected, Array.IndexOf(Language.Codes, language));
         await Frames();
+    }
+
+    /// <summary>What the village view costs per frame, in a window: "-- --frame-report". No pass or fail, since it depends on the machine.</summary>
+    private async Task FrameReport()
+    {
+        Language.SettingsPath = "user://uitest_settings.cfg";
+        _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
+        _main.IdleOpponents = true;
+        AddChild(_main);
+        await Frames();
+        Press(Find<StartScreen>().GetNode<Button>("%Start"));
+        await Frames();
+        await PrintFrameCost("village");
+    }
+
+    private async Task PrintFrameCost(string name)
+    {
+        const int frames = 300;
+        await ToSignal(GetTree().CreateTimer(1), SceneTreeTimer.SignalName.Timeout);
+
+        double process = 0, drawCalls = 0, objects = 0;
+        var started = Time.GetTicksMsec();
+        for (var i = 0; i < frames; i++)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            process += Find<GameScreen>().LastFrameSeconds * 1000;
+            drawCalls += Performance.GetMonitor(Performance.Monitor.RenderTotalDrawCallsInFrame);
+            objects += Performance.GetMonitor(Performance.Monitor.ObjectNodeCount);
+        }
+
+        var seconds = (Time.GetTicksMsec() - started) / 1000.0;
+        GD.Print($"[frames] {name}: {frames / seconds:0.0} fps, {process / frames:0.000} ms screen update, {drawCalls / frames:0} draw calls, {objects / frames:0} nodes");
     }
 
     private async Task Run()
