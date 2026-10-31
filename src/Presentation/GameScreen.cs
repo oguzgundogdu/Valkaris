@@ -391,32 +391,32 @@ public partial class GameScreen : Control
         {
             case BuildingCompleted completed when IsLocalVillage(completed.VillageId):
                 _villageView.Pulse(completed.Building);
-                _toast.ShowMessage($"{UiContent.Buildings[completed.Building].Name} reached level {completed.NewLevel}");
+                _toast.ShowMessage(L.T("toast.building_done", ("building", UiContent.Buildings[completed.Building].Name), ("level", Format.Whole(completed.NewLevel))));
                 break;
             case BattleResolved resolved:
                 var report = Session.State.Reports.First(r => r.Id == resolved.ReportId);
                 if (report.AttackerId == Session.LocalPlayerId || report.DefenderId == Session.LocalPlayerId)
-                    _toast.ShowMessage($"{UiContent.ReportHeadline(Session, report)}. See Reports.");
+                    _toast.ShowMessage(L.T("toast.see_reports", ("headline", UiContent.ReportHeadline(Session, report))));
                 break;
             case ScoutResolved scouted:
                 var scoutReport = Session.State.ScoutReports.First(r => r.Id == scouted.ReportId);
                 if (scoutReport.SenderId == Session.LocalPlayerId)
-                    _toast.ShowMessage($"{UiContent.ScoutHeadline(Session, scoutReport)}. See Reports.");
+                    _toast.ShowMessage(L.T("toast.see_reports", ("headline", UiContent.ScoutHeadline(Session, scoutReport))));
                 break;
             case ScoutNoticed noticed:
                 var notice = Session.State.ScoutNotices.First(n => n.Id == noticed.NoticeId);
                 if (notice.DefenderId == Session.LocalPlayerId)
-                    _toast.ShowMessage($"{UiContent.NoticeHeadline(Session, notice)}. See Reports.");
+                    _toast.ShowMessage(L.T("toast.see_reports", ("headline", UiContent.NoticeHeadline(Session, notice))));
                 break;
             case TroopsReturned returned when IsLocalVillage(returned.VillageId):
                 var loot = returned.Loot.Wood + returned.Loot.Stone + returned.Loot.Food;
-                _toast.ShowMessage(loot > 0 ? $"Troops returned with {Format.Amount(loot)} loot" : "Troops returned");
+                _toast.ShowMessage(loot > 0 ? L.T("toast.troops_returned_loot", ("amount", Format.Amount(loot))) : L.T("toast.troops_returned"));
                 break;
             case TroopsTrained trained when IsLocalVillage(trained.VillageId):
-                _toast.ShowMessage($"{UiContent.Units[trained.Unit].Name} × {trained.Count} trained");
+                _toast.ShowMessage(L.T("toast.trained", ("unit", UiContent.Units[trained.Unit].Name), ("count", Format.Whole(trained.Count))));
                 break;
             case ReinforcementsArrived arrived when IsLocalVillage(arrived.VillageId):
-                _toast.ShowMessage($"Troops arrived at {Session.State.Villages[arrived.VillageId].Name}");
+                _toast.ShowMessage(L.T("toast.troops_arrived", ("village", Session.State.Villages[arrived.VillageId].Name)));
                 break;
             case ResourcesDelivered delivered when IsLocalVillage(delivered.VillageId):
                 _toast.ShowMessage(DeliveryText(delivered.VillageId, delivered.Delivered, delivered.Lost));
@@ -425,30 +425,32 @@ public partial class GameScreen : Control
                 _toast.ShowMessage(DeliveryText(returned.VillageId, returned.Delivered, returned.Lost));
                 break;
             case VillageFounded founded when IsLocalVillage(founded.VillageId):
-                _toast.ShowMessage($"{Session.State.Villages[founded.VillageId].Name} was founded");
+                _toast.ShowMessage(L.T("toast.founded", ("village", Session.State.Villages[founded.VillageId].Name)));
                 break;
             case SettlingFailed failed when failed.OwnerId == Session.LocalPlayerId:
-                _toast.ShowMessage($"Settler turned back. {UiContent.RejectionText(failed.Reason)}");
+                _toast.ShowMessage(L.T("toast.settler_back", ("reason", UiContent.RejectionText(failed.Reason))));
                 break;
             case VillageCaptured captured when captured.NewOwnerId == Session.LocalPlayerId:
-                _toast.ShowMessage($"You captured {Session.State.Villages[captured.VillageId].Name}");
+                _toast.ShowMessage(L.T("toast.you_captured", ("village", Session.State.Villages[captured.VillageId].Name)));
                 break;
             case VillageCaptured captured when captured.PreviousOwnerId == Session.LocalPlayerId:
-                _toast.ShowMessage($"{Session.State.Villages[captured.VillageId].Name} was captured by {UiContent.OwnerName(Session, captured.NewOwnerId)}");
+                _toast.ShowMessage(L.T("toast.captured_by", ("village", Session.State.Villages[captured.VillageId].Name), ("owner", UiContent.OwnerName(Session, captured.NewOwnerId))));
                 break;
             case PlayerSurrendered surrendered when surrendered.PlayerId != Session.LocalPlayerId:
-                _toast.ShowMessage($"{UiContent.OwnerName(Session, surrendered.PlayerId)} surrendered");
+                _toast.ShowMessage(L.T("toast.surrendered", ("owner", UiContent.OwnerName(Session, surrendered.PlayerId))));
                 break;
             case PlayerEliminated eliminated when eliminated.PlayerId != Session.LocalPlayerId:
-                _toast.ShowMessage($"{UiContent.OwnerName(Session, eliminated.PlayerId)} was eliminated");
+                _toast.ShowMessage(L.T("toast.eliminated", ("owner", UiContent.OwnerName(Session, eliminated.PlayerId))));
                 break;
         }
     }
 
     private string DeliveryText(int villageId, Resources delivered, Resources lost)
     {
-        var text = $"{Format.Total(delivered)} delivered to {Session.State.Villages[villageId].Name}";
-        return lost == Resources.Zero ? text : $"{text}, {Format.Total(lost)} lost: warehouse full";
+        var village = Session.State.Villages[villageId].Name;
+        return lost == Resources.Zero
+            ? L.T("toast.delivered", ("amount", Format.Total(delivered)), ("village", village))
+            : L.T("toast.delivered_lost", ("amount", Format.Total(delivered)), ("village", village), ("lost", Format.Total(lost)));
     }
 
     private bool IsLocalVillage(int villageId) => Session.State.Villages[villageId].OwnerId == Session.LocalPlayerId;

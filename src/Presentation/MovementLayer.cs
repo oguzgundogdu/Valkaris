@@ -54,7 +54,7 @@ public partial class MovementLayer : Control
             var icon = movement.Troops.Count == 0
                 ? CarrierIconPath
                 : UiContent.Units[movement.Troops.Keys.OrderBy(u => session.Data.Units.Units[u].Speed).First()].IconPath;
-            var description = $"{UiContent.DescribeMovement(session, movement)}  ·  {Format.Time(movement.ArrivalTime - now)}";
+            var description = Format.Dotted(UiContent.DescribeMovement(session, movement), Format.Time(movement.ArrivalTime - now));
 
             _entries.Add(new Entry(movement.Id, from, to, PositionAt(from, to, movement, now), colour, icon, description));
         }

@@ -53,7 +53,7 @@ public partial class ReportsPanel : PanelContainer
             var button = new Button
             {
                 Name = $"Report{row.Id}",
-                Text = $"{row.Text}  ·  {Format.Time(row.Time)}",
+                Text = Format.Dotted(row.Text, Format.Time(row.Time)),
                 ThemeTypeVariation = "SecondaryButton",
                 Alignment = HorizontalAlignment.Left,
                 FocusMode = FocusModeEnum.None,

@@ -93,18 +93,18 @@ public static class UiContent
     public static string DescribeMovement(IGameSession session, Movement movement)
     {
         if (movement.OwnerId != session.LocalPlayerId)
-            return $"{movement.Type} from {OwnerName(session, movement.OwnerId)}";
+            return L.T("movement.from", ("mission", MissionName(movement.Type)), ("owner", OwnerName(session, movement.OwnerId)));
         if (movement.Type == MovementType.Settle)
-            return "Settler › new village";
+            return L.T("movement.settler");
         if (movement.Type == MovementType.Transfer)
-            return $"Carrying {Format.Total(movement.Loot)} › {session.State.Villages[movement.ToVillageId!.Value].Name}";
+            return L.T("movement.carrying", ("amount", Format.Total(movement.Loot)), ("target", session.State.Villages[movement.ToVillageId!.Value].Name));
         if (movement.Type == MovementType.CarrierReturn)
-            return movement.Loot == Resources.Zero ? "Carriers returning" : $"Returning with {Format.Total(movement.Loot)}";
+            return movement.Loot == Resources.Zero ? L.T("movement.carriers_returning") : L.T("movement.returning_with", ("amount", Format.Total(movement.Loot)));
         if (movement.Type != MovementType.Return)
-            return $"{movement.Type} › {session.State.Villages[movement.ToVillageId!.Value].Name}";
+            return L.T("movement.to", ("mission", MissionName(movement.Type)), ("target", session.State.Villages[movement.ToVillageId!.Value].Name));
 
         var loot = movement.Loot.Wood + movement.Loot.Stone + movement.Loot.Food;
-        return loot > 0 ? $"Returning with {Format.Amount(loot)} loot" : "Returning";
+        return loot > 0 ? L.T("movement.returning_loot", ("amount", Format.Amount(loot))) : L.T("movement.returning");
     }
 
     public static string OwnerName(IGameSession session, int ownerId) =>
@@ -117,34 +117,35 @@ public static class UiContent
 
     public static string ReportHeadline(IGameSession session, BattleReport report)
     {
-        var result = LocalWon(session, report) ? "Won" : "Lost";
+        var result = L.T(LocalWon(session, report) ? "report.won" : "report.lost");
+        var mission = MissionName(report.Type);
         return report.AttackerId == session.LocalPlayerId
-            ? $"{result}: {report.Type} on {OwnerName(session, report.DefenderId)}"
-            : $"{result}: {report.Type} by {OwnerName(session, report.AttackerId)}";
+            ? L.T("report.headline_attacker", ("result", result), ("mission", mission), ("target", OwnerName(session, report.DefenderId)))
+            : L.T("report.headline_defender", ("result", result), ("mission", mission), ("attacker", OwnerName(session, report.AttackerId)));
     }
 
     public static string ScoutHeadline(IGameSession session, ScoutReport report)
     {
         var target = session.State.Villages[report.TargetVillageId].Name;
-        return report.Succeeded ? $"Scouted {target}" : $"Scouts lost at {target}";
+        return L.T(report.Succeeded ? "scout.headline_seen" : "scout.headline_lost", ("target", target));
     }
 
     public static string NoticeHeadline(IGameSession session, ScoutNotice notice)
     {
         var target = session.State.Villages[notice.TargetVillageId].Name;
         var sender = OwnerName(session, notice.SenderId);
-        return notice.Caught ? $"Caught scouts from {sender} at {target}" : $"{sender} scouted {target}";
+        return L.T(notice.Caught ? "notice.caught" : "notice.seen", ("sender", sender), ("target", target));
     }
 
-    public static string ScoutResultName(ScoutReport report) => report.Quality switch
+    public static string ScoutResultName(ScoutReport report) => L.T(report.Quality switch
     {
-        ScoutQuality.Narrow => "Scouted: a rough look",
-        ScoutQuality.Clear => "Scouted",
-        ScoutQuality.Overwhelming => "Scouted in full",
-        _ => "Scouts lost",
-    };
+        ScoutQuality.Narrow => "scout.result_narrow",
+        ScoutQuality.Clear => "scout.result_clear",
+        ScoutQuality.Overwhelming => "scout.result_full",
+        _ => "scout.result_lost",
+    });
 
-    public static string RangeText(ValueRange range) => $"{range.Low}-{range.High}";
+    public static string RangeText(ValueRange range) => Format.Range(range.Low, range.High);
 
     /// <summary>What the player last learned of a village under its current owner, and any failure since. Null if there is neither.</summary>
     public static string? LatestIntel(IGameSession session, Village target)
@@ -159,56 +160,27 @@ public static class UiContent
         var seen = reports.LastOrDefault(r => r.Succeeded);
         var lost = reports[^1].Succeeded ? null : reports[^1];
         if (seen is null)
-            return $"Scouts lost {Age(lost!)} ago: nothing seen";
+            return L.T("intel.lost_only", ("age", Age(lost!)));
 
-        var intel = $"Scouted {Age(seen)} ago: {SeenText(seen)}";
-        return lost is null ? intel : $"{intel}. Scouts lost {Age(lost)} ago";
+        var intel = L.T("intel.seen", ("age", Age(seen)), ("seen", SeenText(seen)));
+        return lost is null ? intel : L.T("intel.seen_then_lost", ("intel", intel), ("age", Age(lost)));
     }
 
     private static string SeenText(ScoutReport report)
     {
         if (report.Quality == ScoutQuality.Narrow)
-            return $"{RangeText(report.TroopRange!)} troops, Wall {RangeText(report.WallRange!)}";
+            return L.T("intel.narrow", ("troops", RangeText(report.TroopRange!)), ("wall", RangeText(report.WallRange!)));
 
-        var wall = report.WallLevel > 0 ? $", Wall {report.WallLevel}" : "";
-        var loyalty = report.Loyalty is { } value ? $", loyalty {Format.Whole(value)}" : "";
-        return $"{report.Garrison!.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value)} troops{wall}, {Format.Total(report.Stock!.Value)} resources{loyalty}";
+        var parts = new List<string> { L.N("intel.troops", report.Garrison!.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value)) };
+        if (report.WallLevel is > 0 and { } wall)
+            parts.Add(L.T("intel.wall", ("level", Format.Whole(wall))));
+        parts.Add(L.T("intel.resources", ("amount", Format.Total(report.Stock!.Value))));
+        if (report.Loyalty is { } loyalty)
+            parts.Add(L.T("intel.loyalty", ("value", Format.Whole(loyalty))));
+        return string.Join(", ", parts);
     }
 
-    public static string RejectionText(CommandRejection rejection) => rejection switch
-    {
-        CommandRejection.InvalidCount => "Choose how many.",
-        CommandRejection.BarracksLevelTooLow => "Upgrade the Barracks to train this unit.",
-        CommandRejection.InvalidMission => "That mission can't go to this target.",
-        CommandRejection.NoTroopsSelected => "Choose some troops to send.",
-        CommandRejection.NotEnoughTroops => "You don't have that many troops here.",
-        CommandRejection.CatapultsCannotRaid => "Catapults can't go on a raid.",
-        CommandRejection.SettlersCannotFight => "Settlers can't go on an attack or raid.",
-        CommandRejection.ScoutsCannotFight => "Scouts can't go on an attack or raid.",
-        CommandRejection.LordsCannotRaid => "Lords can't go on a raid.",
-        CommandRejection.OnlyScoutsCanScout => "Only Scouts can scout.",
-        CommandRejection.NoSettlerHere => "Train a Settler in this village first.",
-        CommandRejection.TileOutsideMap => "That's outside the map.",
-        CommandRejection.TileIsWater => "Villages can't be founded on water.",
-        CommandRejection.TileTaken => "A village already stands here.",
-        CommandRejection.TooCloseToVillage => "Too close to another village.",
-        CommandRejection.VillageLimitReached => "Upgrade your capital's Main Building to found more villages.",
-        CommandRejection.NoCapitalChoicePending => "There's no capital to choose right now.",
-        CommandRejection.NoCapital => "Choose a new capital first.",
-        CommandRejection.NotOwner => "That isn't your village.",
-        CommandRejection.TargetNotYours => "Resources can only go to your own villages.",
-        CommandRejection.SameVillage => "The resources are already in this village.",
-        CommandRejection.NoResourcesSelected => "Choose some resources to send.",
-        CommandRejection.NoMarketplace => "Build a Marketplace in this village first.",
-        CommandRejection.NotEnoughCarriers => "Not enough free carriers for this load.",
-        CommandRejection.InsufficientResources => "Not enough resources yet.",
-        CommandRejection.QueueFull => "The queue is full.",
-        CommandRejection.MainBuildingLevelTooLow => "Upgrade the Main Building to go higher.",
-        CommandRejection.MaxLevelReached => "Maximum level reached.",
-        CommandRejection.MatchOver => "The match is over.",
-        CommandRejection.GamePaused => "The match is paused.",
-        _ => "This can't be done right now.",
-    };
+    public static string RejectionText(CommandRejection rejection) => L.T(L.Key("rejection", rejection));
 
     public static string ResourceName(ResourceType type) => L.T(L.Key("resource", type) + ".name");
 
@@ -249,6 +221,11 @@ public static class Format
         var rest = total % 60;
         return hours > 0 ? $"{Whole(hours)}:{Padded(minutes)}:{Padded(rest)}" : $"{Whole(minutes)}:{Padded(rest)}";
     }
+
+    public static string Range(int low, int high) => $"{Whole(low)}-{Whole(high)}";
+
+    /// <summary>Parts of one line, with the separator the game uses everywhere.</summary>
+    public static string Dotted(params string[] parts) => string.Join("  ·  ", parts);
 
     public static string Whole(double value) => value.ToString("0", CultureInfo.InvariantCulture);
 
