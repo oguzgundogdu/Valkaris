@@ -552,10 +552,20 @@ public partial class UiTest : Control
         Expect(effects.ClashesShowing == 1 && effects.NoticesShowing == 1, "Only a battle in sight shows a clash, and news shows a marker");
         await Shot("clash");
 
-        await ToSignal(GetTree().CreateTimer(2), SceneTreeTimer.SignalName.Timeout);
+        var noticeWidth = effects.NoticeWidthOnScreen;
+        var map = Find<WorldMapView>();
+        var zoomBefore = map.Zoom;
+        map._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.WheelUp, Pressed = true, Position = map.Size / 2 });
+        await Frames();
+        Expect(map.Zoom > zoomBefore && Mathf.IsEqualApprox(effects.NoticeWidthOnScreen, noticeWidth), "The notice marker stays one size on screen at any zoom");
+        map.FitToView();
+
+        game.Session.Tick(2.5);
+        await Frames();
         Expect(effects.ClashesShowing == 0, "The clash effect ends");
         Expect(effects.NoticesShowing == 1, "The notice marker outlasts the clash");
-        await ToSignal(GetTree().CreateTimer(7), SceneTreeTimer.SignalName.Timeout);
+        game.Session.Tick(13);
+        await Frames();
         Expect(effects.NoticesShowing == 0, "The notice marker ends");
         Valkaris.Core.Dev.DevScenario.RemoveMovementsOf(state, other.OwnerId);
         await Frames();

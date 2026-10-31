@@ -256,6 +256,7 @@ public partial class WorldMapView : Control
         if (!_built || Size.X <= 0 || Size.Y <= 0)
             return;
 
+        _userMovedCamera = false;
         _zoom = MinZoom;
         _world.Position = (Size - _worldSize * _zoom) / 2;
         ApplyZoom();

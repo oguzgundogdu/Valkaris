@@ -931,4 +931,4 @@ msgid "ui.reports.no_news"
 msgstr "Henüz haber yok."
 
 msgid "notice.attacked"
-msgstr "{attacker} köyü, {target} köyüne saldırdı"
+msgstr "{attacker} köyü {target} köyüne saldırdı"
