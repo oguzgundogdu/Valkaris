@@ -76,7 +76,7 @@ public class GameDataLoadTests
         var spearman = TestData.Shipped.Units.Units[UnitType.Spearman];
 
         Assert.Equal(UnitClass.Infantry, spearman.Class);
-        Assert.Equal(40, spearman.DefenceVsCavalry);
+        Assert.Equal(23, spearman.DefenceVsCavalry);
         Assert.Equal(new Resources(30, 20, 60), spearman.Cost);
         Assert.Equal(0.2, TestData.Shipped.Combat.ProtectedResourceShare);
         Assert.Equal(10, TestData.Shipped.Game.StartingTroops[UnitType.Spearman]);

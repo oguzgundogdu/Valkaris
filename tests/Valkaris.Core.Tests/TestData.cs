@@ -32,6 +32,17 @@ internal static class TestData
 {
     public static readonly GameData Shipped = GameData.Load(new ShippedDataSource());
 
+    /// <summary>Unit stats frozen for tests of how combat works, so that balancing the shipped units doesn't touch them.</summary>
+    public static readonly GameData FixedCombat = Mutated("units.json", root =>
+    {
+        var units = root["units"]!;
+        units["Spearman"]!["defenceVsInfantry"] = 20;
+        units["Spearman"]!["defenceVsCavalry"] = 40;
+        units["Swordsman"]!["defenceVsInfantry"] = 15;
+        units["Swordsman"]!["defenceVsCavalry"] = 10;
+        units["Cavalry"]!["attack"] = 40;
+    });
+
     public static GameData Mutated(string fileName, Action<JsonNode> mutate) =>
         GameData.Load(new MutatedDataSource(fileName, mutate));
 }

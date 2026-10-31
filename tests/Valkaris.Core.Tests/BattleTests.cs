@@ -13,7 +13,7 @@ public class BattleTests
     private const int Home = 1;
     private const int Target = 2;
 
-    private static readonly GameData Data = TestData.Shipped;
+    private static readonly GameData Data = TestData.FixedCombat;
 
     private readonly GameState _state = TestMatch.Create();
     private readonly CommandHandler _handler;

@@ -6,7 +6,7 @@ namespace Valkaris.Core.Tests;
 
 public class CombatResolverTests
 {
-    private static readonly GameData Data = TestData.Shipped;
+    private static readonly GameData Data = TestData.FixedCombat;
 
     private static Dictionary<UnitType, int> Force(params (UnitType Unit, int Count)[] troops) =>
         troops.ToDictionary(t => t.Unit, t => t.Count);
@@ -206,7 +206,8 @@ public class CombatResolverTests
         var result = Attack(Force((UnitType.Swordsman, 100)), HundredSpearmen, wall: 0, data: altered);
         var walled = Attack(Force((UnitType.Swordsman, 100)), HundredSpearmen, wall: 1, data: altered);
 
-        Assert.Equal(67, result.AttackerLost[UnitType.Swordsman]);
-        Assert.Equal(4000, walled.DefencePower);
+        // 100 Spearmen at 18 against 100 Swordsmen at 30, using the shipped units.
+        Assert.Equal(60, result.AttackerLost[UnitType.Swordsman]);
+        Assert.Equal(3600, walled.DefencePower);
     }
 }

@@ -168,7 +168,7 @@ public class AiScoutTests
             var match = Match(data: data);
             PastDelay(match);
             NoCamps(match);
-            SetGarrison(match.State.Villages[Enemy], UnitType.Spearman, 1);
+            SetGarrison(match.State.Villages[Enemy], UnitType.Spearman, match.Data.Combat.TroopsPerScout);
             match.State.Villages[Enemy].SetBuildingLevel(BuildingType.Wall, 10);
             match.State.Villages[Ai].AddTroops(UnitType.Cavalry, 3);
             match.Run(1500);

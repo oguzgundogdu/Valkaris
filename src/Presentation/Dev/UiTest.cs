@@ -747,7 +747,7 @@ public partial class UiTest : Control
         Expect(dialog.Visible && dialog.GetNode<Label>("%Result").Text == "Defeat", "The report opens as a defeat");
         Expect(dialog.GetNode<VBoxContainer>("%Attacker").GetChildCount() == 2, "The report lists the attacking side");
         Expect(!dialog.GetNode<Label>("%Loot").Visible, "A lost raid shows no loot");
-        Expect(dialog.GetNode<Label>("%Powers").Text.Contains("vs  defence 200"), $"The report shows the weighted defence, got '{dialog.GetNode<Label>("%Powers").Text}'");
+        Expect(dialog.GetNode<Label>("%Powers").Text.Contains("vs  defence 180"), $"The report shows the weighted defence, got '{dialog.GetNode<Label>("%Powers").Text}'");
         await Shot("report-defeat");
 
         dialog.GetNode<Button>("%Close").EmitSignal(BaseButton.SignalName.Pressed);

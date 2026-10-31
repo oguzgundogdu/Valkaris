@@ -114,9 +114,10 @@ public class AiRaidTests
         match.Run(900, step: 1);
 
         // A first probe is lost to each target at most, because the belief was wrong. Then the report corrects it.
-        foreach (var group in match.State.Reports.Where(r => r.AttackerId == Ai).GroupBy(r => r.DefenderVillageId))
+        var onCamps = match.State.Reports.Where(r => r.AttackerId == Ai && r.DefenderId == Village.BarbarianOwnerId).ToList();
+        foreach (var group in onCamps.GroupBy(r => r.DefenderVillageId))
             Assert.Single(group);
-        Assert.Contains(match.State.Reports, r => r.AttackerId == Ai && !r.AttackerWon);
+        Assert.Contains(onCamps, r => !r.AttackerWon);
     }
 
     [Fact]

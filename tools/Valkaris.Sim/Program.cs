@@ -5,6 +5,12 @@ using Valkaris.Sim;
 var options = SimOptions.Parse(args);
 var data = GameData.Load(new FolderDataSource(options.DataPath ?? FolderDataSource.FindDataFolder()));
 
+if (options.EfficiencyTable)
+{
+    Console.Write(CombatEfficiency.Table(data));
+    return 0;
+}
+
 var watch = Stopwatch.StartNew();
 var (results, failures) = MatchRunner.RunAll(options, data);
 watch.Stop();

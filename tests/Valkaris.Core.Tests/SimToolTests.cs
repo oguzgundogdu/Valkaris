@@ -220,8 +220,10 @@ public class SimToolTests
 
         var defence = match.Finish().Seats[0].Defence!;
 
-        Assert.Equal(300, defence.HomeDefenceAtMid!.Value, 6);
-        Assert.Equal(600, defence.HomeDefenceAtEnd, 6);
+        var spearman = TestData.Shipped.Units.Units[UnitType.Spearman];
+        var perSpearman = (spearman.DefenceVsInfantry + spearman.DefenceVsCavalry) / 2;
+        Assert.Equal(10 * perSpearman, defence.HomeDefenceAtMid!.Value, 6);
+        Assert.Equal(20 * perSpearman, defence.HomeDefenceAtEnd, 6);
     }
 
     [Fact]
