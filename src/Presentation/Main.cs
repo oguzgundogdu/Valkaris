@@ -154,7 +154,7 @@ public partial class Main : Control
     }
 
     /// <summary>Never looks at DevOptions: dev settings can't reach a multiplayer match.</summary>
-    private void PlayNetworkMatch(IGameSession session, Action leave)
+    public void PlayNetworkMatch(IGameSession session, Action leave)
     {
         var screen = GameScene.Instantiate<GameScreen>();
         screen.Init(session);

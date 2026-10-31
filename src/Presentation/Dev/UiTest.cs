@@ -34,8 +34,13 @@ public partial class UiTest : Control
 
         try
         {
+            var netWindow = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--net-window="))?["--net-window=".Length..];
             if (OS.GetCmdlineUserArgs().Contains("--frame-report"))
                 await FrameReport();
+            else if (OS.GetCmdlineUserArgs().Contains("--net-report"))
+                await NetReport();
+            else if (netWindow is not null)
+                await NetWindow(netWindow);
             else
                 await Run();
         }
@@ -294,6 +299,199 @@ public partial class UiTest : Control
             VillageGround.For(seed, Find<VillageView>().Size);
             GD.Print($"[frames] ground paint {seed}: {VillageGround.LastPaintMilliseconds:0.0} ms");
         }
+    }
+
+    /// <summary>
+    /// What a late match costs on a real connection: "-- --net-report". Everyone but the guest being measured is an AI, and
+    /// the guest watches an AI's view, so its state is as busy as a real player's. No pass or fail, since it reports numbers.
+    /// </summary>
+    private async Task NetReport()
+    {
+        Language.SettingsPath = "user://uitest_settings.cfg";
+        _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
+        AddChild(_main);
+        await Frames();
+
+        const int port = 24999;
+        var data = GameData.Load(new GodotDataSource());
+        var slots = Enumerable.Range(1, 4).Select(i => new PlayerSlot($"AI {i}", Nation.Valdren, IsAi: true, AiDifficulty.Hard)).ToList();
+        var state = GameFactory.CreateMatch(new GameSettings(3600, 3, MapSize.Medium, 12), slots, data);
+        var local = new LocalGameSession(state, data, 1);
+        foreach (var id in state.Players.Keys)
+            local.AddAgent(new Valkaris.Ai.AiPlayer(new Valkaris.Ai.AiView(state, data, id, command => local.SendAs(id, command))));
+        var network = EnetHost.Listen(port)!;
+        var host = new HostGameSession(local, network, (_, _) => throw new InvalidOperationException());
+
+        var started = new MatchStartMessage?[3];
+        var connections = new List<EnetClient>();
+        var peers = new List<int>();
+        network.PeerConnected += peers.Add;
+        for (var i = 0; i < 3; i++)
+        {
+            var connection = EnetClient.Connect("127.0.0.1", port)!;
+            var index = i;
+            connection.Received += bytes => { if (WireCodec.DecodeFromHost(bytes) is MatchStartMessage start) started[index] ??= start; };
+            connections.Add(connection);
+        }
+        while (peers.Count < 3)
+        {
+            network.Poll();
+            connections.ForEach(c => c.Poll());
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        for (var i = 0; i < 3; i++)
+            host.AddClient(peers[i], i + 2);
+        while (started.Any(s => s is null))
+        {
+            connections.ForEach(c => c.Poll());
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+
+        // On to the late match, in big steps. The clients have nothing to do yet.
+        var sessions = new List<ClientGameSession>();
+        for (var i = 0; i < 3; i++)
+        {
+            sessions.Add(new ClientGameSession(connections[i], data, started[i]!));
+        }
+        while (state.ElapsedTime < 30 * 60 && !state.IsMatchOver)
+        {
+            host.Tick(1);
+            sessions.ForEach(s => s.Tick(0));
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        GD.Print($"[net] late match: {state.ElapsedTime / 60:0} min, {state.Villages.Count} villages, {state.Movements.Count} movements, {state.Reports.Count} reports, over: {state.IsMatchOver}");
+
+        // The busiest view left in the match.
+        var guest = sessions.Where(s => s.State.Players[s.LocalPlayerId].CapitalVillageId is not null)
+            .OrderByDescending(s => s.State.Villages.Values.Count(v => v.OwnerId == s.LocalPlayerId))
+            .First();
+        GD.Print($"[net] measuring a guest with {guest.State.Villages.Values.Count(v => v.OwnerId == guest.LocalPlayerId)} villages");
+        _main.PlayNetworkMatch(guest, () => { });
+        await Frames();
+        network.TakeBytesSent();
+        var applies = new List<double>();
+        var sizes = new List<int>();
+        double hostSeconds = 0, screenSeconds = 0;
+        var frames = 0;
+        var last = guest.LastApplySeconds;
+        var from = Time.GetTicksMsec();
+        var game = Find<GameScreen>();
+        foreach (var view in new[] { GameScreen.MainView.Village, GameScreen.MainView.World })
+        {
+            game.ShowView(view);
+            var viewFrom = Time.GetTicksMsec();
+            while (Time.GetTicksMsec() - viewFrom < 15000)
+            {
+                var ticked = System.Diagnostics.Stopwatch.GetTimestamp();
+                host.Tick(GetProcessDeltaTime());
+                hostSeconds += System.Diagnostics.Stopwatch.GetElapsedTime(ticked).TotalSeconds;
+                sessions.Where(s => s != guest).ToList().ForEach(s => s.Tick(0));
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                screenSeconds += game.LastFrameSeconds;
+                frames++;
+                if (guest.LastApplySeconds != last)
+                {
+                    last = guest.LastApplySeconds;
+                    applies.Add(last * 1000);
+                    sizes.Add(guest.LastMessageBytes);
+                }
+            }
+        }
+
+        var seconds = (Time.GetTicksMsec() - from) / 1000.0;
+        var sent = network.TakeBytesSent();
+        GD.Print($"[net] sent {sent / seconds / 3 / 1024:0.0} KB/s per client after compression");
+        GD.Print($"[net] update before compression: {sizes.Average() / 1024:0.0} KB average, {sizes.Max() / 1024:0.0} KB largest, {sizes.Count / seconds:0.0} per second");
+        GD.Print($"[net] client apply: {applies.Average():0.00} ms average, {applies.Max():0.00} ms worst, {applies.Sum() / frames:0.000} ms per frame");
+        GD.Print($"[net] host tick with 3 clients: {hostSeconds * 1000 / frames:0.000} ms per frame; client screen update including apply: {screenSeconds * 1000 / frames:0.000} ms per frame; {frames / seconds:0.0} fps");
+        host.Stop();
+    }
+
+    /// <summary>
+    /// One window of a real match over the real network, driven through the real buttons: "-- --net-window=host" or "guest".
+    /// The guest surrenders after a while, and both windows must then show the results.
+    /// </summary>
+    private async Task NetWindow(string role)
+    {
+        Language.SettingsPath = $"user://uitest_{role}.cfg";
+        _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
+        AddChild(_main);
+        await Frames();
+        DisplayServer.WindowSetTitle(role);
+        async Task Until(Func<bool> condition, string what, double limit = 60)
+        {
+            var from = Time.GetTicksMsec();
+            while (!condition())
+            {
+                if ((Time.GetTicksMsec() - from) / 1000.0 > limit)
+                {
+                    Expect(false, $"{role}: {what}");
+                    return;
+                }
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+        }
+        async Task Wait(double seconds) => await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
+
+        var hosting = role == "host";
+        Press(Find<StartScreen>().GetNode<Button>(hosting ? "%Host" : "%Join"));
+        await Frames();
+        var connect = Find<ConnectScreen>();
+        var name = connect.GetNode<LineEdit>("%PlayerName");
+        name.Text = hosting ? "Host Window" : "Guest Window";
+        name.EmitSignal(LineEdit.SignalName.TextChanged, name.Text);
+        if (!hosting)
+        {
+            var address = connect.GetNode<LineEdit>("%Address");
+            address.Text = "127.0.0.1";
+            address.EmitSignal(LineEdit.SignalName.TextChanged, address.Text);
+        }
+        Press(connect.GetNode<Button>("%Continue"));
+        await Frames();
+
+        var lobby = Find<LobbyScreen>();
+        if (hosting)
+        {
+            await Until(() => !lobby.GetNode<Button>("%Start").Disabled, "a guest arrives");
+            await Shot("window_host_lobby");
+            Press(lobby.GetNode<Button>("%Start"));
+        }
+        else
+        {
+            await Until(() => lobby.GetNode<VBoxContainer>("%Slots").GetChild(1).GetNode<Label>("Player").Text == "Guest Window", "the guest gets a seat");
+            await Shot("window_guest_lobby");
+        }
+        await Until(() => _main.GetChildren().OfType<GameScreen>().Any(), "the match starts");
+        var game = Find<GameScreen>();
+        Expect(hosting ? game.Session is HostGameSession : game.Session is ClientGameSession, $"{role}: the right kind of session");
+        await Wait(3);
+
+        var villageId = game.CurrentVillageId!.Value;
+        game.Session.Send(new BuildCommand(villageId, BuildingType.Farm));
+        game.Session.Send(new TrainCommand(villageId, UnitType.Spearman, 1));
+        await Until(() => game.Session.State.Villages[villageId].BuildQueue.Count > 0, "a build order takes effect", 5);
+        await Shot($"window_{role}_village");
+        game.ShowView(GameScreen.MainView.World);
+        await Wait(1);
+        await Shot($"window_{role}_map");
+
+        if (!hosting)
+        {
+            await Wait(5);
+            Press(Find<ResourceBar>().GetNode<Button>("%Pause"));
+            await Frames();
+            Press(game.GetNode<Overlay>("%PauseOverlay").GetNode<Button>("%Tertiary"));
+            await Frames();
+            Press(game.GetNode<Overlay>("%SurrenderOverlay").GetNode<Button>("%Action"));
+        }
+
+        await Until(() => game.Session.State.IsMatchOver && game.GetNode<MatchEndScreen>("%MatchEndScreen").Visible, "the results show");
+        await Shot($"window_{role}_end");
+        Expect(game.Session.State.Outcome!.WinnerIds.Contains(1), $"{role}: the host wins after the guest surrenders");
+        await Wait(1);
+        Press(game.GetNode<MatchEndScreen>("%MatchEndScreen").GetNode<Button>("%Back"));
+        await Frames();
+        Expect(Find<StartScreen>() is not null, $"{role}: back at the start");
     }
 
     private async Task PrintFrameCost(string name)

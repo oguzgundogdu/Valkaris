@@ -40,6 +40,12 @@ public sealed class ClientGameSession : IGameSession
     /// <summary>The latest whole view, as the host sent it.</summary>
     public PlayerViewSnapshot LastView { get; private set; } = null!;
 
+    /// <summary>The size of the last update before compression, for measuring.</summary>
+    public int LastMessageBytes { get; private set; }
+
+    /// <summary>How long the last view took to apply, for measuring.</summary>
+    public double LastApplySeconds { get; private set; }
+
     /// <summary>Set once the connection to the host is gone.</summary>
     public bool HostLost { get; private set; }
 
@@ -71,6 +77,7 @@ public sealed class ClientGameSession : IGameSession
         switch (WireCodec.DecodeFromHost(bytes))
         {
             case UpdateMessage update:
+                LastMessageBytes = bytes.Length;
                 Apply(update.View);
                 foreach (var gameEvent in update.Events)
                     EventRaised?.Invoke(gameEvent);
@@ -83,6 +90,7 @@ public sealed class ClientGameSession : IGameSession
 
     private void Apply(PlayerViewSnapshot trimmed)
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         LastView = _merger.Merge(trimmed);
         State = SnapshotMapper.Restore(LastView.State);
         _lastViewTime = State.ElapsedTime;
@@ -90,6 +98,7 @@ public sealed class ClientGameSession : IGameSession
         PublicNotices = LastView.Notices;
         _clashes = LastView.Clashes;
         ViewApplied?.Invoke(LastView);
+        LastApplySeconds = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds;
     }
 
     private void OnDisconnected()

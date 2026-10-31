@@ -55,6 +55,9 @@ public sealed class EnetHost : INetworkHost
         return host;
     }
 
+    /// <summary>Bytes sent since last asked, after compression, for measuring.</summary>
+    public double TakeBytesSent() => _connection.PopStatistic(ENetConnection.HostStatistic.SentData);
+
     public void Send(int peer, byte[] message)
     {
         if (_stopped || !_peers.TryGetValue(peer, out var target))
