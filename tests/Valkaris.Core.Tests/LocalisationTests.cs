@@ -320,6 +320,31 @@ public class LocalisationTests
     }
 
     [Theory]
+    [InlineData("overlay.leave", "Oyundan çık")]
+    [InlineData("ui.bar.world", "Harita")]
+    [InlineData("ui.bar.world_tip", "Harita (M)")]
+    [InlineData("send.pick_target", "Haritadan hedef seç.")]
+    [InlineData("overlay.surrender.title", "Teslim olmak istiyor musun?")]
+    [InlineData("scout.result_narrow", "Keşif: kısmi bilgi")]
+    [InlineData("scout.resources", "Kaynaklar: {list}")]
+    [InlineData("queue.empty", "Boş")]
+    [InlineData("movement.returning_loot", "Ganimetle dönüyor: {amount}")]
+    [InlineData("toast.troops_arrived", "Hedefe ulaşıldı · {village}")]
+    public void TurkishUsesTheApprovedWording(string key, string text)
+    {
+        Assert.Equal(text, Catalogue.Load("tr").Entries[key].Single());
+    }
+
+    [Fact]
+    public void TurkishSaysOyunAndHaritaNotMacAndDunya()
+    {
+        var texts = Catalogue.Load("tr").Entries.Values.SelectMany(v => v).ToList();
+
+        Assert.DoesNotContain(texts, text => text.Contains("Maç", StringComparison.Ordinal) || text.Contains("maç", StringComparison.Ordinal));
+        Assert.DoesNotContain(texts, text => text.Contains("Dünya", StringComparison.Ordinal) || text.Contains("dünya", StringComparison.Ordinal));
+    }
+
+    [Theory]
     [InlineData("Sadakat", "scout.loyalty")]
     [InlineData("Tüccar", "effect.carriers")]
     public void TurkishGlossaryTermsAppearInSentences(string term, string key)

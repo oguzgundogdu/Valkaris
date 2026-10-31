@@ -299,10 +299,10 @@ msgid "rejection.max_level_reached"
 msgstr "En yüksek seviyeye ulaşıldı."
 
 msgid "rejection.match_over"
-msgstr "Maç bitti."
+msgstr "Oyun bitti."
 
 msgid "rejection.game_paused"
-msgstr "Maç duraklatıldı."
+msgstr "Oyun duraklatıldı."
 
 msgid "movement.from"
 msgstr "{mission} · {owner} tarafından"
@@ -323,7 +323,7 @@ msgid "movement.to"
 msgstr "{mission} › {target}"
 
 msgid "movement.returning_loot"
-msgstr "Dönüyor · {amount} ganimet"
+msgstr "Ganimetle dönüyor: {amount}"
 
 msgid "movement.returning"
 msgstr "Dönüyor"
@@ -347,7 +347,7 @@ msgid "report.defeat"
 msgstr "Yenilgi"
 
 msgid "report.time"
-msgstr "{headline}  ·  Maç süresi: {time}"
+msgstr "{headline}  ·  Oyun süresi: {time}"
 
 msgid "report.attacking"
 msgstr "{owner} (saldıran)"
@@ -392,7 +392,7 @@ msgid "scout.headline_lost"
 msgstr "Casuslar kayboldu: {target}"
 
 msgid "scout.result_narrow"
-msgstr "Keşif: kabaca görüldü"
+msgstr "Keşif: kısmi bilgi"
 
 msgid "scout.result_clear"
 msgstr "Keşfedildi"
@@ -504,7 +504,7 @@ msgid "toast.trained"
 msgstr "{unit} × {count} eğitildi"
 
 msgid "toast.troops_arrived"
-msgstr "Askerler ulaştı: {village}"
+msgstr "Hedefe ulaşıldı · {village}"
 
 msgid "toast.founded"
 msgstr "{village} kuruldu"
@@ -549,28 +549,28 @@ msgid "overlay.paused.title"
 msgstr "Duraklatıldı"
 
 msgid "overlay.paused.message"
-msgstr "Maç beklemede. Devam etmek için P'ye bas."
+msgstr "Oyun beklemede. Devam etmek için P'ye bas."
 
 msgid "overlay.resume"
 msgstr "Devam et"
 
 msgid "overlay.leave"
-msgstr "Maçtan çık"
+msgstr "Oyundan çık"
 
 msgid "overlay.keep_playing"
 msgstr "Oynamaya devam et"
 
 msgid "overlay.leave.title"
-msgstr "Maçtan çıkılsın mı?"
+msgstr "Oyundan çıkılsın mı?"
 
 msgid "overlay.leave.message"
-msgstr "Bu maçtaki ilerlemen kaybolacak."
+msgstr "Bu oyundaki ilerlemen kaybolacak."
 
 msgid "overlay.surrender.title"
-msgstr "Teslim olunsun mu?"
+msgstr "Teslim olmak istiyor musun?"
 
 msgid "overlay.surrender.message"
-msgstr "Bu maçı kaybedersin. Köylerin, askerleri ve kaynaklarıyla birlikte Barbar köyü olarak haritada kalır; başkaları onları yağmalayabilir veya ele geçirebilir. Yoldaki askerler kaybolur."
+msgstr "Bu oyunu kaybedersin. Köylerin, askerleri ve kaynaklarıyla birlikte Barbar köyü olarak haritada kalır; başkaları onları yağmalayabilir veya ele geçirebilir. Yoldaki askerler kaybolur."
 
 msgid "overlay.surrender"
 msgstr "Teslim Ol"
@@ -579,7 +579,7 @@ msgid "overlay.eliminated.title"
 msgstr "Elendin"
 
 msgid "overlay.eliminated.message"
-msgstr "Hiç köyün kalmadı. Maç sensiz sürüyor."
+msgstr "Hiç köyün kalmadı. Oyun sensiz sürüyor."
 
 msgid "overlay.keep_watching"
 msgstr "İzlemeye devam et"
@@ -588,7 +588,7 @@ msgid "overlay.surrendered.title"
 msgstr "Teslim oldun"
 
 msgid "overlay.surrendered.message"
-msgstr "Köylerin artık Barbarların. Maç sensiz sürüyor."
+msgstr "Köylerin artık Barbarların. Oyun sensiz sürüyor."
 
 msgid "village.info"
 msgstr "{village}  ·  Sadakat {loyalty}"
@@ -615,7 +615,7 @@ msgid "queue.starts_in"
 msgstr "{time} sonra başlar"
 
 msgid "queue.empty"
-msgstr "Boş yer"
+msgstr "Boş"
 
 msgid "bar.choose_capital"
 msgstr "Başkent seç {time}"
@@ -763,7 +763,7 @@ msgid "send.arrives"
 msgstr "Varış: {time}"
 
 msgid "send.pick_target"
-msgstr "Dünya haritasından hedef seç."
+msgstr "Haritadan hedef seç."
 
 msgid "send.already_here"
 msgstr "Askerler zaten bu köyde."
@@ -814,7 +814,7 @@ msgid "ui.start.tagline"
 msgstr "Köyünü kur. Toprağını koru."
 
 msgid "ui.start.duration"
-msgstr "Maç süresi"
+msgstr "Oyun süresi"
 
 msgid "ui.start.speed"
 msgstr "Oyun hızı"
@@ -829,7 +829,7 @@ msgid "ui.start.difficulty"
 msgstr "Yapay zekâ zorluğu"
 
 msgid "ui.start.start"
-msgstr "Maçı başlat"
+msgstr "Oyunu başlat"
 
 msgid "ui.capital.title"
 msgstr "Başkentin düştü"
@@ -886,10 +886,10 @@ msgid "ui.bar.village"
 msgstr "Köy"
 
 msgid "ui.bar.world_tip"
-msgstr "Dünya haritası (M)"
+msgstr "Harita (M)"
 
 msgid "ui.bar.world"
-msgstr "Dünya"
+msgstr "Harita"
 
 msgid "ui.bar.capital_tip"
 msgstr "Yeni Başkent seç"
@@ -898,13 +898,13 @@ msgid "ui.bar.incoming_tip"
 msgstr "Haritada göster"
 
 msgid "ui.bar.pause_tip"
-msgstr "Maçı duraklat (P)"
+msgstr "Oyunu duraklat (P)"
 
 msgid "ui.bar.pause"
 msgstr "Duraklat"
 
 msgid "ui.bar.clock_tip"
-msgstr "Maçta kalan süre"
+msgstr "Oyunda kalan süre"
 
 msgid "ui.popup.send"
 msgstr "Asker gönder"
