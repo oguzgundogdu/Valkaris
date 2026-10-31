@@ -337,6 +337,14 @@ public class GameDataValidationTests
     public void InvalidScoutProfileValue(string field, double value) =>
         AssertAiInvalid(r => r["difficulties"]!["Normal"]![field] = value, field);
 
+    [Theory]
+    [InlineData("scoutedGrowthPerMinute")]
+    [InlineData("scoutedHelpShare")]
+    [InlineData("scoutsAtStart")]
+    [InlineData("scoutsPerMinute")]
+    public void NegativeScoutingBelief(string field) =>
+        AssertAiInvalid(r => r["beliefs"]![field] = -1, $"beliefs.{field}");
+
     [Fact]
     public void ScoutRetryNegative() => AssertAiInvalid(r => r["scoutRetrySeconds"] = -1, "scoutRetrySeconds");
 

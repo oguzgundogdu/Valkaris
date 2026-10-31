@@ -338,6 +338,15 @@ public sealed record AiBeliefs
     /// <summary>What a scouted player's defence is multiplied by, for troops that were away when the scouts came.</summary>
     public required double ScoutedPlayerAllowance { get; init; }
 
+    /// <summary>How fast a player's defence is expected to grow after scouts counted it: a report shows who to plan for, not who will have trained by the time the army arrives.</summary>
+    public required double ScoutedGrowthPerMinute { get; init; }
+
+    /// <summary>
+    /// Share of what it believes a player has, added to a scouted count of a player's village. A count can be accurate and
+    /// still be zero, and a defender who sees an attack coming sends help.
+    /// </summary>
+    public required double ScoutedHelpShare { get; init; }
+
     /// <summary>Scouts a player is expected to keep home, before anyone has counted them.</summary>
     public required double ScoutsAtStart { get; init; }
 

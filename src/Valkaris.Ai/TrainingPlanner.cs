@@ -34,8 +34,8 @@ public sealed class TrainingPlanner
     {
         var available = threatened ? village.Resources : Remaining(village.Resources, saving);
 
-        if (!threatened && TrainScouts(village, available))
-            return;
+        if (!threatened)
+            TrainScouts(village, available);
 
         if (!threatened && SpecialWanted(village) is { } special)
         {
@@ -74,16 +74,13 @@ public sealed class TrainingPlanner
     }
 
     /// <summary>Every village keeps its home Scouts, and the capital the ones for missions as well, so they are in one place.</summary>
-    private bool TrainScouts(Village village, Resources available)
+    private void TrainScouts(Village village, Resources available)
     {
         var isBase = village.Id == (_view.CapitalVillageId ?? _view.OwnVillages[0].Id);
         var wanted = _forces.HomeScouts(village) + (isBase ? _memory.ScoutsWanted : 0);
         var count = Math.Min(Math.Min(wanted - Count(village, UnitType.Scout), Affordable(UnitType.Scout, available)), _view.Config.TrainingBatchMax);
-        if (count < 1 || !_view.PreviewTrain(village.Id, UnitType.Scout, count).CanTrain)
-            return false;
-
-        _view.Send(new TrainCommand(village.Id, UnitType.Scout, count));
-        return true;
+        if (count >= 1 && _view.PreviewTrain(village.Id, UnitType.Scout, count).CanTrain)
+            _view.Send(new TrainCommand(village.Id, UnitType.Scout, count));
     }
 
     /// <summary>True while this village is saving for a Lord or Settler, which should come before further buildings.</summary>

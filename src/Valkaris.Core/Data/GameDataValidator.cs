@@ -458,6 +458,14 @@ internal static class GameDataValidator
             Error("beliefs.abandonedLoot", "must not be negative.");
         if (beliefs.ScoutedPlayerAllowance < 1)
             Error("beliefs.scoutedPlayerAllowance", "must be at least 1.");
+        if (beliefs.ScoutedGrowthPerMinute < 0)
+            Error("beliefs.scoutedGrowthPerMinute", "must not be negative.");
+        if (beliefs.ScoutedHelpShare < 0)
+            Error("beliefs.scoutedHelpShare", "must not be negative.");
+        if (beliefs.ScoutsAtStart < 0)
+            Error("beliefs.scoutsAtStart", "must not be negative.");
+        if (beliefs.ScoutsPerMinute < 0)
+            Error("beliefs.scoutsPerMinute", "must not be negative.");
         if (beliefs.PowerPerTroop <= 0)
             Error("beliefs.powerPerTroop", "must be positive.");
         if (beliefs.GrowthAfterSightingPerMinute < 0)

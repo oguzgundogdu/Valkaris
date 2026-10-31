@@ -39,9 +39,9 @@ public sealed class ScoutPlanner
         var wanted = Math.Min(ScoutsFor(target), _view.Profile.MaxScoutForce);
         _memory.ScoutsWanted = wanted;
 
-        // A first look goes with what there is, since the army waits for it. After a failure, only the full force will do.
-        var scouts = Math.Min(wanted, village.TroopCount(UnitType.Scout) - _forces.HomeScouts(village));
-        if (scouts < 1 || (scouts < wanted && _memory.CaughtAt(target) is not null))
+        // A small party only feeds their Scouts, so it waits for the whole force.
+        var scouts = wanted;
+        if (village.TroopCount(UnitType.Scout) - _forces.HomeScouts(village) < scouts)
             return;
 
         var command = new SendTroopsCommand(village.Id, target.Id, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = scouts });

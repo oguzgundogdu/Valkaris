@@ -202,7 +202,7 @@ public class AiMemoryTests
         Scouted(Self, Enemy, Enemy, 10, wall: 2);
         _memory.Update();
 
-        var expected = 10 * SpearDefence * (1 + TestData.Shipped.Combat.WallBonusPerLevel * 2) * TestData.Shipped.Ai.Beliefs.ScoutedPlayerAllowance;
+        var expected = Scouted(10 * SpearDefence * (1 + TestData.Shipped.Combat.WallBonusPerLevel * 2));
         Assert.Equal(expected, _memory.EstimateDefence(Known(Enemy)), 6);
     }
 
@@ -277,6 +277,32 @@ public class AiMemoryTests
         Assert.Null(_memory.SightingOf(camp.Id)!.Stock);
     }
 
+    /// <summary>The allowance for troops away, and for help a defender can send, even to a village counted as empty.</summary>
+    private double Scouted(double seen)
+    {
+        var beliefs = TestData.Shipped.Ai.Beliefs;
+        var minutes = _state.ElapsedTime * _state.Settings.SpeedMultiplier / 60;
+        return seen * beliefs.ScoutedPlayerAllowance + (beliefs.PlayerPowerAtStart + beliefs.PlayerPowerPerMinute * minutes) * beliefs.ScoutedHelpShare;
+    }
+
+    [Fact]
+    public void AVillageCountedAsEmptyStillExpectsHelp()
+    {
+        Scouted(Self, Enemy, Enemy, 0);
+        _memory.Update();
+
+        Assert.True(_memory.EstimateDefence(Known(Enemy)) > 0);
+        Assert.Equal(Scouted(0), _memory.EstimateDefence(Known(Enemy)), 6);
+    }
+
+    [Fact]
+    public void AScoutedVillageIsExpectedToGrowFasterThanAFoughtOne()
+    {
+        var beliefs = TestData.Shipped.Ai.Beliefs;
+
+        Assert.True(beliefs.ScoutedGrowthPerMinute > beliefs.PlayerPowerPerMinute);
+    }
+
     private void ScoutedRoughly(int troopsLow, int troopsHigh, int wallLow, int wallHigh) =>
         _state.AddScoutReport(new ScoutReport(
             _reportId++, _state.ElapsedTime, Self, Enemy, 2, Enemy,
@@ -290,7 +316,7 @@ public class AiMemoryTests
         _memory.Update();
 
         var data = TestData.Shipped;
-        var expected = 40 * data.Ai.Beliefs.PowerPerTroop * (1 + data.Combat.WallBonusPerLevel * 3) * data.Ai.Beliefs.ScoutedPlayerAllowance;
+        var expected = Scouted(40 * data.Ai.Beliefs.PowerPerTroop * (1 + data.Combat.WallBonusPerLevel * 3));
         Assert.Equal(expected, _memory.EstimateDefence(Known(Enemy)), 6);
     }
 
@@ -312,7 +338,7 @@ public class AiMemoryTests
         Scouted(Self, Enemy, Enemy, 2);
         _memory.Update();
 
-        Assert.Equal(2 * SpearDefence * TestData.Shipped.Ai.Beliefs.ScoutedPlayerAllowance, _memory.EstimateDefence(Known(Enemy)), 6);
+        Assert.Equal(Scouted(2 * SpearDefence), _memory.EstimateDefence(Known(Enemy)), 6);
     }
 
     [Fact]
@@ -350,7 +376,7 @@ public class AiMemoryTests
         _memory.Update();
 
         Assert.Null(_memory.CaughtAt(Known(Enemy)));
-        Assert.Equal(2 * SpearDefence * TestData.Shipped.Ai.Beliefs.ScoutedPlayerAllowance, _memory.EstimateDefence(Known(Enemy)), 6);
+        Assert.Equal(Scouted(2 * SpearDefence), _memory.EstimateDefence(Known(Enemy)), 6);
     }
 
     [Fact]

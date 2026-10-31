@@ -186,7 +186,7 @@ public sealed class AiMemory
 
             // Scouts count only who was home, and a player's army may be out.
             if (!village.IsBarbarian && sighting.FromScouts)
-                remaining *= beliefs.ScoutedPlayerAllowance;
+                remaining = remaining * beliefs.ScoutedPlayerAllowance + (beliefs.PlayerPowerAtStart + beliefs.PlayerPowerPerMinute * elapsedMinutes) * beliefs.ScoutedHelpShare;
 
             // A camp's garrison comes back to what it was. A player's grows with what they can train.
             if (village.IsAbandoned)
@@ -194,7 +194,7 @@ public sealed class AiMemory
 
             return village.IsBarbarian
                 ? Math.Min(remaining + sighting.PeakDefence * beliefs.GrowthAfterSightingPerMinute * minutes, sighting.PeakDefence)
-                : remaining + beliefs.PlayerPowerPerMinute * minutes;
+                : remaining + (sighting.FromScouts ? beliefs.ScoutedGrowthPerMinute : beliefs.PlayerPowerPerMinute) * minutes;
         }
 
         if (village.IsAbandoned)
@@ -212,14 +212,17 @@ public sealed class AiMemory
     public double ExpectedScoutStrength(KnownVillage village)
     {
         var beliefs = _view.Config.Beliefs;
+        var believed = beliefs.ScoutsAtStart + beliefs.ScoutsPerMinute * _view.Now * _view.GameSpeed / 60;
         if (_sightings.TryGetValue(village.Id, out var sighting) && sighting.OwnerId == village.OwnerId && sighting is { FromScouts: true, DefenceCeiling: null })
         {
-            var growth = village.IsBarbarian ? 0 : beliefs.ScoutsPerMinute * (_view.Now - sighting.Time) * _view.GameSpeed / 60;
-            var scouts = sighting.Remaining.GetValueOrDefault(UnitType.Scout) + growth;
+            var counted = sighting.Remaining.GetValueOrDefault(UnitType.Scout);
+
+            // A count made just after a fight is low, and a player trains back up.
+            var scouts = village.IsBarbarian ? counted : Math.Max(counted, believed);
             return scouts * (1 + _view.Combat.Scouting.WatchtowerBonusPerLevel * (sighting.WatchtowerLevel ?? 0));
         }
 
-        return village.BarbarianTier is not null ? 0 : beliefs.ScoutsAtStart + beliefs.ScoutsPerMinute * _view.Now * _view.GameSpeed / 60;
+        return village.BarbarianTier is not null ? 0 : believed;
     }
 
     /// <summary>Resources a barbarian village should hold. It refills after a raid, up to what the tier is believed to hold.</summary>
