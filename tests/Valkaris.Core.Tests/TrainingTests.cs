@@ -241,3 +241,13 @@ public class TrainingTests
         Assert.Equal(_village.TrainingQueue, restored.Villages[VillageId].TrainingQueue);
     }
 }
+
+public class ResourcesCoverTests
+{
+    [Theory]
+    [InlineData(39.9999999999998, true)]
+    [InlineData(40.00000000000016, true)]
+    [InlineData(39.99, false)]
+    public void RoundingErrorsDontDecideWhatCanBePaid(double wood, bool expected) =>
+        Assert.Equal(expected, new Resources(wood, 0, 0).Covers(new Resources(40, 0, 0)));
+}

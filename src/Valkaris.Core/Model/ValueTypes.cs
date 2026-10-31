@@ -1,3 +1,5 @@
+using Valkaris.Core.Systems;
+
 namespace Valkaris.Core.Model;
 
 public readonly record struct TileCoord(int X, int Y);
@@ -22,8 +24,9 @@ public readonly record struct Resources(double Wood, double Stone, double Food)
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 
+    /// <summary>Allows for the rounding errors in amounts, as Whole does, or a stock at exactly the cost would depend on how time was stepped.</summary>
     public bool Covers(Resources cost) =>
-        Wood >= cost.Wood && Stone >= cost.Stone && Food >= cost.Food;
+        Wood + Whole.Noise >= cost.Wood && Stone + Whole.Noise >= cost.Stone && Food + Whole.Noise >= cost.Food;
 
     public Resources CappedAt(double cap) =>
         new(Math.Min(Wood, cap), Math.Min(Stone, cap), Math.Min(Food, cap));

@@ -6,7 +6,7 @@ namespace Valkaris.Core.Systems;
 /// </summary>
 public static class Whole
 {
-    private const double Noise = 1e-6;
+    public const double Noise = 1e-6;
 
     public static int Down(double value) => (int)Math.Floor(value + Noise);
 
