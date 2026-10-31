@@ -45,7 +45,7 @@ public partial class VillagePopup : PanelContainer
         var distance = GetNode<Label>("%Distance");
         distance.Visible = currentVillage is not null && !isCurrent;
         if (currentVillage is not null)
-            distance.Text = $"{UnitRules.Distance(currentVillage.Position, village.Position):0.0} tiles away";
+            distance.Text = $"{Format.OneDecimal(UnitRules.Distance(currentVillage.Position, village.Position))} tiles away";
 
         var reason = GetNode<Label>("%Reason");
         reason.Visible = isOwn;
@@ -69,7 +69,7 @@ public partial class VillagePopup : PanelContainer
 
         var distance = GetNode<Label>("%Distance");
         distance.Visible = true;
-        distance.Text = $"{UnitRules.Distance(currentVillage.Position, tile):0.0} tiles away";
+        distance.Text = $"{Format.OneDecimal(UnitRules.Distance(currentVillage.Position, tile))} tiles away";
 
         var reason = GetNode<Label>("%Reason");
         reason.Visible = true;

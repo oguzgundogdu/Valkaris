@@ -22,7 +22,7 @@ public partial class ReportDialog : ColorRect
         FillSide(GetNode<VBoxContainer>("%Defender"), $"{defender} (defending)", report.DefenderPresent, report.DefenderLost);
 
         GetNode<Label>("%Powers").Text =
-            $"Attack {report.AttackPower:0}  vs  defence {report.DefencePower:0}" +
+            $"Attack {Format.Whole(report.AttackPower)}  vs  defence {Format.Whole(report.DefencePower)}" +
             (report.WallLevel > 0 ? $"  (Wall level {report.WallLevel})" : "");
 
         var loot = report.Loot;
@@ -77,7 +77,7 @@ public partial class ReportDialog : ColorRect
         {
             var label = GetNode<Label>("%Loyalty");
             label.Visible = true;
-            label.Text = $"Loyalty {loyalty:0}";
+            label.Text = $"Loyalty {Format.Whole(loyalty)}";
         }
 
         Visible = true;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Valkaris.Core.Model;
 
 namespace Valkaris.Sim;
@@ -37,15 +38,15 @@ public sealed record SimOptions
             var value = parts[1];
             options = parts[0] switch
             {
-                "--matches" => options with { Matches = int.Parse(value) },
-                "--players" => options with { Players = int.Parse(value) },
+                "--matches" => options with { Matches = int.Parse(value, CultureInfo.InvariantCulture) },
+                "--players" => options with { Players = int.Parse(value, CultureInfo.InvariantCulture) },
                 "--difficulty" => options with { Difficulties = value.Split(',').Select(Enum.Parse<AiDifficulty>).ToList() },
                 "--map" => options with { Map = Enum.Parse<MapSize>(value) },
-                "--minutes" => options with { Minutes = value == "unlimited" ? null : double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) },
-                "--cap-minutes" => options with { CapMinutes = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) },
-                "--speed" => options with { Speed = double.Parse(value, System.Globalization.CultureInfo.InvariantCulture) },
-                "--seed" => options with { Seed = ulong.Parse(value) },
-                "--threads" => options with { Threads = int.Parse(value) },
+                "--minutes" => options with { Minutes = value == "unlimited" ? null : double.Parse(value, CultureInfo.InvariantCulture) },
+                "--cap-minutes" => options with { CapMinutes = double.Parse(value, CultureInfo.InvariantCulture) },
+                "--speed" => options with { Speed = double.Parse(value, CultureInfo.InvariantCulture) },
+                "--seed" => options with { Seed = ulong.Parse(value, CultureInfo.InvariantCulture) },
+                "--threads" => options with { Threads = int.Parse(value, CultureInfo.InvariantCulture) },
                 "--out" => options with { OutPath = value },
                 "--data" => options with { DataPath = value },
                 "--efficiency" => options with { EfficiencyTable = value == "true" },

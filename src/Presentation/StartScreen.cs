@@ -21,13 +21,13 @@ public partial class StartScreen : CenterContainer
     {
         var duration = GetNode<OptionButton>("%Duration");
         foreach (var minutes in _data.Game.MatchDurationsMinutes)
-            duration.AddItem($"{minutes:0} minutes");
+            duration.AddItem($"{Format.Whole(minutes)} minutes");
         if (_data.Game.UnlimitedMatches)
             duration.AddItem("Unlimited");
 
         var speed = GetNode<OptionButton>("%Speed");
         foreach (var multiplier in _data.Game.SpeedMultipliers)
-            speed.AddItem($"{multiplier:0.##}x");
+            speed.AddItem($"{Format.Trimmed(multiplier)}x");
 
         var mapSizes = Enum.GetValues<MapSize>();
         var mapSize = GetNode<OptionButton>("%MapSize");
@@ -39,7 +39,7 @@ public partial class StartScreen : CenterContainer
 
         var opponents = GetNode<OptionButton>("%Opponents");
         for (var count = _data.Game.MinPlayers - 1; count <= _data.Game.MaxPlayers - 1; count++)
-            opponents.AddItem(count.ToString());
+            opponents.AddItem(Format.Whole(count));
 
         var difficulties = Enum.GetValues<AiDifficulty>();
         var difficulty = GetNode<OptionButton>("%Difficulty");

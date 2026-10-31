@@ -51,12 +51,23 @@ public partial class UiTest : Control
         GetTree().Quit(_failures.Count == 0 ? 0 : 1);
     }
 
+    /// <summary>A run under tr-TR proves nothing unless that culture is really in force.</summary>
+    private void TestCulture()
+    {
+        if (DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild()).Culture is not { } culture)
+            return;
+
+        Expect(System.Globalization.CultureInfo.CurrentCulture.Name == culture, $"The culture is {culture}, got '{System.Globalization.CultureInfo.CurrentCulture.Name}'");
+        Expect(culture != "tr-TR" || "i".ToUpper() == "\u0130", "tr-TR rules are in force");
+    }
+
     private async Task Run()
     {
         _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
         _main.IdleOpponents = true;
         AddChild(_main);
         await Frames();
+        TestCulture();
 
         var start = Find<StartScreen>();
         await Shot("start");

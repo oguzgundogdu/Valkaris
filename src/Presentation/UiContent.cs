@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Godot;
 using Valkaris.Core.Commands;
@@ -160,7 +161,7 @@ public static class UiContent
             return $"{RangeText(report.TroopRange!)} troops, Wall {RangeText(report.WallRange!)}";
 
         var wall = report.WallLevel > 0 ? $", Wall {report.WallLevel}" : "";
-        var loyalty = report.Loyalty is { } value ? $", loyalty {value:0}" : "";
+        var loyalty = report.Loyalty is { } value ? $", loyalty {Format.Whole(value)}" : "";
         return $"{report.Garrison!.Where(t => t.Key != UnitType.Scout).Sum(t => t.Value)} troops{wall}, {Format.Total(report.Stock!.Value)} resources{loyalty}";
     }
 
@@ -211,11 +212,11 @@ public static class UiContent
 public static class Format
 {
     /// <summary>Whole units, rounded down so the display never promises more than is available.</summary>
-    public static string Amount(double value) => Mathf.FloorToInt(value).ToString();
+    public static string Amount(double value) => Mathf.FloorToInt(value).ToString(CultureInfo.InvariantCulture);
 
     public static string Total(Resources resources) => Amount(resources.Wood + resources.Stone + resources.Food);
 
-    public static string Rate(double perSecond) => $"+{perSecond:0.0}/s";
+    public static string Rate(double perSecond) => $"+{OneDecimal(perSecond)}/s";
 
     /// <summary>Rounded up, so a countdown reaches 0:00 only when the time is really over.</summary>
     public static string Time(double seconds)
@@ -224,6 +225,15 @@ public static class Format
         var hours = total / 3600;
         var minutes = total % 3600 / 60;
         var rest = total % 60;
-        return hours > 0 ? $"{hours}:{minutes:00}:{rest:00}" : $"{minutes}:{rest:00}";
+        return hours > 0 ? $"{Whole(hours)}:{Padded(minutes)}:{Padded(rest)}" : $"{Whole(minutes)}:{Padded(rest)}";
     }
+
+    public static string Whole(double value) => value.ToString("0", CultureInfo.InvariantCulture);
+
+    public static string OneDecimal(double value) => value.ToString("0.0", CultureInfo.InvariantCulture);
+
+    /// <summary>Up to two decimals, and none where the value has none.</summary>
+    public static string Trimmed(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static string Padded(int value) => value.ToString("00", CultureInfo.InvariantCulture);
 }

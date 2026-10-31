@@ -101,7 +101,7 @@ public partial class TroopsPanel : VBoxContainer
             var definition = session.Data.Units.Units[unit];
             row.Count.Text = $"× {village.TroopCount(unit)}";
             row.Stats.Text =
-                $"Attack {definition.Attack:0}  ·  Defence {definition.DefenceVsInfantry:0} inf / {definition.DefenceVsCavalry:0} cav  ·  Carry {definition.LootCapacity:0}";
+                $"Attack {Format.Whole(definition.Attack)}  ·  Defence {Format.Whole(definition.DefenceVsInfantry)} inf / {Format.Whole(definition.DefenceVsCavalry)} cav  ·  Carry {Format.Whole(definition.LootCapacity)}";
 
             var locked = barracks < definition.RequiredBarracksLevel;
             row.Controls.Visible = !locked;

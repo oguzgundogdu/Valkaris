@@ -274,7 +274,7 @@ public partial class SendPanel : VBoxContainer
     {
         _targetLine.Text = target is null
             ? "No target yet"
-            : $"{target.Name}  ·  {UiContent.OwnerName(session, target.OwnerId)}  ·  {UnitRules.Distance(village.Position, target.Position):0.0} tiles";
+            : $"{target.Name}  ·  {UiContent.OwnerName(session, target.OwnerId)}  ·  {Format.OneDecimal(UnitRules.Distance(village.Position, target.Position))} tiles";
 
         _pickTarget.Visible = !mapIsOpen;
         _pickTarget.Text = target is null ? "Pick a village on the map" : "Change target on the map";

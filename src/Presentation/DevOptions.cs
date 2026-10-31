@@ -6,16 +6,17 @@ using Valkaris.Core.Model;
 namespace Valkaris.Presentation;
 
 /// <summary>
-/// Dev-only match overrides from the command line: -- --dev-speed=20 --dev-duration=60 (seconds) --dev-scenario=villages --dev-idle-ai --dev-god.
+/// Dev-only match overrides from the command line: -- --dev-speed=20 --dev-duration=60 (seconds) --dev-scenario=villages --dev-idle-ai --dev-god --dev-culture=tr-TR.
 /// Ignored in release builds, so exported games cannot use them.
 /// </summary>
-public sealed record DevOptions(double? Speed, double? DurationSeconds, bool IdleAi, string? Scenario = null, bool God = false)
+public sealed record DevOptions(double? Speed, double? DurationSeconds, bool IdleAi, string? Scenario = null, bool God = false, string? Culture = null)
 {
     private const string SpeedArgument = "--dev-speed=";
     private const string DurationArgument = "--dev-duration=";
     private const string IdleAiArgument = "--dev-idle-ai";
     private const string ScenarioArgument = "--dev-scenario=";
     private const string GodArgument = "--dev-god";
+    private const string CultureArgument = "--dev-culture=";
 
     public static DevOptions Parse(IEnumerable<string> arguments, bool isDebugBuild)
     {
@@ -27,6 +28,7 @@ public sealed record DevOptions(double? Speed, double? DurationSeconds, bool Idl
         var idleAi = false;
         string? scenario = null;
         var god = false;
+        string? culture = null;
         foreach (var argument in arguments)
         {
             if (argument.StartsWith(SpeedArgument, StringComparison.Ordinal))
@@ -39,8 +41,10 @@ public sealed record DevOptions(double? Speed, double? DurationSeconds, bool Idl
                 god = true;
             else if (argument.StartsWith(ScenarioArgument, StringComparison.Ordinal))
                 scenario = argument[ScenarioArgument.Length..];
+            else if (argument.StartsWith(CultureArgument, StringComparison.Ordinal))
+                culture = argument[CultureArgument.Length..];
         }
-        return new DevOptions(speed, duration, idleAi, scenario, god);
+        return new DevOptions(speed, duration, idleAi, scenario, god, culture);
     }
 
     public GameSettings Apply(GameSettings settings) => settings with

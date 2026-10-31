@@ -1,6 +1,10 @@
 using System.Diagnostics;
+using System.Globalization;
 using Valkaris.Core.Data;
 using Valkaris.Sim;
+
+// Reports are compared between runs, so they must not follow the machine's locale.
+CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
 var options = SimOptions.Parse(args);
 var data = GameData.Load(new FolderDataSource(options.DataPath ?? FolderDataSource.FindDataFolder()));

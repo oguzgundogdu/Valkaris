@@ -119,7 +119,7 @@ public partial class BuildingPanel : PanelContainer
         }
 
         if (building == BuildingType.Watchtower)
-            return Compare(l => $"Scouts at home × {1 + data.Combat.Scouting.WatchtowerBonusPerLevel * l:0.##}");
+            return Compare(l => $"Scouts at home × {Format.Trimmed(1 + data.Combat.Scouting.WatchtowerBonusPerLevel * l)}");
 
         return "";
     }

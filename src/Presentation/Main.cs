@@ -28,9 +28,12 @@ public partial class Main : Control
 
     public override void _Ready()
     {
-        // The UI is English, so numbers must not follow the player's system locale.
-        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+        // Code states its culture wherever it matters. This is a safety net for players, and the tests turn it off to prove that.
+        var culture = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild()).Culture is { } name
+            ? CultureInfo.GetCultureInfo(name)
+            : CultureInfo.InvariantCulture;
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.CurrentCulture = culture;
 
         DisplayServer.WindowSetMinSize(MinWindowSize);
         GetTree().AutoAcceptQuit = false;

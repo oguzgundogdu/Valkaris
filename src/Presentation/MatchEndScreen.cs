@@ -47,7 +47,7 @@ public partial class MatchEndScreen : ColorRect
                 + (player.Difficulty is { } difficulty ? $" ({difficulty})" : "")
                 + (player.HasSurrendered ? " (surrendered)" : player.IsEliminated ? " (eliminated)" : "");
 
-            foreach (var cell in new[] { $"{i + 1}", name, $"{score.Villages}", $"{score.Population}", $"{score.Captures}", $"{score.Score:0}" })
+            foreach (var cell in new[] { $"{i + 1}", name, $"{score.Villages}", $"{score.Population}", $"{score.Captures}", $"{Format.Whole(score.Score)}" })
                 table.AddChild(new Label { Text = cell, ThemeTypeVariation = style });
         }
 
