@@ -11,8 +11,8 @@
     "forestAbove": 0.58
   },
   "barbarians": {
-    "resourceRegenPerSecond": 1.0,
-    "troopRegenSeconds": 30,
+    "resourceRegenPerSecond": 3.0,
+    "troopRegenSeconds": 10,
     "tiers": [
       {
         "name": "Camp",

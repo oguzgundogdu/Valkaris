@@ -3,12 +3,12 @@
     "dropMin": 20,
     "dropMax": 30,
     "afterCapture": 40,
-    "regenPerSecond": 0.05,
-    "regenPerSecondPerMainLevel": 0.02
+    "regenPerSecond": 0.15,
+    "regenPerSecondPerMainLevel": 0.06
   },
   "carriers": {
     "capacity": 200,
-    "speed": 0.2
+    "speed": 0.6
   },
   "capital": {
     "lockedAboveMainLevel": 3,

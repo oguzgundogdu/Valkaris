@@ -23,9 +23,9 @@ public class BuildingRulesTests
     [Fact]
     public void BuildTimeFollowsTheGrowthCurveAndIsRounded()
     {
-        Assert.Equal(30, BuildingRules.BuildTimeSeconds(Data, BuildingType.Woodcutter, 1));
-        Assert.Equal(42, BuildingRules.BuildTimeSeconds(Data, BuildingType.Woodcutter, 2));
-        Assert.Equal(59, BuildingRules.BuildTimeSeconds(Data, BuildingType.Woodcutter, 3));
+        Assert.Equal(10, BuildingRules.BuildTimeSeconds(Data, BuildingType.Woodcutter, 1));
+        Assert.Equal(14, BuildingRules.BuildTimeSeconds(Data, BuildingType.Woodcutter, 2));
+        Assert.Equal(20, BuildingRules.BuildTimeSeconds(Data, BuildingType.Woodcutter, 3));
     }
 
     [Theory]
@@ -61,8 +61,8 @@ public class BuildingRulesTests
     public void ProducersOutputTheirResource(BuildingType type, ResourceType resource)
     {
         Assert.Equal(Resources.Zero, BuildingRules.Production(Data, type, 0));
-        Assert.Equal(Resources.Of(resource, 1.0), BuildingRules.Production(Data, type, 1));
-        Assert.Equal(1.4, BuildingRules.Production(Data, type, 2).Get(resource), precision: 10);
+        Assert.Equal(Resources.Of(resource, 3.0), BuildingRules.Production(Data, type, 1));
+        Assert.Equal(4.2, BuildingRules.Production(Data, type, 2).Get(resource), precision: 10);
     }
 
     [Fact]

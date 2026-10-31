@@ -157,8 +157,8 @@ public class SimToolTests
 
         Assert.Equal(6, result.ResourceSamples);
         Assert.Equal(3, result.SamplesAtCap);
-        Assert.Equal(300, result.ProductionLost, 6);
-        Assert.Equal(600, result.ProductionTotal, 6);
+        Assert.Equal(900, result.ProductionLost, 6);
+        Assert.Equal(1800, result.ProductionTotal, 6);
     }
 
     [Fact]

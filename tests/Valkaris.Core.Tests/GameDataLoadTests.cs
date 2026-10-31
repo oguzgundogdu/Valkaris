@@ -14,7 +14,7 @@ public class GameDataLoadTests
         Assert.Equal(1, game.StartingBuildings[BuildingType.MainBuilding]);
         Assert.Equal(0, game.StartingBuildings[BuildingType.Barracks]);
         Assert.Equal(2, game.MaxBuildQueueLength);
-        Assert.Equal(new double[] { 20, 30, 45, 60 }, game.MatchDurationsMinutes);
+        Assert.Equal(new double[] { 30, 45, 60 }, game.MatchDurationsMinutes);
         Assert.Equal(16, game.MapSizes[MapSize.Small].Width);
     }
 

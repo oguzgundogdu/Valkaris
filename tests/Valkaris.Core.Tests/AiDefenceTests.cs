@@ -144,7 +144,7 @@ public class AiDefenceTests
         SendAttack(match);
         var arrival = match.State.Movements.Single().ArrivalTime;
 
-        match.Session.Tick(31);
+        match.Session.Tick(10);
 
         var help = match.State.Movements.Single(m => m.Type == MovementType.Reinforce);
         Assert.Equal(Ai, help.ToVillageId);

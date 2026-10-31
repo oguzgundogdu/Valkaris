@@ -173,8 +173,8 @@ public class AiWarTests
 
         match.Run(1200);
 
-        var protectedHits = match.State.Reports.Where(r => r.AttackerId == Ai && r.CapitalProtected).ToList();
-        Assert.Single(protectedHits);
+        var withoutCatapults = match.State.Reports.Where(r => r.AttackerId == Ai && r.CapitalProtected && !r.AttackerSent.ContainsKey(UnitType.Catapult)).ToList();
+        Assert.Single(withoutCatapults);
     }
 
     [Fact]

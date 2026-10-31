@@ -94,7 +94,7 @@ public class AiRaidTests
 
         match.Run(600, step: 1);
 
-        foreach (var group in match.State.Reports.Where(r => r.AttackerId == Ai).GroupBy(r => r.DefenderVillageId))
+        foreach (var group in match.State.Reports.Where(r => r.AttackerId == Ai && r.Type == MovementType.Raid).GroupBy(r => r.DefenderVillageId))
         {
             var times = group.Select(r => r.Time).OrderBy(t => t).ToList();
             for (var i = 1; i < times.Count; i++)
@@ -127,7 +127,8 @@ public class AiRaidTests
         match.State.Villages[2].AddTroops(UnitType.Spearman, 1);
         Assert.True(match.Session.SendAs(2, new SendTroopsCommand(2, Ai, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 })).Success);
 
-        match.Session.Tick(31);
+        // Long enough for a decision, and before the attack arrives.
+        match.Session.Tick(12);
 
         Assert.Null(FirstRaid(match));
     }

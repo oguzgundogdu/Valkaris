@@ -6,46 +6,46 @@
     "MainBuilding": {
       "maxLevel": 10,
       "cost": { "base": { "wood": 70, "stone": 70, "food": 20 }, "growth": 1.5 },
-      "buildTime": { "base": 45, "growth": 1.4 }
+      "buildTime": { "base": 15, "growth": 1.4 }
     },
     "Woodcutter": {
       "maxLevel": 10,
       "cost": { "base": { "wood": 40, "stone": 60, "food": 10 }, "growth": 1.5 },
-      "buildTime": { "base": 30, "growth": 1.4 },
-      "production": { "resource": "Wood", "base": 1.0, "growth": 1.4 }
+      "buildTime": { "base": 10, "growth": 1.4 },
+      "production": { "resource": "Wood", "base": 3.0, "growth": 1.4 }
     },
     "Quarry": {
       "maxLevel": 10,
       "cost": { "base": { "wood": 60, "stone": 40, "food": 10 }, "growth": 1.5 },
-      "buildTime": { "base": 30, "growth": 1.4 },
-      "production": { "resource": "Stone", "base": 1.0, "growth": 1.4 }
+      "buildTime": { "base": 10, "growth": 1.4 },
+      "production": { "resource": "Stone", "base": 3.0, "growth": 1.4 }
     },
     "Farm": {
       "maxLevel": 10,
       "cost": { "base": { "wood": 50, "stone": 50, "food": 10 }, "growth": 1.5 },
-      "buildTime": { "base": 30, "growth": 1.4 },
-      "production": { "resource": "Food", "base": 1.0, "growth": 1.4 }
+      "buildTime": { "base": 10, "growth": 1.4 },
+      "production": { "resource": "Food", "base": 3.0, "growth": 1.4 }
     },
     "Warehouse": {
       "maxLevel": 10,
       "cost": { "base": { "wood": 80, "stone": 80, "food": 10 }, "growth": 1.5 },
-      "buildTime": { "base": 40, "growth": 1.4 },
+      "buildTime": { "base": 13, "growth": 1.4 },
       "capacity": { "atLevelZero": 500, "base": 1000, "growth": 1.4 }
     },
     "Barracks": {
       "maxLevel": 10,
       "cost": { "base": { "wood": 120, "stone": 90, "food": 30 }, "growth": 1.5 },
-      "buildTime": { "base": 60, "growth": 1.4 }
+      "buildTime": { "base": 20, "growth": 1.4 }
     },
     "Wall": {
       "maxLevel": 10,
       "cost": { "base": { "wood": 60, "stone": 120, "food": 10 }, "growth": 1.5 },
-      "buildTime": { "base": 50, "growth": 1.4 }
+      "buildTime": { "base": 17, "growth": 1.4 }
     },
     "Marketplace": {
       "maxLevel": 10,
       "cost": { "base": { "wood": 100, "stone": 80, "food": 40 }, "growth": 1.5 },
-      "buildTime": { "base": 50, "growth": 1.4 }
+      "buildTime": { "base": 17, "growth": 1.4 }
     }
   }
 }

@@ -6,10 +6,10 @@
       "attack": 10,
       "defenceVsInfantry": 20,
       "defenceVsCavalry": 40,
-      "speed": 0.12,
+      "speed": 0.36,
       "lootCapacity": 20,
       "cost": { "wood": 30, "stone": 20, "food": 60 },
-      "trainingSeconds": 20,
+      "trainingSeconds": 7,
       "requiredBarracksLevel": 1
     },
     "Swordsman": {
@@ -17,10 +17,10 @@
       "attack": 30,
       "defenceVsInfantry": 15,
       "defenceVsCavalry": 10,
-      "speed": 0.12,
+      "speed": 0.36,
       "lootCapacity": 15,
       "cost": { "wood": 40, "stone": 50, "food": 90 },
-      "trainingSeconds": 30,
+      "trainingSeconds": 10,
       "requiredBarracksLevel": 2
     },
     "Cavalry": {
@@ -28,10 +28,10 @@
       "attack": 40,
       "defenceVsInfantry": 20,
       "defenceVsCavalry": 15,
-      "speed": 0.3,
+      "speed": 0.9,
       "lootCapacity": 60,
       "cost": { "wood": 80, "stone": 60, "food": 180 },
-      "trainingSeconds": 50,
+      "trainingSeconds": 17,
       "requiredBarracksLevel": 3
     },
     "Catapult": {
@@ -39,10 +39,10 @@
       "attack": 5,
       "defenceVsInfantry": 5,
       "defenceVsCavalry": 5,
-      "speed": 0.06,
+      "speed": 0.18,
       "lootCapacity": 0,
       "cost": { "wood": 120, "stone": 150, "food": 300 },
-      "trainingSeconds": 90,
+      "trainingSeconds": 30,
       "requiredBarracksLevel": 5
     },
     "Settler": {
@@ -50,10 +50,10 @@
       "attack": 1,
       "defenceVsInfantry": 5,
       "defenceVsCavalry": 5,
-      "speed": 0.1,
+      "speed": 0.3,
       "lootCapacity": 0,
       "cost": { "wood": 300, "stone": 300, "food": 500 },
-      "trainingSeconds": 120,
+      "trainingSeconds": 40,
       "requiredBarracksLevel": 3
     },
     "Lord": {
@@ -61,10 +61,10 @@
       "attack": 20,
       "defenceVsInfantry": 20,
       "defenceVsCavalry": 20,
-      "speed": 0.08,
+      "speed": 0.24,
       "lootCapacity": 0,
       "cost": { "wood": 400, "stone": 500, "food": 800 },
-      "trainingSeconds": 180,
+      "trainingSeconds": 60,
       "requiredBarracksLevel": 5
     }
   }

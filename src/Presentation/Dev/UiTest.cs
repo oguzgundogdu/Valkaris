@@ -106,7 +106,7 @@ public partial class UiTest : Control
         Expect(woodLabel.Text != shownWood, "Resource amount ticks up");
 
         var rate = Find<ResourceBar>().GetNode<Label>("Box/Chips/Stone/Rate").Text;
-        Expect(rate == "+1.0/s", $"Numbers ignore the system locale, got '{rate}'");
+        Expect(rate == "+3.0/s", $"Numbers ignore the system locale, got '{rate}'");
 
         await TestQueue(game, panel);
     }
@@ -136,13 +136,14 @@ public partial class UiTest : Control
         Expect(upgrade.Disabled, "A full queue disables the button");
         Expect(panel.GetNode<Label>("%Reason").Text == "The queue is full.", "The button says why it is disabled");
 
-        session.Tick(21);
+        var firstBuild = session.State.Villages[1].BuildQueue[0];
+        session.Tick((firstBuild.FinishTime - firstBuild.StartTime) / 2);
         await Frames();
         var bar = queue.GetNode<ProgressBar>("Box/Rows/Row0/Bar");
         Expect(bar.Value is > 0.4 and < 0.6, $"Progress bar follows time, got {bar.Value}");
         await Shot("queue-full");
 
-        session.Tick(21);
+        session.Tick((firstBuild.FinishTime - firstBuild.StartTime) / 2 + 0.01);
         await Frames();
         Expect(queue.GetNode<Label>("%Count").Text == "1 / 2", "Completed item leaves the queue");
         Expect(queue.GetNode<Label>("Box/Rows/Row0/Top/Title").Text == "Farm → level 2", "Waiting item moves up");
@@ -533,7 +534,7 @@ public partial class UiTest : Control
         var targets = session.State.Villages.Values.Where(v => v.IsBarbarian).ToList();
         foreach (var target in targets.Take(8))
             session.Send(new SendTroopsCommand(1, target.Id, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 }));
-        session.Tick(20);
+        session.Tick(5);
         await Frames();
 
         var world = game.GetNode<WorldMapView>("%WorldMapView");

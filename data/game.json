@@ -29,7 +29,7 @@
   "maxTrainingQueueLength": 2,
   "minPlayers": 2,
   "maxPlayers": 4,
-  "matchDurationsMinutes": [20, 30, 45, 60],
+  "matchDurationsMinutes": [30, 45, 60],
   "speedMultipliers": [1, 2, 3],
   "mapSizes": {
     "Small": { "width": 16, "height": 16 },
