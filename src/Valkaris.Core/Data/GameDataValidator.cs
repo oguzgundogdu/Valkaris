@@ -457,6 +457,12 @@ internal static class GameDataValidator
                 Error($"{path}.aggressionDelaySeconds", "must not be negative.");
             if (profile.MaxFightersPerMinute < profile.FightersPerMinute)
                 Error($"{path}.maxFightersPerMinute", "must not be below fightersPerMinute.");
+            if (profile.SurrenderVillageShare is < 0 or > 1)
+                Error($"{path}.surrenderVillageShare", "must be between 0 and 1.");
+            if (profile.SurrenderStrengthRatio < 0)
+                Error($"{path}.surrenderStrengthRatio", "must not be negative.");
+            if (profile.SurrenderHoldSeconds < 0)
+                Error($"{path}.surrenderHoldSeconds", "must not be negative.");
             if (profile.MaxWallLevel < 0)
                 Error($"{path}.maxWallLevel", "must not be negative.");
             if (profile.ScoutMaxAgeSeconds < 0)

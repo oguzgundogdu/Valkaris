@@ -39,6 +39,17 @@ public sealed class AiMemory
 
     public Sighting? SightingOf(int villageId) => _sightings.GetValueOrDefault(villageId);
 
+    /// <summary>The strongest player force in its own reports: an army that came for it, or a garrison it attacked.</summary>
+    public double StrongestEnemySeen { get; private set; }
+
+    private void NoteEnemyStrength(BattleReport report)
+    {
+        if (report.DefenderId == _view.PlayerId)
+            StrongestEnemySeen = Math.Max(StrongestEnemySeen, report.AttackPower);
+        else if (report.DefenderId != Village.BarbarianOwnerId)
+            StrongestEnemySeen = Math.Max(StrongestEnemySeen, report.DefencePower);
+    }
+
     /// <summary>The latest failure to scout this village under its current owner, unless something newer replaced it.</summary>
     public CaughtScouts? CaughtAt(KnownVillage village) =>
         _caught.TryGetValue(village.Id, out var caught) && caught.OwnerId == village.OwnerId ? caught : null;
@@ -98,6 +109,7 @@ public sealed class AiMemory
 
     private void Remember(BattleReport report)
     {
+        NoteEnemyStrength(report);
         if (report.AttackerId != _view.PlayerId)
             return;
 

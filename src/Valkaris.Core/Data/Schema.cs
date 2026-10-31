@@ -339,6 +339,15 @@ public sealed record AiProfile
     /// <summary>Stops training fighters above this many per minute of game time, even under attack. Absent means no limit.</summary>
     public double? MaxFightersPerMinute { get; init; }
 
+    /// <summary>It may give up once it has lost a capital and holds at most this share of the most villages it ever had.</summary>
+    public required double SurrenderVillageShare { get; init; }
+
+    /// <summary>...and its own attack power is below this share of the strongest enemy force in its reports.</summary>
+    public required double SurrenderStrengthRatio { get; init; }
+
+    /// <summary>...and that has lasted this many game seconds, so one bad moment doesn't end its match.</summary>
+    public required double SurrenderHoldSeconds { get; init; }
+
     /// <summary>The highest Wall it builds, in the build order or under attack.</summary>
     public required int MaxWallLevel { get; init; }
 

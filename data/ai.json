@@ -197,6 +197,9 @@
       "reinforces": false,
       "savesForGoals": false,
       "scoutMaxAgeSeconds": 300,
+      "surrenderVillageShare": 0.67,
+      "surrenderStrengthRatio": 0.67,
+      "surrenderHoldSeconds": 60,
       "maxWallLevel": 0,
       "maxFightersPerMinute": 1.5
     },
@@ -215,6 +218,9 @@
       "reinforces": true,
       "savesForGoals": true,
       "scoutMaxAgeSeconds": 100,
+      "surrenderVillageShare": 0.5,
+      "surrenderStrengthRatio": 0.5,
+      "surrenderHoldSeconds": 120,
       "maxWallLevel": 5
     },
     "Hard": {
@@ -232,6 +238,9 @@
       "reinforces": true,
       "savesForGoals": true,
       "scoutMaxAgeSeconds": 60,
+      "surrenderVillageShare": 0.34,
+      "surrenderStrengthRatio": 0.34,
+      "surrenderHoldSeconds": 180,
       "maxWallLevel": 5
     }
   }

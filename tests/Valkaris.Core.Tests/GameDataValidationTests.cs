@@ -328,6 +328,9 @@ public class GameDataValidationTests
     [InlineData("expansionDelaySeconds", -1)]
     [InlineData("scoutMaxAgeSeconds", -1)]
     [InlineData("maxWallLevel", -1)]
+    [InlineData("surrenderVillageShare", 1.5)]
+    [InlineData("surrenderStrengthRatio", -1)]
+    [InlineData("surrenderHoldSeconds", -1)]
     public void InvalidProfileValue(string field, double value) =>
         AssertAiInvalid(r => r["difficulties"]!["Easy"]![field] = field is "maxRaidsPerVillage" or "wantedVillages" or "maxWallLevel" ? (int)value : value, $"difficulties.Easy.{field}");
 

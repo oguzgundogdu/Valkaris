@@ -18,6 +18,7 @@ public sealed class AiPlayer : IMatchAgent
     private readonly ScoutPlanner _scouts;
     private readonly ExpansionPlanner _expansion;
     private readonly TransferPlanner _transfers;
+    private readonly SurrenderPlanner _surrender;
 
     public AiPlayer(AiView view)
     {
@@ -31,6 +32,7 @@ public sealed class AiPlayer : IMatchAgent
         _scouts = new ScoutPlanner(view, _memory, _war);
         _expansion = new ExpansionPlanner(view);
         _transfers = new TransferPlanner(view, _builds);
+        _surrender = new SurrenderPlanner(view, _memory);
         _interval = view.Profile.DecisionSeconds / view.GameSpeed;
 
         // A random first decision from the match seed: a fixed order would always put one seat slightly ahead.
@@ -49,6 +51,12 @@ public sealed class AiPlayer : IMatchAgent
         }
 
         _memory.Update();
+        if (_surrender.Plan())
+        {
+            NextDecisionTime = double.PositiveInfinity;
+            return;
+        }
+
         _expansion.ChooseCapital();
         _defence.Plan();
         _transfers.Plan();
@@ -83,6 +91,9 @@ public sealed class AiPlayer : IMatchAgent
     {
         // Choosing a new capital can't wait for the next turn to come round.
         if (gameEvent is CapitalChoiceRequired required && required.PlayerId == _view.PlayerId)
+        {
+            _surrender.NoteCapitalLost();
             NextDecisionTime = Math.Min(NextDecisionTime, gameEvent.Time);
+        }
     }
 }
