@@ -17,3 +17,6 @@ public sealed record RejectionMessage(CommandRejection Rejection) : INetMessage;
 
 /// <summary>One player's view of the match. The state is applied before the events, so a handler can find the report an event names.</summary>
 public sealed record UpdateMessage(PlayerViewSnapshot View, IReadOnlyList<GameEvent> Events) : INetMessage;
+
+/// <summary>The match has begun: which player the receiver is, and the first full view.</summary>
+public sealed record MatchStartMessage(int PlayerId, UpdateMessage First) : INetMessage;

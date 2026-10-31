@@ -20,6 +20,7 @@ public sealed record GameConfig
     public required bool UnlimitedMatches { get; init; }
 
     public required IReadOnlyList<double> SpeedMultipliers { get; init; }
+    public required double SnapshotsPerSecond { get; init; }
     public required IReadOnlyDictionary<MapSize, MapSizeDefinition> MapSizes { get; init; }
 }
 

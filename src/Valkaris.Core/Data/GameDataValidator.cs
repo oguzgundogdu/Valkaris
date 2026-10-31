@@ -183,6 +183,8 @@ internal static class GameDataValidator
 
         if (game.MatchDurationsMinutes.Count == 0 || game.MatchDurationsMinutes.Any(d => d <= 0))
             Error("matchDurationsMinutes", "must be a non-empty list of positive values.");
+        if (game.SnapshotsPerSecond <= 0)
+            Error("snapshotsPerSecond", "must be above 0.");
         if (game.SpeedMultipliers.Count == 0 || game.SpeedMultipliers.Any(s => s <= 0))
             Error("speedMultipliers", "must be a non-empty list of positive values.");
 

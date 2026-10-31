@@ -105,6 +105,10 @@ public class GameDataValidationTests
         AssertGameInvalid(r => r["speedMultipliers"]![0] = 0, "speedMultipliers");
 
     [Fact]
+    public void NonPositiveSnapshotRate() =>
+        AssertGameInvalid(r => r["snapshotsPerSecond"] = 0, "snapshotsPerSecond");
+
+    [Fact]
     public void MissingMapSize() =>
         AssertGameInvalid(r => r["mapSizes"]!.AsObject().Remove("Medium"), "mapSizes.Medium");
 

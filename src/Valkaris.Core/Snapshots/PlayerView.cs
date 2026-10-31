@@ -1,4 +1,5 @@
 using Valkaris.Core.Data;
+using Valkaris.Core.Events;
 using Valkaris.Core.Model;
 using Valkaris.Core.Systems;
 
@@ -40,6 +41,32 @@ public static class PlayerView
             Visibility.SightedMovements(state, data, playerId),
             Visibility.PublicNotices(state, playerId).ToList(),
             Visibility.Clashes(state, data, playerId, state.ElapsedTime - ClashMemorySeconds));
+    }
+
+    /// <summary>Would this player be told of this event? Anything naming a report goes only to those who hold that report.</summary>
+    public static bool Hears(GameState state, GameEvent gameEvent, int playerId)
+    {
+        bool Owns(int villageId) => state.Villages[villageId].OwnerId == playerId;
+
+        return gameEvent switch
+        {
+            BuildingCompleted e => Owns(e.VillageId),
+            TroopsTrained e => Owns(e.VillageId),
+            TroopsReturned e => Owns(e.VillageId),
+            ReinforcementsArrived e => Owns(e.VillageId),
+            ResourcesDelivered e => Owns(e.VillageId),
+            CarriersReturned e => Owns(e.VillageId),
+            VillageFounded e => Owns(e.VillageId),
+            BattleResolved e => state.Reports.Any(r => r.Id == e.ReportId && (r.AttackerId == playerId || r.DefenderId == playerId)),
+            ScoutResolved e => state.ScoutReports.Any(r => r.Id == e.ReportId && r.SenderId == playerId),
+            ScoutNoticed e => state.ScoutNotices.Any(n => n.Id == e.NoticeId && n.DefenderId == playerId),
+            VillageCaptured e => e.PreviousOwnerId == playerId || e.NewOwnerId == playerId,
+            CapitalChoiceRequired e => e.PlayerId == playerId,
+            CapitalChanged e => e.PlayerId == playerId,
+            SettlingFailed e => e.OwnerId == playerId,
+            PlayerEliminated or PlayerSurrendered or MatchEnded => true,
+            _ => false,
+        };
     }
 
     /// <summary>Paints every player's map the same, without giving away the seed that drives the match's random numbers.</summary>
