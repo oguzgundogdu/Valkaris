@@ -52,7 +52,7 @@ Session-based: a match starts, runs for a configurable duration and ends. Nothin
    - `BuildPreview` in Core is the single evaluation of the build rules, used by both `CommandHandler` and the UI, so rules are never duplicated in Presentation.
 4. **AI (`Valkaris.Ai`, a separate assembly with no access to Core's internals)**
    - AI players issue the same commands as human players through the same `CommandHandler`, and check the same previews first.
-   - Decisions see the game only through `AiView`: what a player's own UI shows. It never exposes other players' garrisons, resources, buildings or loyalty, troop counts in incoming attacks, or whether a player is human. A guard test enforces this. The AI learns about targets from its own battle and scout reports, starting from beliefs in `data/ai.json`, which stand for experience and are separate from the real garrison data. It scouts its next target through the same command when its news is older than the profile allows, and allows for troops that were away when reading a player's scout report. Difficulty is data only: Easy keeps the smallest garrison share, builds no Wall, and has a limit on its army size, so it is the softest level to attack.
+   - Decisions see the game only through `AiView`: what a player's own UI shows. It never exposes other players' garrisons, resources, buildings or loyalty, troop counts in incoming attacks, or whether a player is human. A guard test enforces this. The AI learns about targets from its own battle and scout reports, starting from beliefs in `data/ai.json`, which stand for experience and are separate from the real garrison data. It scouts its next target through the same command when its news is older than the profile allows, with a whole force sized from what it counted or believes, times the profile's margin, and sends at least double after a failure, up to a profile limit. It plans attacks against the upper end of a range, and reading any scout report of a player, it allows for troops that were away and for help a defender can send, since an accurate count can be zero. Each profile keeps Scouts home against scouting and builds a Watchtower up to its limit. A notice that it was scouted puts that village on guard for a profile time, with more troops and its full home Scouts kept back. Difficulty is data only: Easy keeps the smallest garrison share, builds no Wall or Watchtower, and has a limit on its army size, so it is the softest level to attack.
    - **War:** at the start every AI works out the same pairing from the match seed and start positions, favouring nearby players, so each player is the rival of exactly one other. Most attacks go to the rival. An AI picks again when its rival is out or reports show it is much stronger. It never reads other players' movements. Spare troops gather in one staging village, including Lords and Catapults, and a side strikes one wave at a time with its whole spare army, after a mass time from its profile. Lords take camps first, and outlying villages come before capitals.
    - **Surrender:** an AI gives up through the same command when it has lost a capital or holds one village, holds at most a profile share of its most villages, and has been far weaker than the strongest force in its own reports for a profile time. It also knows abandoned villages as such, assumes they don't regrow, and scouts one before raiding it.
    - `LocalGameSession` runs agents (`IMatchAgent`) and stops at every event and decision, so what they do does not depend on the frame rate. Same seed, same match. AI memory lives on the host and is not in snapshots.
@@ -147,7 +147,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 **Pause (single player only):** a local session can pause with a top bar button or the `P` key, showing a dimmed overlay. Time and production stop, and commands are rejected until resumed. Pause belongs to the session, not `GameState`, so it never enters snapshots. Multiplayer sessions report `CanPause = false`.
 
-**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `--dev-idle-ai` makes opponents stand still, for scripted tests and scenarios. `DevScenario` sets up late-game states for play and for the UI test (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`, `scouting`).
+**Dev overrides:** `--dev-speed=`, `--dev-duration=`, `--dev-idle-ai` and `--dev-scenario=` command-line arguments apply in debug builds only. Dev values never go in `data/`. `--dev-idle-ai` makes opponents stand still, for scripted tests and scenarios. `DevScenario` sets up late-game states for play and for the UI test (`villages`, `founding`, `endgame`, `laststand`, `empire`, `strayreturn`, `scouting`, `counterscouting`).
 
 ---
 
@@ -170,6 +170,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 | Barracks | Trains troops |
 | Wall | Defence bonus |
 | Marketplace | Carriers that move resources to the player's other villages (section 7.1) |
+| Watchtower | Strengthens the Scouts at home, and warns of any scouting attempt, even a successful one (section 7.2). Does nothing else without Scouts |
 
 Each building has levels with increasing cost and build time (defined in JSON).
 
@@ -177,7 +178,7 @@ Each building has levels with increasing cost and build time (defined in JSON).
 - **Build queue:** one builder per village. Items run one at a time in FIFO order, up to a queue length set in data.
 - **Cost:** paid in full when queued. There is no cancel command in v1.
 - **Main Building limit:** a data table gives the max level of other buildings for each Main Building level. Only the completed Main Building level counts, not a queued upgrade. The Main Building itself is not limited by the table.
-- **Starting village:** Main Building, Woodcutter, Quarry, Farm and Warehouse at level 1; Barracks, Wall and Marketplace at level 0; starting resources from data.
+- **Starting village:** Main Building, Woodcutter, Quarry, Farm and Warehouse at level 1; Barracks, Wall, Marketplace and Watchtower at level 0; starting resources from data.
 
 ---
 
@@ -191,6 +192,7 @@ Each building has levels with increasing cost and build time (defined in JSON).
 | Catapult | Damages buildings (slow) |
 | Settler | Founds a new village on an empty tile |
 | Lord | Reduces loyalty of the target village |
+| Scout | Scouts other villages and counters scouting. Never fights (section 7.2) |
 
 Each unit has: class (infantry or cavalry), attack, defence vs infantry, defence vs cavalry, speed, loot capacity, cost, training time, required Barracks level (`data/units.json`).
 
@@ -211,15 +213,37 @@ Each unit has: class (infantry or cavalry), attack, defence vs infantry, defence
 
 ### 7.2 Scouting
 
-A minimal version, moved forward from v2 so a player can judge a target before attacking.
+Only **Scouts** (section 7) can go on the **Scout** mission, to any village that isn't yours. Scouts are cheap and the fastest unit, carry no loot, and never fight: they aren't in battles or battle reports, can't join an Attack or Raid, and can't stop a capture, in which they die rather than change sides. They can Reinforce, and then count as defenders there.
 
-- **Scout** is a mission in the Send form, for any village that isn't yours, using Spearmen, Swordsmen or Cavalry. Catapults, Settlers and Lords can't scout. Scouts travel at the slowest unit's speed, so Cavalry are the fast choice and Spearmen the cheap one.
-- **There is never a battle.** On arrival, scouts succeed if the garrison's head count is at most `scouts × troopsPerScout` (`data/combat.json`). An empty garrison always counts as a success. No random numbers are used.
-- **Success:** all scouts return with no loot. The sender gets a report with the garrison, Wall level and resources at that moment, and the defender is told nothing. Troops away from the village aren't counted, so a report can understate a player's real strength.
-- **Failure:** all scouts die, and the defender loses nothing. The sender gets a report with no intel, which still shows the garrison is larger than the limit. The defender gets a notice naming the sender and how many were caught.
-- Incoming scouts are not shown to the target: no map marker, warning or AI alert. A successful scout would otherwise never go unnoticed.
-- With a target picked, the Send form shows the sender's latest intel under the village's current owner, and with the Scout mission selected, the rule itself.
-- A village the sender's side now holds merges the scouts in, and scouts whose home was lost go to the nearest village, as other movements do.
+**The contest.** No battle is fought. On arrival, the attacking strength is the number of Scouts sent, and the defending strength is the Scouts at home × (1 + `watchtowerBonusPerLevel` × Watchtower level). Scouts away from the village don't defend. The other troops there play no part.
+
+- A village with no Scouts at home is always scouted, and nobody is lost.
+- Otherwise success is a chance from the `successCurve` in `data/combat.json`, by the ratio of attacking to defending strength, drawn from the match's seeded random numbers. It is linear between points, rises from zero at ratio 0, and is flat after the last point. A large majority nearly always succeeds, and equal strength rarely does.
+
+**Losses,** with attacking strength A and defending strength D, rounded to nearest:
+- On success, attackers lose D/(A+D), though at least one always gets home, and defenders lose A/(A+D).
+- On failure, all attackers die, and defenders lose A/(A+D).
+- So 5 against 1 costs the attacker about 1 Scout and kills the defender's only Scout.
+
+**What the report shows** depends on the same ratio, with thresholds in data:
+
+| Quality | Ratio | Shows |
+|---|---|---|
+| Narrow | below `clearRatio` | Total fighters and Wall as ranges. No resources |
+| Clear | up to `overwhelmingRatio` | Exact troops per unit including Scouts, Wall, resources |
+| Overwhelming | `overwhelmingRatio` or more, or undefended | Also building levels and loyalty |
+
+A range always contains the true value, and where the value sits in it is random, so its middle gives nothing away. A failure sees nothing. Troops away from the village aren't counted at any quality, so a report can understate a player's real strength.
+
+**What the defender learns.** The sender's report and the defender's notice are separate records, so neither side can read the other's.
+- On failure: who sent how many.
+- On success with any Watchtower level: that scouting happened and by whom, but not how many or what was seen.
+- On success without a Watchtower: nothing, even if Scouts were lost there.
+- A barbarian or abandoned village has nobody to tell. Incoming Scouts are never shown to the target: no map marker, warning or AI alert.
+
+**Barbarians:** each tier has a number of Scouts in its garrison in `data/map.json`, currently 0, so camps are always scouted. They regrow like other troops. Abandoned villages keep their Scouts.
+
+With a target picked, the Send form shows the sender's latest intel under the village's current owner, as a range or exact value with its age, and any failure since. A village the sender's side now holds merges the Scouts in, and Scouts whose home was lost go to the nearest village, as other movements do.
 
 ---
 
@@ -238,7 +262,7 @@ Three invented nations. In v1 they share units and differ only by passive bonuse
 **Solari – Speed / Flexibility**
 - Faster units, shorter build times
 - More expensive units
-- "Better scouting" is deferred to v2 with the scouting unit and fog of war (section 12), even though v1 has a minimal Scout mission (7.2). A replacement bonus and all bonus values are set in `nations.json` in the Nations milestone.
+- "Better scouting" is deferred to v2 with fog of war (section 12), even though v1 has Scouts and the Watchtower (7.2). A replacement bonus and all bonus values are set in `nations.json` in the Nations milestone.
 
 ---
 
@@ -309,7 +333,7 @@ Players must be able to manage their villages from both views.
 - Survivors return home (Return movement).
 - **Hostile warning:** the top bar warns only of attacks and raids heading for your villages.
 - **Movements around a change of owner:** troops returning to a lost village reroute to the owner's nearest village (lowest id on a tie) with their loot. Reinforcements heading for a lost village turn back the same way. An attack or raid reaching a village its owner now holds merges into the garrison with no battle.
-- A battle report is generated for both sides. Both see the same full report, since v1 has no fog of war. Scout reports differ: a success is private to the sender (7.2). Read state is kept in the UI, not in game state.
+- A battle report is generated for both sides. Both see the same full report, since v1 has no fog of war. Scouting differs: the sender's report and the defender's notice are separate and private (7.2). Read state is kept in the UI, not in game state.
 - Reinforcements can only be sent to the player's own villages in v1. They merge into the village's garrison.
 
 ---
@@ -352,7 +376,7 @@ Players must be able to manage their villages from both views.
 
 **v2 (later)**
 - Nation-specific units (e.g. Valdren: Shield Guard, Armoured Rider; Karuk: Axe Warrior, Wolf Rider; Solari: Archer, Wind Cavalry).
-- A dedicated scouting unit and fog of war. v1 has only the Scout mission (7.2).
+- Fog of war. v1 has Scouts and the Watchtower (7.2), but the whole map stays visible.
 - Internet play without port forwarding (e.g. GodotSteam).
 
 ---
@@ -368,6 +392,7 @@ Players must be able to manage their villages from both views.
 6. **AI:** rule-based AI playing the full game, difficulty levels, and a headless simulation tool.
 6.5. **Scouting and an easier Easy:** the Scout mission, AI scouting, and Easy as the softest target to attack.
 6.6. **Pacing, combat balance, real war, Unlimited matches and surrender.**
+6.7. **Scouting depth:** Scouts, the Watchtower, uncertain reports, and AI counter-scouting.
 7. **Multiplayer:** lobby (host/join), command RPCs, state sync, up to 4 players.
 8. **Nations:** passive bonuses.
 9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).

@@ -9,7 +9,7 @@ Build a village, train troops, raid barbarians, found and capture villages, and 
 - A world map with terrain, barbarian camps that slowly recover, and villages you can found or capture
 - Settlers, Lords and loyalty, with a protected capital and a timed choice of a new one if it falls
 - Timed or Unlimited matches, with surrender for when a position is lost
-- Scouting, so you can check a target's garrison, Wall and resources before you attack
+- Scouts and a Watchtower: scouting is a contest, and the margin decides whether you get a rough range, exact numbers or the whole village
 - Resource transfers between your own villages through a Marketplace
 - Rule-based AI opponents (Easy, Normal, Hard) that play by the same rules and see only what a player sees
 - A headless AI-vs-AI simulation tool for balance work
