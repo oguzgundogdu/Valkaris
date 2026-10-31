@@ -1066,6 +1066,7 @@ public partial class UiTest : Control
         await TestStrayReturnDoesNotWarn(data);
         await TestReportsOfLoyalty(data);
         await TestScouting(data);
+        await TestSurrender(data);
         await TestFounding(data);
         await TestCapitalChoice(data);
         await TestCapitalTimeout(data);
@@ -1634,6 +1635,79 @@ public partial class UiTest : Control
         Expect(dialog.GetNode<Label>("%Result").Text == "Scouts caught", "The notice opens");
         await Shot("scout-caught");
         Press(dialog.GetNode<Button>("%Close"));
+    }
+
+    private async Task TestSurrender(GameData data)
+    {
+        var (game, session) = await StartMatch(data, null, players: 3);
+        var state = session.State;
+        var pause = game.GetNode<Overlay>("%PauseOverlay");
+        var confirm = game.GetNode<Overlay>("%SurrenderOverlay");
+        var eliminated = game.GetNode<Overlay>("%EliminatedOverlay");
+        var surrender = pause.GetNode<Button>("%Tertiary");
+
+        game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
+        await Frames();
+        Expect(surrender.Visible && surrender.Text == "Surrender", "The pause menu offers surrender");
+        await Shot("pause-surrender");
+
+        Press(surrender);
+        await Frames();
+        Expect(confirm.Visible && !pause.Visible, "Surrender asks for confirmation");
+        Expect(session.IsPaused, "The match stays paused while confirming");
+        await Shot("surrender-confirm");
+        game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
+        await Frames();
+        Expect(session.IsPaused && confirm.Visible, "P does nothing while confirming");
+
+        Press(confirm.GetNode<Button>("%Secondary"));
+        await Frames();
+        Expect(pause.Visible && !confirm.Visible && !state.Players[1].IsEliminated, "Keep playing goes back without surrendering");
+
+        Press(surrender);
+        await Frames();
+        Press(confirm.GetNode<Button>("%Action"));
+        await Frames();
+        Expect(state.Players[1].HasSurrendered && !session.IsPaused, "Confirming surrenders and resumes");
+        Expect(state.Villages[1].IsAbandoned, "The village is abandoned");
+        Expect(!state.IsMatchOver && eliminated.Visible, "With two left the match goes on");
+        Expect(eliminated.GetNode<Label>("%Title").Text == "You surrendered", "The message says you surrendered");
+        await Shot("surrendered");
+
+        Press(eliminated.GetNode<Button>("%Action"));
+        await Frames();
+        Expect(!eliminated.Visible && game.CurrentView == GameScreen.MainView.World, "Watching shows the map");
+        game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
+        await Frames();
+        Expect(!surrender.Visible, "A player who is out has nothing to surrender");
+        game._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
+        await Frames();
+
+        // Abandoned villages on the map, from a player still in the match.
+        var (other, otherSession) = await StartMatch(data, null, players: 3);
+        Expect(otherSession.SendAs(2, new SurrenderCommand()).Success, "The rival can surrender");
+        other.ShowView(GameScreen.MainView.World);
+        await Frames();
+        var world = other.GetNode<WorldMapView>("%WorldMapView");
+        var popup = world.GetNode<VillagePopup>("Popup");
+        popup.Refresh(otherSession, otherSession.State.Villages[2], otherSession.State.Villages[1]);
+        await Frames();
+        Expect(popup.GetNode<Label>("%Owner").Text.EndsWith("Abandoned"), $"The popup says it is abandoned, got '{popup.GetNode<Label>("%Owner").Text}'");
+        await Shot("abandoned");
+
+        // Two players: it ends at once, as a defeat, with the score table.
+        var (last, lastSession) = await StartMatch(data, null);
+        last._UnhandledKeyInput(new InputEventKey { Pressed = true, Keycode = Key.P });
+        await Frames();
+        Press(last.GetNode<Overlay>("%PauseOverlay").GetNode<Button>("%Tertiary"));
+        await Frames();
+        Press(last.GetNode<Overlay>("%SurrenderOverlay").GetNode<Button>("%Action"));
+        await Frames();
+        Expect(lastSession.State.IsMatchOver, "With one left the match ends at once");
+        var end = last.GetNode<MatchEndScreen>("%MatchEndScreen");
+        Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Defeat", "Surrendering is a defeat");
+        Expect(FindAll<Label>(end).Any(l => l.Text.Contains("(surrendered)")), "The table shows who surrendered");
+        await Shot("surrender-defeat");
     }
 
     private async Task TestReportsOfLoyalty(GameData data)

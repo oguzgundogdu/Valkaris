@@ -170,6 +170,10 @@ layout_mode = 1
 unique_name_in_owner = true
 layout_mode = 1
 
+[node name="SurrenderOverlay" parent="." instance=ExtResource("7")]
+unique_name_in_owner = true
+layout_mode = 1
+
 [node name="MatchEndScreen" parent="." instance=ExtResource("15")]
 unique_name_in_owner = true
 layout_mode = 1

@@ -38,6 +38,7 @@ public partial class VillagePopup : PanelContainer
         var ownerLabel = GetNode<Label>("%Owner");
         ownerLabel.Visible = true;
         ownerLabel.Text = village.BarbarianTier is { } tier ? $"{owner}  ·  {session.Data.Map.Barbarians.Tiers[tier].Name}"
+            : village.IsAbandoned ? $"{owner}  ·  Abandoned"
             : LoyaltyRules.IsCapital(session.State, village) ? $"{owner}  ·  Capital"
             : owner;
 

@@ -45,7 +45,7 @@ public partial class MatchEndScreen : ColorRect
             var player = session.State.Players[score.PlayerId];
             var name = player.Name
                 + (player.Difficulty is { } difficulty ? $" ({difficulty})" : "")
-                + (player.IsEliminated ? " (eliminated)" : "");
+                + (player.HasSurrendered ? " (surrendered)" : player.IsEliminated ? " (eliminated)" : "");
 
             foreach (var cell in new[] { $"{i + 1}", name, $"{score.Villages}", $"{score.Population}", $"{score.Captures}", $"{score.Score:0}" })
                 table.AddChild(new Label { Text = cell, ThemeTypeVariation = style });

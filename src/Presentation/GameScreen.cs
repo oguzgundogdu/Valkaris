@@ -27,12 +27,14 @@ public partial class GameScreen : Control
     private Toast _toast = null!;
     private Overlay _pauseOverlay = null!;
     private Overlay _leaveOverlay = null!;
+    private Overlay _surrenderOverlay = null!;
     private Overlay _eliminatedOverlay = null!;
     private CapitalDialog _capitalDialog = null!;
     private MatchEndScreen _matchEndScreen = null!;
     private bool _capitalSetAside;
     private bool _watching;
     private bool _confirmingLeave;
+    private bool _confirmingSurrender;
     private BuildingType _selected = BuildingType.MainBuilding;
     private int? _currentVillageId;
     private VillageStrip _villageStrip = null!;
@@ -75,6 +77,7 @@ public partial class GameScreen : Control
         _toast = GetNode<Toast>("%Toast");
         _pauseOverlay = GetNode<Overlay>("%PauseOverlay");
         _leaveOverlay = GetNode<Overlay>("%LeaveOverlay");
+        _surrenderOverlay = GetNode<Overlay>("%SurrenderOverlay");
         _eliminatedOverlay = GetNode<Overlay>("%EliminatedOverlay");
         _capitalDialog = GetNode<CapitalDialog>("%CapitalDialog");
         _matchEndScreen = GetNode<MatchEndScreen>("%MatchEndScreen");
@@ -128,6 +131,15 @@ public partial class GameScreen : Control
         _leaveOverlay.ActionPressed += () => ExitRequested?.Invoke();
         _leaveOverlay.SecondaryPressed += () => _confirmingLeave = false;
 
+        _pauseOverlay.TertiaryPressed += () => _confirmingSurrender = true;
+        _surrenderOverlay.Configure(
+            "Surrender?",
+            "You lose this match. Your villages stay on the map as barbarian villages, with their troops and resources, for others to raid or capture. Troops on the way are lost.",
+            "Surrender",
+            "Keep playing");
+        _surrenderOverlay.ActionPressed += Surrender;
+        _surrenderOverlay.SecondaryPressed += () => _confirmingSurrender = false;
+
         _matchEndScreen.BackRequested += () => ExitRequested?.Invoke();
 
         _eliminatedOverlay.Configure("You were eliminated", "You have no villages left. The match goes on without you.", "Keep watching", "Leave match");
@@ -155,8 +167,10 @@ public partial class GameScreen : Control
             _worldMap.Refresh(Session, village);
         RefreshActiveTab(village);
 
-        _pauseOverlay.Visible = Session.IsPaused && !_confirmingLeave;
+        _pauseOverlay.Visible = Session.IsPaused && !_confirmingLeave && !_confirmingSurrender;
+        _pauseOverlay.SetTertiary(Session.State.Players[Session.LocalPlayerId].IsEliminated ? null : "Surrender");
         _leaveOverlay.Visible = _confirmingLeave;
+        _surrenderOverlay.Visible = _confirmingSurrender;
         RefreshDialogs();
     }
 
@@ -182,6 +196,8 @@ public partial class GameScreen : Control
         }
 
         _eliminatedOverlay.Visible = player.IsEliminated && !_watching && !state.IsMatchOver;
+        if (_eliminatedOverlay.Visible && player.HasSurrendered)
+            _eliminatedOverlay.Configure("You surrendered", "Your villages now belong to the barbarians. The match goes on without you.", "Keep watching", "Leave match");
 
         if (state.Outcome is { } outcome && !_matchEndScreen.Visible)
             _matchEndScreen.ShowOutcome(Session, outcome);
@@ -354,9 +370,17 @@ public partial class GameScreen : Control
         }
     }
 
+    /// <summary>Commands don't run while paused, and the match resumes for whoever is left.</summary>
+    private void Surrender()
+    {
+        _confirmingSurrender = false;
+        Session.SetPaused(false);
+        Session.Send(new SurrenderCommand());
+    }
+
     private void TogglePause()
     {
-        if (Session.CanPause && !Session.State.IsMatchOver && !_confirmingLeave)
+        if (Session.CanPause && !Session.State.IsMatchOver && !_confirmingLeave && !_confirmingSurrender)
             Session.SetPaused(!Session.IsPaused);
     }
 
@@ -405,6 +429,9 @@ public partial class GameScreen : Control
                 break;
             case VillageCaptured captured when captured.PreviousOwnerId == Session.LocalPlayerId:
                 _toast.ShowMessage($"{Session.State.Villages[captured.VillageId].Name} was captured by {UiContent.OwnerName(Session, captured.NewOwnerId)}");
+                break;
+            case PlayerSurrendered surrendered when surrendered.PlayerId != Session.LocalPlayerId:
+                _toast.ShowMessage($"{UiContent.OwnerName(Session, surrendered.PlayerId)} surrendered");
                 break;
             case PlayerEliminated eliminated when eliminated.PlayerId != Session.LocalPlayerId:
                 _toast.ShowMessage($"{UiContent.OwnerName(Session, eliminated.PlayerId)} was eliminated");
