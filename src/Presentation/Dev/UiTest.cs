@@ -1129,6 +1129,46 @@ public partial class UiTest : Control
         Press(end.GetNode<Button>("%Back"));
         await Frames();
         Expect(Find<StartScreen>() is not null, "Back to start works after a live match");
+
+        await TestLiveUnlimited();
+    }
+
+    /// <summary>An Unlimited match against AIs ends by itself, through the real UI, once the player is out.</summary>
+    private async Task TestLiveUnlimited()
+    {
+        var start = Find<StartScreen>();
+        var durations = start.GetNode<OptionButton>("%Duration");
+        durations.Select(durations.ItemCount - 1);
+        start.GetNode<OptionButton>("%Opponents").Select(2);
+        start.GetNode<OptionButton>("%Difficulty").Select(Array.IndexOf(Enum.GetValues<AiDifficulty>(), AiDifficulty.Hard));
+        start.GetNode<OptionButton>("%Speed").Select(start.GetNode<OptionButton>("%Speed").ItemCount - 1);
+        Press(start.GetNode<Button>("%Start"));
+        await Frames();
+
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        Expect(session.State.Settings.MatchDurationSeconds is null, "The live match has no time limit");
+        session.Tick(60);
+        session.Send(new SurrenderCommand());
+        await Frames();
+        Press(game.GetNode<Overlay>("%EliminatedOverlay").GetNode<Button>("%Action"));
+        await Frames();
+
+        // About four hours of match time at this game speed: far past what the simulation shows.
+        for (var i = 0; i < 400 && !session.State.IsMatchOver; i++)
+        {
+            session.Tick(36);
+            await Frames(1);
+        }
+
+        await Frames();
+        Expect(session.State.IsMatchOver, $"The AIs finish an Unlimited match by themselves, at {session.State.ElapsedTime:0} s");
+        var end = game.GetNode<MatchEndScreen>("%MatchEndScreen");
+        Expect(end.Visible && end.GetNode<Label>("%Title").Text == "Defeat", "The player who left has lost");
+        Expect(session.State.Outcome is { WinnerIds.Count: 1 }, "One player is left");
+        await Shot("live-unlimited-end");
+        Press(end.GetNode<Button>("%Back"));
+        await Frames();
     }
 
     private static int LongestTimed(OptionButton durations) => durations.ItemCount - 2;
