@@ -6,6 +6,9 @@ namespace Valkaris.Ai;
 public sealed record KnownVillage(int Id, int OwnerId, TileCoord Position, string Name, string? BarbarianTier, bool IsCapital)
 {
     public bool IsBarbarian => OwnerId == Village.BarbarianOwnerId;
+
+    /// <summary>Left behind by a surrender: nothing regrows, and it can hold a whole army.</summary>
+    public bool IsAbandoned => IsBarbarian && BarbarianTier is null;
 }
 
 /// <summary>An attack or raid heading for one of the AI's villages. Like a human, it can't see how many are coming.</summary>

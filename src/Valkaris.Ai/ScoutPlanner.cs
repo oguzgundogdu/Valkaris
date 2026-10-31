@@ -1,5 +1,6 @@
 using Valkaris.Core.Commands;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Ai;
 
@@ -26,8 +27,12 @@ public sealed class ScoutPlanner
         if (_view.OwnMovements.Any(m => m.Type == MovementType.Scout && m.FromVillageId == village.Id))
             return;
 
-        if (_war.NextTarget(village) is not { } target || !NeedsScouting(target))
+        var target = NearestUnseenAbandoned(village);
+        if (target is null && _war.NextTarget(village) is { } next && NeedsScouting(next))
+            target = next;
+        if (target is null)
             return;
+
         if (_view.OwnMovements.Any(m => m.Type == MovementType.Scout && m.ToVillageId == target.Id))
             return;
 
@@ -39,6 +44,15 @@ public sealed class ScoutPlanner
         if (_view.PreviewSend(command).CanSend)
             _view.Send(command);
     }
+
+    /// <summary>A surrendered player's village may hold anything, and raids won't go until someone has looked.</summary>
+    private KnownVillage? NearestUnseenAbandoned(Village village) =>
+        _view.KnownVillages
+            .Where(v => v.IsAbandoned && _memory.SightingOf(v.Id) is null)
+            .Where(v => _memory.CaughtAt(v) is not { } caught || (_view.Now - caught.Time) * _view.GameSpeed >= _view.Config.ScoutRetrySeconds)
+            .OrderBy(v => UnitRules.Distance(village.Position, v.Position))
+            .ThenBy(v => v.Id)
+            .FirstOrDefault();
 
     private bool NeedsScouting(KnownVillage target)
     {

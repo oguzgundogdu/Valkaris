@@ -303,6 +303,12 @@ public class GameDataValidationTests
     public void ScoutedAllowanceBelowOne() => AssertAiInvalid(r => r["beliefs"]!["scoutedPlayerAllowance"] = 0.5, "beliefs.scoutedPlayerAllowance");
 
     [Fact]
+    public void AbandonedPowerNotPositive() => AssertAiInvalid(r => r["beliefs"]!["abandonedPower"] = 0, "beliefs.abandonedPower");
+
+    [Fact]
+    public void AbandonedLootNegative() => AssertAiInvalid(r => r["beliefs"]!["abandonedLoot"] = -1, "beliefs.abandonedLoot");
+
+    [Fact]
     public void PowerPerTroopNotPositive() => AssertAiInvalid(r => r["beliefs"]!["powerPerTroop"] = 0, "beliefs.powerPerTroop");
 
     [Fact]

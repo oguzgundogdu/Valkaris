@@ -421,6 +421,10 @@ internal static class GameDataValidator
             Error("beliefs.playerPowerPerMinute", "must not be negative.");
         if (config.ScoutRetrySeconds < 0)
             Error("scoutRetrySeconds", "must not be negative.");
+        if (beliefs.AbandonedPower <= 0)
+            Error("beliefs.abandonedPower", "must be positive.");
+        if (beliefs.AbandonedLoot < 0)
+            Error("beliefs.abandonedLoot", "must not be negative.");
         if (beliefs.ScoutedPlayerAllowance < 1)
             Error("beliefs.scoutedPlayerAllowance", "must be at least 1.");
         if (beliefs.PowerPerTroop <= 0)

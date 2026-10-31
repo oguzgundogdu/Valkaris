@@ -295,6 +295,11 @@ public sealed record AiBeliefs
     public required double PlayerPowerAtStart { get; init; }
     public required double PlayerPowerPerMinute { get; init; }
 
+    /// <summary>What a village left by a surrender is assumed to hold before anyone has looked.</summary>
+    public required double AbandonedPower { get; init; }
+
+    public required double AbandonedLoot { get; init; }
+
     /// <summary>What a scouted player's defence is multiplied by, for troops that were away when the scouts came.</summary>
     public required double ScoutedPlayerAllowance { get; init; }
 

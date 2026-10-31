@@ -156,10 +156,16 @@ public sealed class AiMemory
 
 
             // A camp's garrison comes back to what it was. A player's grows with what they can train.
+            if (village.IsAbandoned)
+                return remaining;
+
             return village.IsBarbarian
                 ? Math.Min(remaining + sighting.PeakDefence * beliefs.GrowthAfterSightingPerMinute * minutes, sighting.PeakDefence)
                 : remaining + beliefs.PlayerPowerPerMinute * minutes;
         }
+
+        if (village.IsAbandoned)
+            return beliefs.AbandonedPower;
 
         return village.BarbarianTier is { } tier
             ? beliefs.BarbarianPowerByTier[tier]
@@ -170,14 +176,18 @@ public sealed class AiMemory
     public double ExpectedBarbarianLoot(KnownVillage village)
     {
         var beliefs = _view.Config.Beliefs;
-        var full = beliefs.BarbarianLootByTier[village.BarbarianTier!];
+        var full = village.IsAbandoned ? beliefs.AbandonedLoot : beliefs.BarbarianLootByTier[village.BarbarianTier!];
+        var recovery = village.IsAbandoned ? 0 : beliefs.BarbarianLootRecoveryPerMinute;
         if (!_sightings.TryGetValue(village.Id, out var sighting))
             return full;
 
         var minutes = (_view.Now - sighting.Time) * _view.GameSpeed / 60;
         if (sighting.Stock is { } stock)
-            return Math.Min(full, stock.Wood + stock.Stone + stock.Food + beliefs.BarbarianLootRecoveryPerMinute * minutes);
+        {
+            var seen = stock.Wood + stock.Stone + stock.Food;
+            return village.IsAbandoned ? seen : Math.Min(full, seen + recovery * minutes);
+        }
 
-        return sighting.AttackWon ? Math.Min(full, beliefs.BarbarianLootRecoveryPerMinute * minutes) : full;
+        return sighting.AttackWon ? Math.Min(full, recovery * minutes) : full;
     }
 }

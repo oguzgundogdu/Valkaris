@@ -52,6 +52,7 @@ public sealed class RaidPlanner
         return _view.KnownVillages
             .Where(v => v.IsBarbarian && !heading.Contains(v.Id))
             .Where(v => !RaidedRecently(v))
+            .Where(v => !v.IsAbandoned || _memory.SightingOf(v.Id) is not null)
             .Select(v => (Village: v, Loot: _memory.ExpectedBarbarianLoot(v)))
             .Where(c => c.Loot >= _view.Config.RaidMinLoot)
             .OrderByDescending(c => c.Loot / UnitRules.Distance(village.Position, c.Village.Position))
