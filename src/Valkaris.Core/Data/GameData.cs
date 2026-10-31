@@ -27,6 +27,8 @@ public sealed class GameData
     public const string ScoringFile = "scoring.json";
     public const string AiFile = "ai.json";
 
+    public static readonly IReadOnlyList<string> Files = new[] { GameFile, BuildingsFile, UnitsFile, CombatFile, MapFile, VillagesFile, ScoringFile, AiFile };
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

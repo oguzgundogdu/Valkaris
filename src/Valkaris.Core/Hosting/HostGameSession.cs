@@ -15,10 +15,13 @@ public sealed class HostGameSession : IGameSession
     private readonly double _snapshotInterval;
     private double _sinceSnapshot;
 
-    public HostGameSession(LocalGameSession inner, INetworkHost network)
+    private readonly Func<LocalGameSession, int, IMatchAgent> _makeAgent;
+
+    public HostGameSession(LocalGameSession inner, INetworkHost network, Func<LocalGameSession, int, IMatchAgent> makeAgent)
     {
         Inner = inner;
         _network = network;
+        _makeAgent = makeAgent;
         _snapshotInterval = 1 / inner.Data.Game.SnapshotsPerSecond;
         inner.EventRaised += OnEvent;
         inner.CommandRejected += rejection => CommandRejected?.Invoke(rejection);
@@ -96,7 +99,18 @@ public sealed class HostGameSession : IGameSession
 
     private void OnReceived(int peer, byte[] bytes)
     {
-        if (!_clients.TryGetValue(peer, out var client) || WireCodec.DecodeFromClient(bytes) is not CommandMessage message)
+        var decoded = WireCodec.DecodeFromClient(bytes);
+        if (!_clients.TryGetValue(peer, out var client))
+        {
+            // Nobody can join a match under way.
+            if (decoded is HelloMessage)
+            {
+                _network.Send(peer, WireCodec.Encode(new RefusedMessage(JoinRefusal.MatchInProgress)));
+                _network.Disconnect(peer);
+            }
+            return;
+        }
+        if (decoded is not CommandMessage message)
             return;
 
         // The sender comes from the connection. A command can't claim to be from someone else.

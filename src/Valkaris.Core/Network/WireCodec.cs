@@ -17,6 +17,7 @@ public static class WireCodec
     public static readonly IReadOnlyList<Type> Messages = new[]
     {
         typeof(CommandMessage), typeof(RejectionMessage), typeof(UpdateMessage), typeof(MatchStartMessage),
+        typeof(HelloMessage), typeof(LobbyMessage), typeof(RefusedMessage),
     };
 
     public static readonly IReadOnlyList<Type> Commands = new[]
@@ -73,6 +74,8 @@ public static class WireCodec
         CommandMessage { Command: null } => false,
         CommandMessage { Command: SendTroopsCommand { Troops: null } } => false,
         CommandMessage { Command: RenameVillageCommand { Name: null } } => false,
+        HelloMessage hello => hello.Version is not null && hello.DataHash is not null && hello.PlayerName is not null,
+        LobbyMessage lobby => lobby.Slots is not null && lobby.Settings is not null,
         UpdateMessage update => update.View is not null && update.Events is not null,
         MatchStartMessage start => start.First is not null && IsComplete(start.First),
         _ => true,

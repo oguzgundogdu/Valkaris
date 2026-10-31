@@ -22,7 +22,7 @@ public class MultiplayerSessionTests
     public MultiplayerSessionTests()
     {
         var state = TestMatch.Create(players: 2);
-        _host = new HostGameSession(new LocalGameSession(state, TestData.Shipped, Host), _network.Host);
+        _host = new HostGameSession(new LocalGameSession(state, TestData.Shipped, Host), _network.Host, (session, player) => throw new InvalidOperationException());
         _host.ViewSent += (player, view) => _lastSent[player] = view;
         var connection = _network.Connect();
         MatchStartMessage? start = null;
