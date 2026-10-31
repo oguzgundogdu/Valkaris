@@ -263,4 +263,81 @@ public class LocalisationTests
         Assert.Empty(Catalogue.Load("en").Entries.Keys
             .Where(key => !used.Contains(key) && !BuiltKeyPrefixes.Any(prefix => key.StartsWith(prefix, StringComparison.Ordinal))));
     }
+
+    private static HashSet<string> Placeholders(string text) =>
+        Regex.Matches(text, @"\{(\w+)\}").Select(m => m.Value).ToHashSet();
+
+    [Fact]
+    public void BothLanguagesHaveTheSameKeysAndPlaceholders()
+    {
+        var english = Catalogue.Load("en").Entries;
+        var turkish = Catalogue.Load("tr").Entries;
+
+        Assert.Equal(english.Keys.Order(StringComparer.Ordinal), turkish.Keys.Order(StringComparer.Ordinal));
+        foreach (var (key, forms) in english)
+            Assert.True(Placeholders(forms[^1]).SetEquals(Placeholders(turkish[key].Single())), $"{key}: placeholders differ");
+    }
+
+    [Fact]
+    public void TurkishHasOnePluralFormAndEnglishTwo()
+    {
+        Assert.Equal(2, Catalogue.Load("en").Entries["common.minutes"].Count);
+        Assert.Single(Catalogue.Load("tr").Entries["common.minutes"]);
+    }
+
+    [Theory]
+    [InlineData("mission.attack", "Saldırı")]
+    [InlineData("mission.raid", "Yağma")]
+    [InlineData("mission.reinforce", "Takviye")]
+    [InlineData("mission.scout", "Keşif")]
+    [InlineData("unit.scout.name", "Casus")]
+    [InlineData("unit.spearman.name", "Mızrakçı")]
+    [InlineData("unit.swordsman.name", "Kılıççı")]
+    [InlineData("unit.cavalry.name", "Atlı")]
+    [InlineData("unit.catapult.name", "Mancınık")]
+    [InlineData("unit.settler.name", "Öncü")]
+    [InlineData("unit.lord.name", "Vali")]
+    [InlineData("building.main_building.name", "Merkez Bina")]
+    [InlineData("building.warehouse.name", "Depo")]
+    [InlineData("building.barracks.name", "Kışla")]
+    [InlineData("building.wall.name", "Sur")]
+    [InlineData("building.watchtower.name", "Gözetleme Kulesi")]
+    [InlineData("building.woodcutter.name", "Oduncu")]
+    [InlineData("building.quarry.name", "Taş Ocağı")]
+    [InlineData("building.farm.name", "Çiftlik")]
+    [InlineData("building.marketplace.name", "Pazar Yeri")]
+    [InlineData("player.barbarians", "Barbarlar")]
+    [InlineData("tier.camp", "Kamp")]
+    [InlineData("tier.stronghold", "Kale")]
+    [InlineData("overlay.surrender", "Teslim Ol")]
+    [InlineData("resource.wood.name", "Odun")]
+    [InlineData("resource.stone.name", "Taş")]
+    [InlineData("resource.food.name", "Tahıl")]
+    [InlineData("popup.capital", "Başkent")]
+    public void TurkishUsesTheGlossary(string key, string term)
+    {
+        Assert.Equal(term, Catalogue.Load("tr").Entries[key].Single());
+    }
+
+    [Theory]
+    [InlineData("Sadakat", "scout.loyalty")]
+    [InlineData("Tüccar", "effect.carriers")]
+    public void TurkishGlossaryTermsAppearInSentences(string term, string key)
+    {
+        Assert.Contains(term, Catalogue.Load("tr").Entries[key].Single());
+    }
+
+    [Fact]
+    public void TurkishDiffersFromEnglishExceptWhereIdentical()
+    {
+        var english = Catalogue.Load("en").Entries;
+        var turkish = Catalogue.Load("tr").Entries;
+        var same = english.Keys.Where(key => english[key][^1] == turkish[key].Single() && english[key][^1].Any(char.IsLetter)).Order(StringComparer.Ordinal).ToList();
+
+        // Only text made up entirely of names and placeholders may match.
+        Assert.Equal(new[]
+        {
+            "difficulty.normal", "end.difficulty", "language.en", "language.tr", "movement.to", "queue.train_item", "report.unit_count", "scout.building_level", "start.map_size",
+        }, same);
+    }
 }

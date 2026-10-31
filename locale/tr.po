@@ -12,9 +12,882 @@ msgstr "English"
 msgid "language.tr"
 msgstr "Türkçe"
 
-msgid "ui.start.language"
-msgstr "Dil"
-
 msgid "common.minutes"
 msgid_plural "common.minutes"
 msgstr[0] "{count} dakika"
+
+msgid "tile.queued"
+msgstr "Kuyrukta"
+
+msgid "common.max"
+msgstr "Maks"
+
+msgid "common.level"
+msgstr "Seviye {level}"
+
+msgid "common.not_built"
+msgstr "İnşa edilmedi"
+
+msgid "common.and"
+msgstr "{first} ve {second}"
+
+msgid "common.tiles"
+msgstr "{distance} kare"
+
+msgid "common.tiles_away"
+msgstr "{distance} kare uzakta"
+
+msgid "player.you"
+msgstr "Sen"
+
+msgid "player.barbarians"
+msgstr "Barbarlar"
+
+msgid "building.main_building.name"
+msgstr "Merkez Bina"
+
+msgid "building.woodcutter.name"
+msgstr "Oduncu"
+
+msgid "building.quarry.name"
+msgstr "Taş Ocağı"
+
+msgid "building.farm.name"
+msgstr "Çiftlik"
+
+msgid "building.warehouse.name"
+msgstr "Depo"
+
+msgid "building.barracks.name"
+msgstr "Kışla"
+
+msgid "building.wall.name"
+msgstr "Sur"
+
+msgid "building.marketplace.name"
+msgstr "Pazar Yeri"
+
+msgid "building.watchtower.name"
+msgstr "Gözetleme Kulesi"
+
+msgid "building.main_building.description"
+msgstr "Köyün kalbi. Seviyesi, diğer binaların ne kadar yükselebileceğini belirler."
+
+msgid "building.woodcutter.description"
+msgstr "Odun üretir."
+
+msgid "building.quarry.description"
+msgstr "Taş üretir."
+
+msgid "building.farm.description"
+msgstr "Tahıl üretir. Asker eğitiminin ana maliyeti tahıldır."
+
+msgid "building.warehouse.description"
+msgstr "Köyün her kaynaktan ne kadar saklayabileceğini belirler."
+
+msgid "building.barracks.description"
+msgstr "Asker eğitir. Yüksek seviyeler daha hızlı eğitir ve daha güçlü birlikleri açar."
+
+msgid "building.wall.description"
+msgstr "Köyde bulunan herkesin savunmasını artırır."
+
+msgid "building.marketplace.description"
+msgstr "Tüccarları kaynakları diğer köylerine taşır. Yalnızca gönderen köyde gerekir."
+
+msgid "building.watchtower.description"
+msgstr "Köydeki Casusları güçlendirir ve her keşif girişimini sana bildirir."
+
+msgid "unit.spearman.name"
+msgstr "Mızrakçı"
+
+msgid "unit.swordsman.name"
+msgstr "Kılıççı"
+
+msgid "unit.cavalry.name"
+msgstr "Atlı"
+
+msgid "unit.catapult.name"
+msgstr "Mancınık"
+
+msgid "unit.settler.name"
+msgstr "Öncü"
+
+msgid "unit.lord.name"
+msgstr "Vali"
+
+msgid "unit.scout.name"
+msgstr "Casus"
+
+msgid "resource.wood.name"
+msgstr "Odun"
+
+msgid "resource.stone.name"
+msgstr "Taş"
+
+msgid "resource.food.name"
+msgstr "Tahıl"
+
+msgid "resource.wood.amount"
+msgstr "{amount} odun"
+
+msgid "resource.stone.amount"
+msgstr "{amount} taş"
+
+msgid "resource.food.amount"
+msgstr "{amount} tahıl"
+
+msgid "mission.attack"
+msgstr "Saldırı"
+
+msgid "mission.raid"
+msgstr "Yağma"
+
+msgid "mission.reinforce"
+msgstr "Takviye"
+
+msgid "mission.scout"
+msgstr "Keşif"
+
+msgid "mission.transfer"
+msgstr "Kaynak gönder"
+
+msgid "mission.settle"
+msgstr "Yerleşme"
+
+msgid "mission.return"
+msgstr "Dönüş"
+
+msgid "mission.carrier_return"
+msgstr "Tüccar dönüşü"
+
+msgid "tier.camp"
+msgstr "Kamp"
+
+msgid "tier.stronghold"
+msgstr "Kale"
+
+msgid "difficulty.easy"
+msgstr "Kolay"
+
+msgid "difficulty.normal"
+msgstr "Normal"
+
+msgid "difficulty.hard"
+msgstr "Zor"
+
+msgid "map_size.small"
+msgstr "Küçük"
+
+msgid "map_size.medium"
+msgstr "Orta"
+
+msgid "terrain.grass"
+msgstr "Çayır"
+
+msgid "terrain.forest"
+msgstr "Orman"
+
+msgid "terrain.hills"
+msgstr "Tepeler"
+
+msgid "terrain.water"
+msgstr "Su"
+
+msgid "rejection.unknown_command"
+msgstr "Bu şu anda yapılamaz."
+
+msgid "rejection.village_not_found"
+msgstr "Bu şu anda yapılamaz."
+
+msgid "rejection.already_out_of_the_match"
+msgstr "Bu şu anda yapılamaz."
+
+msgid "rejection.invalid_count"
+msgstr "Kaç tane olacağını seç."
+
+msgid "rejection.barracks_level_too_low"
+msgstr "Bu birliği eğitmek için Kışlayı yükselt."
+
+msgid "rejection.invalid_mission"
+msgstr "Bu görev bu hedefe gidemez."
+
+msgid "rejection.no_troops_selected"
+msgstr "Gönderilecek asker seç."
+
+msgid "rejection.not_enough_troops"
+msgstr "Burada o kadar askerin yok."
+
+msgid "rejection.catapults_cannot_raid"
+msgstr "Mancınıklar yağmaya gidemez."
+
+msgid "rejection.settlers_cannot_fight"
+msgstr "Öncüler saldırıya veya yağmaya gidemez."
+
+msgid "rejection.scouts_cannot_fight"
+msgstr "Casuslar saldırıya veya yağmaya gidemez."
+
+msgid "rejection.lords_cannot_raid"
+msgstr "Valiler yağmaya gidemez."
+
+msgid "rejection.only_scouts_can_scout"
+msgstr "Keşfe yalnızca Casuslar gidebilir."
+
+msgid "rejection.no_settler_here"
+msgstr "Önce bu köyde bir Öncü eğit."
+
+msgid "rejection.tile_outside_map"
+msgstr "Burası haritanın dışında."
+
+msgid "rejection.tile_is_water"
+msgstr "Su üzerine köy kurulamaz."
+
+msgid "rejection.tile_taken"
+msgstr "Burada zaten bir köy var."
+
+msgid "rejection.too_close_to_village"
+msgstr "Başka bir köye çok yakın."
+
+msgid "rejection.village_limit_reached"
+msgstr "Daha fazla köy kurmak için Başkentindeki Merkez Binayı yükselt."
+
+msgid "rejection.no_capital_choice_pending"
+msgstr "Şu anda seçilecek bir Başkent yok."
+
+msgid "rejection.no_capital"
+msgstr "Önce yeni bir Başkent seç."
+
+msgid "rejection.not_owner"
+msgstr "Bu senin köyün değil."
+
+msgid "rejection.target_not_yours"
+msgstr "Kaynaklar yalnızca kendi köylerine gidebilir."
+
+msgid "rejection.same_village"
+msgstr "Kaynaklar zaten bu köyde."
+
+msgid "rejection.no_resources_selected"
+msgstr "Gönderilecek kaynak seç."
+
+msgid "rejection.no_marketplace"
+msgstr "Önce bu köyde bir Pazar Yeri inşa et."
+
+msgid "rejection.not_enough_carriers"
+msgstr "Bu yük için yeterli boşta Tüccar yok."
+
+msgid "rejection.insufficient_resources"
+msgstr "Henüz yeterli kaynak yok."
+
+msgid "rejection.queue_full"
+msgstr "Kuyruk dolu."
+
+msgid "rejection.main_building_level_too_low"
+msgstr "Daha yükseğe çıkmak için Merkez Binayı yükselt."
+
+msgid "rejection.max_level_reached"
+msgstr "En yüksek seviyeye ulaşıldı."
+
+msgid "rejection.match_over"
+msgstr "Maç bitti."
+
+msgid "rejection.game_paused"
+msgstr "Maç duraklatıldı."
+
+msgid "movement.from"
+msgstr "{mission} · {owner} tarafından"
+
+msgid "movement.settler"
+msgstr "Öncü › yeni köy"
+
+msgid "movement.carrying"
+msgstr "{amount} taşınıyor › {target}"
+
+msgid "movement.carriers_returning"
+msgstr "Tüccarlar dönüyor"
+
+msgid "movement.returning_with"
+msgstr "Dönüyor · {amount} kaynak"
+
+msgid "movement.to"
+msgstr "{mission} › {target}"
+
+msgid "movement.returning_loot"
+msgstr "Dönüyor · {amount} ganimet"
+
+msgid "movement.returning"
+msgstr "Dönüyor"
+
+msgid "report.won"
+msgstr "Kazanıldı"
+
+msgid "report.lost"
+msgstr "Kaybedildi"
+
+msgid "report.headline_attacker"
+msgstr "{result}: {mission} · {target}"
+
+msgid "report.headline_defender"
+msgstr "{result}: {mission} · {attacker} tarafından"
+
+msgid "report.victory"
+msgstr "Zafer"
+
+msgid "report.defeat"
+msgstr "Yenilgi"
+
+msgid "report.time"
+msgstr "{headline}  ·  Maç süresi: {time}"
+
+msgid "report.attacking"
+msgstr "{owner} (saldıran)"
+
+msgid "report.defending"
+msgstr "{owner} (savunan)"
+
+msgid "report.powers"
+msgstr "Saldırı {attack}  /  savunma {defence}"
+
+msgid "report.powers_wall"
+msgstr "Saldırı {attack}  /  savunma {defence}  (Sur seviyesi {level})"
+
+msgid "report.loot"
+msgstr "Ganimet: {list}"
+
+msgid "report.catapults"
+msgstr "Mancınıklar vurdu: {building}, seviye {from} › {to}"
+
+msgid "report.capital_protected"
+msgstr "Başkent korundu: Sadakat değişmedi"
+
+msgid "report.captured"
+msgstr "Köy ele geçirildi"
+
+msgid "report.loyalty_change"
+msgstr "Sadakat: {from} › {to}"
+
+msgid "report.no_troops"
+msgstr "Asker yok"
+
+msgid "report.unit_count"
+msgstr "{unit}: {count}"
+
+msgid "report.unit_lost"
+msgstr "{unit}: {count}, kayıp {lost}"
+
+msgid "scout.headline_seen"
+msgstr "Keşfedildi: {target}"
+
+msgid "scout.headline_lost"
+msgstr "Casuslar kayboldu: {target}"
+
+msgid "scout.result_narrow"
+msgstr "Keşif: kabaca görüldü"
+
+msgid "scout.result_clear"
+msgstr "Keşfedildi"
+
+msgid "scout.result_full"
+msgstr "Tamamen keşfedildi"
+
+msgid "scout.result_lost"
+msgstr "Casuslar kayboldu"
+
+msgid "scout.scouting"
+msgstr "{owner} (keşifte)"
+
+msgid "scout.garrison"
+msgstr "{owner} (garnizon)"
+
+msgid "scout.not_seen"
+msgstr "Görülmedi"
+
+msgid "scout.range_troops"
+msgstr "{range} asker, tam sayılamadı"
+
+msgid "scout.wall_level"
+msgstr "Sur seviyesi {level}"
+
+msgid "scout.seen_note"
+msgstr "{wall}  ·  Köy dışındaki askerler sayılmadı"
+
+msgid "scout.stopped"
+msgstr "Onların Casusları seninkileri durdurdu, hiçbir şey görülmedi"
+
+msgid "scout.buildings"
+msgstr "Binalar: {list}"
+
+msgid "scout.building_level"
+msgstr "{building} {level}"
+
+msgid "scout.loyalty"
+msgstr "Sadakat {value}"
+
+msgid "scout.resources"
+msgstr "Kaynaklar: {list}"
+
+msgid "notice.caught"
+msgstr "{target}: {sender} Casusları yakalandı"
+
+msgid "notice.seen"
+msgstr "{sender} keşif yaptı: {target}"
+
+msgid "notice.result_caught"
+msgstr "Casuslar yakalandı"
+
+msgid "notice.result_seen"
+msgstr "Düşman keşif yaptı"
+
+msgid "notice.unknown_count"
+msgstr "Sayıları bilinmiyor"
+
+msgid "notice.scouts_lost"
+msgstr "Kayıp Casus: {count}"
+
+msgid "notice.no_scouts_lost"
+msgstr "Casus kaybı yok"
+
+msgid "notice.stopped"
+msgstr "Casusların onları durdurdu"
+
+msgid "notice.watchtower"
+msgstr "Gözetleme Kulen onları gördü, ama aradıklarını buldular"
+
+msgid "intel.lost_only"
+msgstr "Casuslar {age} önce kayboldu: hiçbir şey görülmedi"
+
+msgid "intel.seen"
+msgstr "{age} önce keşfedildi: {seen}"
+
+msgid "intel.seen_then_lost"
+msgstr "{intel}. Casuslar {age} önce kayboldu"
+
+msgid "intel.narrow"
+msgstr "{troops} asker, Sur {wall}"
+
+msgid "intel.troops"
+msgid_plural "intel.troops"
+msgstr[0] "{count} asker"
+
+msgid "intel.wall"
+msgstr "Sur {level}"
+
+msgid "intel.resources"
+msgstr "{amount} kaynak"
+
+msgid "intel.loyalty"
+msgstr "Sadakat {value}"
+
+msgid "toast.building_done"
+msgstr "{building}: seviye {level} tamamlandı"
+
+msgid "toast.see_reports"
+msgstr "{headline}. Raporlara bak."
+
+msgid "toast.troops_returned_loot"
+msgstr "Askerler döndü · {amount} ganimet"
+
+msgid "toast.troops_returned"
+msgstr "Askerler döndü"
+
+msgid "toast.trained"
+msgstr "{unit} × {count} eğitildi"
+
+msgid "toast.troops_arrived"
+msgstr "Askerler ulaştı: {village}"
+
+msgid "toast.founded"
+msgstr "{village} kuruldu"
+
+msgid "toast.settler_back"
+msgstr "Öncü geri döndü. {reason}"
+
+msgid "toast.you_captured"
+msgstr "Ele geçirdin: {village}"
+
+msgid "toast.captured_by"
+msgstr "{village}, {owner} tarafından ele geçirildi"
+
+msgid "toast.surrendered"
+msgstr "{owner} teslim oldu"
+
+msgid "toast.eliminated"
+msgstr "{owner} elendi"
+
+msgid "toast.delivered"
+msgstr "{amount} kaynak ulaştı: {village}"
+
+msgid "toast.delivered_lost"
+msgstr "{amount} kaynak ulaştı: {village}, {lost} kayıp: Depo dolu"
+
+msgid "tab.village"
+msgstr "Köy"
+
+msgid "tab.troops"
+msgstr "Askerler"
+
+msgid "tab.send"
+msgstr "Gönder"
+
+msgid "tab.reports"
+msgstr "Raporlar"
+
+msgid "tab.reports_unread"
+msgstr "Raporlar ({count})"
+
+msgid "overlay.paused.title"
+msgstr "Duraklatıldı"
+
+msgid "overlay.paused.message"
+msgstr "Maç beklemede. Devam etmek için P'ye bas."
+
+msgid "overlay.resume"
+msgstr "Devam et"
+
+msgid "overlay.leave"
+msgstr "Maçtan çık"
+
+msgid "overlay.keep_playing"
+msgstr "Oynamaya devam et"
+
+msgid "overlay.leave.title"
+msgstr "Maçtan çıkılsın mı?"
+
+msgid "overlay.leave.message"
+msgstr "Bu maçtaki ilerlemen kaybolacak."
+
+msgid "overlay.surrender.title"
+msgstr "Teslim olunsun mu?"
+
+msgid "overlay.surrender.message"
+msgstr "Bu maçı kaybedersin. Köylerin, askerleri ve kaynaklarıyla birlikte Barbar köyü olarak haritada kalır; başkaları onları yağmalayabilir veya ele geçirebilir. Yoldaki askerler kaybolur."
+
+msgid "overlay.surrender"
+msgstr "Teslim Ol"
+
+msgid "overlay.eliminated.title"
+msgstr "Elendin"
+
+msgid "overlay.eliminated.message"
+msgstr "Hiç köyün kalmadı. Maç sensiz sürüyor."
+
+msgid "overlay.keep_watching"
+msgstr "İzlemeye devam et"
+
+msgid "overlay.surrendered.title"
+msgstr "Teslim oldun"
+
+msgid "overlay.surrendered.message"
+msgstr "Köylerin artık Barbarların. Maç sensiz sürüyor."
+
+msgid "village.info"
+msgstr "{village}  ·  Sadakat {loyalty}"
+
+msgid "village.capital_protected"
+msgstr "Başkent: Merkez Binası seviye {level} üzerindeyken korunur"
+
+msgid "village.capital_unprotected"
+msgstr "Başkent: Merkez Binası seviye {level} üzerine çıkana kadar korunmaz"
+
+msgid "queue.build"
+msgstr "İnşaat kuyruğu"
+
+msgid "queue.training"
+msgstr "Eğitim"
+
+msgid "queue.build_item"
+msgstr "{building} › seviye {level}"
+
+msgid "queue.train_item"
+msgstr "{unit} × {count}"
+
+msgid "queue.starts_in"
+msgstr "{time} sonra başlar"
+
+msgid "queue.empty"
+msgstr "Boş yer"
+
+msgid "bar.choose_capital"
+msgstr "Başkent seç {time}"
+
+msgid "bar.incoming"
+msgstr "{mission} geliyor: {time}"
+
+msgid "strip.threat"
+msgstr "Tehdit altında"
+
+msgid "capital.message"
+msgstr "Yeni bir Başkent seç. Merkez Binası seviye {level} olur. Seçmezsen {village} seçilir."
+
+msgid "capital.row"
+msgstr "{village}  ·  Merkez Bina seviye {level}"
+
+msgid "end.draw"
+msgstr "Beraberlik"
+
+msgid "end.header.rank"
+msgstr "#"
+
+msgid "end.header.player"
+msgstr "Oyuncu"
+
+msgid "end.header.villages"
+msgstr "Köyler"
+
+msgid "end.header.population"
+msgstr "Nüfus"
+
+msgid "end.header.captured"
+msgstr "Ele geçirilen"
+
+msgid "end.header.score"
+msgstr "Puan"
+
+msgid "end.you_last"
+msgstr "Ayakta kalan son oyuncu sensin."
+
+msgid "end.other_last"
+msgstr "Ayakta kalan son oyuncu: {names}."
+
+msgid "end.tied"
+msgstr "Süre doldu. En yüksek puanda eşitlik: {names}."
+
+msgid "end.you_highest"
+msgstr "Süre doldu. En yüksek puan sende."
+
+msgid "end.other_highest"
+msgstr "Süre doldu. En yüksek puan: {names}."
+
+msgid "end.difficulty"
+msgstr "{name} ({difficulty})"
+
+msgid "end.surrendered"
+msgstr "{name} (teslim oldu)"
+
+msgid "end.eliminated"
+msgstr "{name} (elendi)"
+
+msgid "effect.now"
+msgstr "Şimdi {value}"
+
+msgid "effect.compare"
+msgstr "Şimdi {now}   ›   Seviye {level}: {next}"
+
+msgid "effect.holds"
+msgstr "{amount} saklar"
+
+msgid "effect.others"
+msgstr "diğerleri en çok seviye {level}"
+
+msgid "effect.carriers"
+msgid_plural "effect.carriers"
+msgstr[0] "{count} Tüccar"
+
+msgid "effect.carriers_free"
+msgstr "Şu anda {free} boşta, her biri {capacity} taşır"
+
+msgid "effect.watchtower"
+msgstr "Köydeki Casuslar × {value}"
+
+msgid "upgrade.max"
+msgstr "En yüksek seviye"
+
+msgid "upgrade.unavailable"
+msgstr "Kullanılamaz"
+
+msgid "upgrade.build"
+msgstr "İnşa et"
+
+msgid "upgrade.to_level"
+msgstr "Yükselt: seviye {level}"
+
+msgid "upgrade.warehouse_small"
+msgstr "Bunun maliyeti Deponun kapasitesini aşıyor. Önce Depoyu yükselt."
+
+msgid "troops.stats"
+msgstr "Saldırı {attack}  ·  Savunma {infantry} piyade / {cavalry} atlı  ·  Taşıma {carry}"
+
+msgid "troops.requires"
+msgstr "Kışla seviye {level} gerekli"
+
+msgid "troops.train"
+msgstr "{count} eğit"
+
+msgid "popup.abandoned"
+msgstr "Terk edilmiş"
+
+msgid "popup.capital"
+msgstr "Başkent"
+
+msgid "popup.settler_arrives"
+msgstr "Öncü {time} sonra ulaşır"
+
+msgid "send.from"
+msgstr "Çıkış: {village}"
+
+msgid "send.scout_rule"
+msgstr "Casuslar oradaki Casuslarla karşılaşır. Eşit sayıda nadiren geçer ve yakalananların hepsi ölür. Büyük çoğunluk neredeyse her zaman başarır; fark büyüdükçe daha çok şey görürsün."
+
+msgid "send.resources"
+msgstr "Kaynak gönder"
+
+msgid "send.troops"
+msgstr "Asker gönder"
+
+msgid "send.carriers_preview"
+msgstr "Boştaki {free} Tüccardan {used} kullanılır  ·  Varış: {time}"
+
+msgid "send.pick_own"
+msgstr "Haritadan köylerinden birini seç."
+
+msgid "send.needs_carriers"
+msgstr "Bunun için {needed} Tüccar gerekli, {free} boşta."
+
+msgid "send.warning"
+msgstr "Yaklaşık {loss} kaybolacak: {village} Deposu dolacak."
+
+msgid "send.a_little"
+msgstr "biraz"
+
+msgid "send.arrives"
+msgstr "Varış: {time}"
+
+msgid "send.pick_target"
+msgstr "Dünya haritasından hedef seç."
+
+msgid "send.already_here"
+msgstr "Askerler zaten bu köyde."
+
+msgid "send.no_target"
+msgstr "Henüz hedef yok"
+
+msgid "send.pick_village"
+msgstr "Haritadan köy seç"
+
+msgid "send.change_target"
+msgstr "Hedefi haritadan değiştir"
+
+msgid "send.random"
+msgstr "Rastgele"
+
+msgid "start.unlimited"
+msgstr "Sınırsız"
+
+msgid "start.map_size"
+msgstr "{size} ({width} × {height})"
+
+msgid "error.data"
+msgstr "Oyun verileri yüklenemedi"
+
+msgid "ui.start.language"
+msgstr "Dil"
+
+msgid "ui.start.tagline"
+msgstr "Köyünü kur. Toprağını koru."
+
+msgid "ui.start.duration"
+msgstr "Maç süresi"
+
+msgid "ui.start.speed"
+msgstr "Oyun hızı"
+
+msgid "ui.start.map_size"
+msgstr "Harita boyutu"
+
+msgid "ui.start.opponents"
+msgstr "Yapay zekâ rakipleri"
+
+msgid "ui.start.difficulty"
+msgstr "Yapay zekâ zorluğu"
+
+msgid "ui.start.start"
+msgstr "Maçı başlat"
+
+msgid "ui.capital.title"
+msgstr "Başkentin düştü"
+
+msgid "ui.capital.later"
+msgstr "Sonra karar ver"
+
+msgid "ui.end.back"
+msgstr "Başlangıca dön"
+
+msgid "ui.building.cost"
+msgstr "Maliyet"
+
+msgid "ui.building.time"
+msgstr "Süre"
+
+msgid "ui.building.train"
+msgstr "Asker eğit"
+
+msgid "ui.send_resources"
+msgstr "Kaynak gönder"
+
+msgid "ui.reports.title"
+msgstr "Raporlar"
+
+msgid "ui.reports.none"
+msgstr "Henüz savaş yok."
+
+msgid "ui.report.close"
+msgstr "Kapat"
+
+msgid "ui.send.target"
+msgstr "Hedef"
+
+msgid "ui.send.mission"
+msgstr "Görev"
+
+msgid "ui.send.catapults"
+msgstr "Mancınık hedefi"
+
+msgid "ui.send.troops"
+msgstr "Asker gönder"
+
+msgid "ui.send.moving"
+msgstr "Yolda"
+
+msgid "ui.send.none"
+msgstr "Yolda kimse yok."
+
+msgid "ui.bar.village_tip"
+msgstr "Köy görünümü (M)"
+
+msgid "ui.bar.village"
+msgstr "Köy"
+
+msgid "ui.bar.world_tip"
+msgstr "Dünya haritası (M)"
+
+msgid "ui.bar.world"
+msgstr "Dünya"
+
+msgid "ui.bar.capital_tip"
+msgstr "Yeni Başkent seç"
+
+msgid "ui.bar.incoming_tip"
+msgstr "Haritada göster"
+
+msgid "ui.bar.pause_tip"
+msgstr "Maçı duraklat (P)"
+
+msgid "ui.bar.pause"
+msgstr "Duraklat"
+
+msgid "ui.bar.clock_tip"
+msgstr "Maçta kalan süre"
+
+msgid "ui.popup.send"
+msgstr "Asker gönder"
+
+msgid "ui.popup.enter"
+msgstr "Köye gir"
+
+msgid "ui.popup.reinforce"
+msgstr "Takviye"
+
+msgid "ui.popup.resources"
+msgstr "Kaynak gönder"
+
+msgid "ui.popup.settler"
+msgstr "Öncü gönder"
+

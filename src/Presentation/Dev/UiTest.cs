@@ -54,6 +54,9 @@ public partial class UiTest : Control
     /// <summary>A run under tr-TR proves nothing unless that culture is really in force.</summary>
     private void TestCulture()
     {
+        if (DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild()).Language is { } language)
+            Expect(Language.Current == language && TranslationServer.GetLocale().StartsWith(language, StringComparison.Ordinal), $"The language is {language}");
+
         if (DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild()).Culture is not { } culture)
             return;
 
@@ -98,6 +101,13 @@ public partial class UiTest : Control
         Expect(Language.Load() == "en" && L.T("ui.start.language") == "Language", "Choosing English applies it");
         Expect(L.N("common.minutes", 1) == "1 minute" && L.N("common.minutes", 2) == "2 minutes", $"English has two plural forms, got '{L.N("common.minutes", 1)}'");
         Expect(L.T("language.tr") == "T\u00fcrk\u00e7e", "A language shows its own name");
+
+        // The font must draw every character the game can show in Turkish, in both weights.
+        var theme = ThemeDB.GetProjectTheme();
+        var catalogue = FileAccess.GetFileAsString("res://locale/tr.po");
+        var missing = catalogue.Where(c => c > 127 && !char.IsWhiteSpace(c)).Distinct().Where(c => !theme.DefaultFont.HasChar(c)).ToList();
+        Expect(missing.Count == 0, $"The font has every Turkish character, missing '{string.Concat(missing)}'");
+        Expect("\u011f\u011e\u015f\u015e\u0131\u0130\u00e7\u00c7\u00f6\u00d6\u00fc\u00dc".All(c => theme.DefaultFont.HasChar(c)), "The font has the Turkish letters");
 
         Find<StartScreen>().GetNode<OptionButton>("%Duration").Select(0);
         Find<StartScreen>().GetNode<OptionButton>("%Language").EmitSignal(OptionButton.SignalName.ItemSelected, Array.IndexOf(Language.Codes, language));
