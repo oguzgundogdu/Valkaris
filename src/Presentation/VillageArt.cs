@@ -48,7 +48,7 @@ public static class VillageArt
         [BuildingType.Watchtower] = (0.85f, 0.56f),
         [BuildingType.Warehouse] = (0.27f, 0.8f),
         [BuildingType.Barracks] = (0.73f, 0.8f),
-        [BuildingType.Wall] = (0.5f, 0.86f),
+        [BuildingType.Wall] = (0.5f, 0.84f),
     };
 
     // The smallest logical view, and where a tile's ground sits below its middle.
@@ -174,7 +174,7 @@ public static class VillageArt
         var found = new List<(float X, float Y)>();
         for (var i = 0; i < Attempts && found.Count < count; i++)
         {
-            var spot = (X: 0.07f + (float)random.NextDouble() * 0.86f, Y: 0.16f + (float)random.NextDouble() * 0.72f);
+            var spot = (X: 0.07f + (float)random.NextDouble() * 0.86f, Y: 0.16f + (float)random.NextDouble() * 0.7f);
             if (!IsClear(spot.X, spot.Y) || taken.Any(other => Distance(spot, other) < SceneryGap))
                 continue;
             taken.Add(spot);

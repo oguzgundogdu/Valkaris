@@ -281,6 +281,13 @@ public partial class UiTest : Control
         Press(Find<StartScreen>().GetNode<Button>("%Start"));
         await Frames();
         await PrintFrameCost("village");
+
+        var game = Find<GameScreen>();
+        var village = game.Session.State.Villages[game.CurrentVillageId!.Value];
+        foreach (var (building, definition) in game.Session.Data.Buildings.Buildings)
+            Valkaris.Core.Dev.DevScenario.SetLevel(village, building, definition.MaxLevel);
+        await PrintFrameCost("fully grown village");
+
         for (var seed = 1; seed <= 3; seed++)
         {
             VillageGround.For(seed, Find<VillageView>().Size);
