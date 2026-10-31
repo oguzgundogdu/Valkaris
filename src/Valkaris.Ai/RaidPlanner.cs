@@ -10,11 +10,13 @@ public sealed class RaidPlanner
     private readonly AiView _view;
     private readonly AiMemory _memory;
     private readonly Forces _forces;
+    private readonly WarPlanner? _war;
 
-    public RaidPlanner(AiView view, AiMemory memory)
+    public RaidPlanner(AiView view, AiMemory memory, WarPlanner? war = null)
     {
         _view = view;
         _memory = memory;
+        _war = war;
         _forces = new Forces(view);
     }
 
@@ -24,7 +26,7 @@ public sealed class RaidPlanner
         if (raiding >= _view.Profile.MaxRaidsPerVillage)
             return;
 
-        var spare = _forces.Spare(village);
+        var spare = _war?.WithoutPlannedStrike(village) ?? _forces.Spare(village);
         if (spare.Count == 0)
             return;
 

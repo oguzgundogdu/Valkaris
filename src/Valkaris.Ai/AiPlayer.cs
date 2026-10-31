@@ -28,10 +28,11 @@ public sealed class AiPlayer : IMatchAgent
         _builds = new BuildPlanner(view);
         _training = new TrainingPlanner(view, _memory);
         _defence = new DefencePlanner(view);
-        _raids = new RaidPlanner(view, _memory);
+        _raids = null!;
         _rival = new RivalPlanner(view, _memory);
         _war = new WarPlanner(view, _memory, _rival);
         _scouts = new ScoutPlanner(view, _memory, _war);
+        _raids = new RaidPlanner(view, _memory, _war);
         _expansion = new ExpansionPlanner(view);
         _transfers = new TransferPlanner(view, _builds);
         _surrender = new SurrenderPlanner(view, _memory);
@@ -63,6 +64,7 @@ public sealed class AiPlayer : IMatchAgent
         _expansion.ChooseCapital();
         _defence.Plan();
         _transfers.Plan();
+        _war.Gather(_view.Incoming.Select(i => i.TargetVillageId).ToHashSet());
         foreach (var village in _view.OwnVillages)
         {
             var threatened = _defence.IsThreatened(village);

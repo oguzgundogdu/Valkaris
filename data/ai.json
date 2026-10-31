@@ -19,6 +19,7 @@
   "scoutRetrySeconds": 80,
   "rivalDistanceExponent": 2,
   "rivalSwitchCooldownSeconds": 300,
+  "gatherMinAttack": 200,
   "capitalTargetPenalty": 4,
   "buildOrder": [
     {
@@ -205,6 +206,7 @@
       "surrenderHoldSeconds": 60,
       "rivalFocusShare": 0.8,
       "rivalStrongerRatio": 2.0,
+      "massSeconds": 300,
       "maxWallLevel": 0,
       "maxFightersPerMinute": 1.5
     },
@@ -228,6 +230,7 @@
       "surrenderHoldSeconds": 120,
       "rivalFocusShare": 0.8,
       "rivalStrongerRatio": 2.5,
+      "massSeconds": 180,
       "maxWallLevel": 5
     },
     "Hard": {
@@ -250,6 +253,7 @@
       "surrenderHoldSeconds": 180,
       "rivalFocusShare": 0.8,
       "rivalStrongerRatio": 3.0,
+      "massSeconds": 120,
       "maxWallLevel": 5
     }
   }

@@ -336,6 +336,7 @@ public class GameDataValidationTests
     [InlineData("maxWallLevel", -1)]
     [InlineData("rivalFocusShare", 1.5)]
     [InlineData("rivalStrongerRatio", 0.5)]
+    [InlineData("massSeconds", -1)]
     [InlineData("surrenderVillageShare", 1.5)]
     [InlineData("surrenderStrengthRatio", -1)]
     [InlineData("surrenderHoldSeconds", -1)]

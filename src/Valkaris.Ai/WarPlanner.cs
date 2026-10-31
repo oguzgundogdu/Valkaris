@@ -4,13 +4,15 @@ using Valkaris.Core.Systems;
 
 namespace Valkaris.Ai;
 
-/// <summary>Sends armies at its rival, and Lords at anything worth capturing, when the margins hold.</summary>
+/// <summary>Builds up, then sends armies at its rival, and Lords at anything worth capturing, when the margins hold.</summary>
 public sealed class WarPlanner
 {
     private readonly AiView _view;
     private readonly AiMemory _memory;
     private readonly RivalPlanner _rival;
     private readonly Forces _forces;
+    private double? _lastStrike;
+    private int? _stagingId;
     private int _strikesOnRival;
     private int _strikesElsewhere;
 
@@ -32,14 +34,17 @@ public sealed class WarPlanner
             return;
 
         var scouting = _view.OwnMovements.Where(m => m.Type == MovementType.Scout).Select(m => m.ToVillageId).ToHashSet();
+        var massing = IsMassing();
         foreach (var target in Targets(village))
         {
             // The news is on its way, so the army waits for it rather than moving on to a worse target.
             if (scouting.Contains(target.Id))
                 return;
 
-            if (Attack(village, target, spare))
+            // A capture under way can't wait: loyalty recovers. Everything else waits for the army to build up.
+            if ((!massing || CaptureUnderWay(target)) && Attack(village, target, spare))
             {
+                _lastStrike = _view.Now;
                 if (!target.IsBarbarian)
                 {
                     if (target.OwnerId == _rival.Current)
@@ -52,11 +57,72 @@ public sealed class WarPlanner
         }
     }
 
+    /// <summary>
+    /// Gathers spare troops from every village into the strongest one. An army split across villages can't beat a
+    /// defender's whole garrison, and a concentrated one can pick off an enemy that stays spread out.
+    /// </summary>
+    public void Gather(IReadOnlySet<int> threatened)
+    {
+        if (_view.Now * _view.GameSpeed < _view.Profile.AggressionDelaySeconds)
+            return;
+
+        var villages = _view.OwnVillages;
+        if (villages.Count < 2)
+            return;
+
+        // It stays put while it can, or armies would spend their time walking between villages.
+        var staging = villages.FirstOrDefault(v => v.Id == _stagingId && !threatened.Contains(v.Id))
+            ?? villages.OrderByDescending(v => _forces.AttackOf(_forces.Spare(v))).ThenBy(v => v.Id).First();
+        _stagingId = staging.Id;
+
+        foreach (var village in villages.Where(v => v.Id != staging.Id && !threatened.Contains(v.Id)))
+        {
+            // Lords and Catapults only count with the army, so they walk over whenever they are here.
+            var spare = _forces.Spare(village);
+            var specialists = new[] { UnitType.Lord, UnitType.Catapult }.Where(u => village.TroopCount(u) > 0).ToList();
+            if (_forces.AttackOf(spare) < _view.Config.GatherMinAttack && specialists.Count == 0)
+                continue;
+
+            foreach (var unit in specialists)
+                spare[unit] = village.TroopCount(unit);
+
+            var command = new SendTroopsCommand(village.Id, staging.Id, MovementType.Reinforce, spare);
+            if (_view.PreviewSend(command).CanSend)
+                _view.Send(command);
+        }
+    }
+
+    /// <summary>One wave at a time: villages ready in the same decision go together, then the whole side builds up again.</summary>
+    private bool IsMassing() =>
+        _lastStrike is { } last
+        && last < _view.Now
+        && (_view.Now - last) * _view.GameSpeed < _view.Profile.MassSeconds;
+
     /// <summary>The target this village's army would go for first, if it can take it on.</summary>
     public KnownVillage? NextTarget(Village village)
     {
         var hasLord = village.TroopCount(UnitType.Lord) > 0;
         return Targets(village).FirstOrDefault(v => !v.IsBarbarian || hasLord);
+    }
+
+    /// <summary>The spare troops left for raiding once the army for the next strike is set aside.</summary>
+    public Dictionary<UnitType, int> WithoutPlannedStrike(Village village)
+    {
+        var spare = _forces.Spare(village);
+        if (_view.Now * _view.GameSpeed < _view.Profile.AggressionDelaySeconds)
+            return spare;
+
+        var target = Targets(village).FirstOrDefault(v => !v.IsBarbarian);
+        if (target is null)
+            return spare;
+
+        var strike = _forces.Pick(spare, StrikeAttack(target));
+        if (strike is null)
+            return new Dictionary<UnitType, int>();
+
+        foreach (var (unit, count) in strike)
+            spare[unit] -= count;
+        return spare.Where(t => t.Value > 0).ToDictionary(t => t.Key, t => t.Value);
     }
 
     private double StrikeAttack(KnownVillage target) =>
@@ -66,12 +132,14 @@ public sealed class WarPlanner
     private IEnumerable<KnownVillage> Targets(Village village)
     {
         var heading = _view.OwnMovements.Where(m => m.Type == MovementType.Attack).Select(m => m.ToVillageId).ToHashSet();
+        var hasLord = village.TroopCount(UnitType.Lord) > 0;
         var total = _strikesOnRival + _strikesElsewhere + 1;
         var mayGoElsewhere = (double)(_strikesElsewhere + 1) / total <= 1 - _view.Profile.RivalFocusShare;
         return _view.KnownVillages
             .Where(v => v.OwnerId != _view.PlayerId && !heading.Contains(v.Id))
             .Where(v => v.IsBarbarian || v.OwnerId == _rival.Current || mayGoElsewhere)
             .OrderByDescending(CaptureUnderWay)
+            .ThenByDescending(v => hasLord && v.IsBarbarian)
             .ThenByDescending(v => v.OwnerId == _rival.Current)
             .ThenBy(v => Cost(village, v))
             .ThenBy(v => v.Id);
@@ -104,6 +172,9 @@ public sealed class WarPlanner
             var group = _forces.Pick(spare, Math.Max(estimate * _view.Profile.LordMargin, _view.Config.LordMinAttack));
             if (group is not null)
             {
+                // Against a player the whole army goes with it. A camp isn't worth emptying the village for.
+                if (!target.IsBarbarian)
+                    group = new Dictionary<UnitType, int>(spare);
                 group[UnitType.Lord] = 1;
                 return Send(village, target, group, catapults);
             }
@@ -114,8 +185,8 @@ public sealed class WarPlanner
             return false;
 
         // Scouts can report an empty village, and a token force is not worth the walk.
-        var army = _forces.Pick(spare, StrikeAttack(target));
-        return army is not null && Send(village, target, army, catapults);
+        // The whole army goes once it is enough: what stays home adds nothing to the fight.
+        return _forces.Pick(spare, StrikeAttack(target)) is not null && Send(village, target, new Dictionary<UnitType, int>(spare), catapults);
     }
 
     private bool Send(Village village, KnownVillage target, Dictionary<UnitType, int> group, int catapults)

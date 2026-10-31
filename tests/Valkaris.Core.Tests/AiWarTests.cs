@@ -1,5 +1,7 @@
+using Valkaris.Ai;
 using Valkaris.Core.Events;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Core.Tests;
 
@@ -169,7 +171,7 @@ public class AiWarTests
         var village = match.State.Villages[Ai];
         village.AddTroops(UnitType.Lord, 2);
         village.AddTroops(UnitType.Swordsman, 300);
-        match.State.Villages[Enemy].SetBuildingLevel(BuildingType.MainBuilding, 8);
+        match.State.Villages[Enemy].SetBuildingLevel(BuildingType.MainBuilding, match.Data.Villages.Capital.LockedAboveMainLevel + 1);
 
         match.Run(1200);
 
@@ -190,5 +192,168 @@ public class AiWarTests
         match.Run(16, step: 1);
 
         Assert.Null(FirstAttack(match));
+    }
+
+    // Massing, gathering and striking.
+
+    private static Village GiveVillage(AiMatch match, int owner = Ai)
+    {
+        var camp = match.State.Villages.Values.First(v => v.IsBarbarian);
+        camp.OwnerId = owner;
+        camp.BarbarianTier = null;
+        camp.NextTroopRegenTime = null;
+        foreach (var (unit, count) in camp.Troops.ToList())
+            camp.RemoveTroops(unit, count);
+        return camp;
+    }
+
+    private static WarPlanner Planner(AiMatch match)
+    {
+        var view = match.Views[Ai];
+        var memory = new AiMemory(view);
+        return new WarPlanner(view, memory, new RivalPlanner(view, memory));
+    }
+
+    [Fact]
+    public void StrikesAreSpacedByTheProfilesMassTime()
+    {
+        var match = Match();
+        PastDelay(match);
+        NoCamps(match);
+        match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 2000);
+
+        match.Run(1200);
+
+        var mass = match.Data.Ai.Difficulties[AiDifficulty.Hard].MassSeconds;
+        var strikes = match.State.Reports.Where(r => r.AttackerId == Ai && r.DefenderId == Enemy && r.Loyalty is null).Select(r => r.Time).OrderBy(t => t).ToList();
+        Assert.True(strikes.Count >= 2, $"{strikes.Count} strikes");
+        for (var i = 1; i < strikes.Count; i++)
+            Assert.True(strikes[i] - strikes[i - 1] >= mass * 0.5, $"{strikes[i] - strikes[i - 1]}");
+    }
+
+    [Fact]
+    public void AStrikeSendsTheWholeSpareArmy()
+    {
+        var match = Match();
+        PastDelay(match);
+        NoCamps(match);
+        var village = match.State.Villages[Ai];
+        village.AddTroops(UnitType.Swordsman, 1000);
+
+        RunUntilAttack(match);
+
+        var attack = FirstAttack(match);
+        Assert.NotNull(attack);
+        Assert.True(attack!.Troops.GetValueOrDefault(UnitType.Swordsman) > 500, $"{attack.Troops.GetValueOrDefault(UnitType.Swordsman)}");
+    }
+
+    [Fact]
+    public void OutlyingVillagesComeBeforeACapital()
+    {
+        var match = new AiMatch(new[] { AiDifficulty.Hard, AiDifficulty.Normal }, idle: new[] { Enemy });
+        PastDelay(match);
+        var outlying = GiveVillage(match, Enemy);
+        NoCamps(match);
+        var view = match.Views[Ai];
+        var capital = view.KnownVillages.Single(v => v.Id == Enemy);
+        var other = view.KnownVillages.Single(v => v.Id == outlying.Id);
+        var data = match.Data.Ai;
+
+        var next = Planner(match).NextTarget(match.State.Villages[Ai]);
+
+        Assert.True(capital.IsCapital);
+        Assert.NotNull(next);
+        if (UnitRules.Distance(match.State.Villages[Ai].Position, other.Position) < UnitRules.Distance(match.State.Villages[Ai].Position, capital.Position) * data.CapitalTargetPenalty)
+            Assert.Equal(other.Id, next!.Id);
+    }
+
+    [Fact]
+    public void SpareTroopsGatherInOneVillage()
+    {
+        var match = Match();
+        PastDelay(match);
+        var second = GiveVillage(match);
+        second.AddTroops(UnitType.Swordsman, 100);
+        match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 300);
+
+        Planner(match).Gather(new HashSet<int>());
+
+        var gathering = Assert.Single(match.State.Movements, m => m.OwnerId == Ai && m.FromVillageId == second.Id);
+        Assert.Equal(MovementType.Reinforce, gathering.Type);
+        Assert.Equal(Ai, gathering.ToVillageId);
+    }
+
+    [Fact]
+    public void LordsWalkOverToTheArmy()
+    {
+        var match = Match();
+        PastDelay(match);
+        var second = GiveVillage(match);
+        second.AddTroops(UnitType.Lord, 1);
+        match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 300);
+
+        Planner(match).Gather(new HashSet<int>());
+
+        var gathering = Assert.Single(match.State.Movements, m => m.OwnerId == Ai && m.FromVillageId == second.Id);
+        Assert.Equal(1, gathering.Troops[UnitType.Lord]);
+    }
+
+    [Fact]
+    public void AVillageUnderAttackKeepsItsTroops()
+    {
+        var match = Match();
+        PastDelay(match);
+        var second = GiveVillage(match);
+        second.AddTroops(UnitType.Swordsman, 100);
+        match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 300);
+
+        Planner(match).Gather(new HashSet<int> { second.Id });
+
+        Assert.DoesNotContain(match.State.Movements, m => m.FromVillageId == second.Id);
+    }
+
+    [Fact]
+    public void NothingGathersBeforeTheAggressionDelay()
+    {
+        var match = Match();
+        var second = GiveVillage(match);
+        second.AddTroops(UnitType.Swordsman, 100);
+
+        Planner(match).Gather(new HashSet<int>());
+
+        Assert.DoesNotContain(match.State.Movements, m => m.FromVillageId == second.Id);
+    }
+
+    [Fact]
+    public void TheStagingVillageStaysPut()
+    {
+        var match = Match();
+        PastDelay(match);
+        var second = GiveVillage(match);
+        match.State.Villages[Ai].AddTroops(UnitType.Swordsman, 300);
+        second.AddTroops(UnitType.Swordsman, 100);
+        var planner = Planner(match);
+
+        planner.Gather(new HashSet<int>());
+        second.AddTroops(UnitType.Swordsman, 5000);
+        planner.Gather(new HashSet<int>());
+
+        Assert.All(match.State.Movements.Where(m => m.FromVillageId == second.Id), m => Assert.Equal(Ai, m.ToVillageId));
+        Assert.DoesNotContain(match.State.Movements, m => m.FromVillageId == Ai && m.ToVillageId == second.Id);
+    }
+
+    [Fact]
+    public void WithAnArmyTooSmallForAStrikeRaidsStop()
+    {
+        var match = Match();
+        PastDelay(match);
+        var village = match.State.Villages[Ai];
+        foreach (var (unit, count) in village.Troops.ToList())
+            village.RemoveTroops(unit, count);
+        village.AddTroops(UnitType.Spearman, 4);
+
+        var left = Planner(match).WithoutPlannedStrike(village);
+
+        Assert.Empty(left);
     }
 }

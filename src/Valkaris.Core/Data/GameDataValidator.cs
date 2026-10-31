@@ -423,6 +423,8 @@ internal static class GameDataValidator
             Error("rivalDistanceExponent", "must not be negative.");
         if (config.RivalSwitchCooldownSeconds < 0)
             Error("rivalSwitchCooldownSeconds", "must not be negative.");
+        if (config.GatherMinAttack < 0)
+            Error("gatherMinAttack", "must not be negative.");
         if (config.CapitalTargetPenalty < 1)
             Error("capitalTargetPenalty", "must be at least 1.");
         if (config.ScoutRetrySeconds < 0)
@@ -467,6 +469,8 @@ internal static class GameDataValidator
                 Error($"{path}.rivalFocusShare", "must be between 0 and 1.");
             if (profile.RivalStrongerRatio < 1)
                 Error($"{path}.rivalStrongerRatio", "must be at least 1.");
+            if (profile.MassSeconds < 0)
+                Error($"{path}.massSeconds", "must not be negative.");
             if (profile.SurrenderVillageShare is < 0 or > 1)
                 Error($"{path}.surrenderVillageShare", "must be between 0 and 1.");
             if (profile.SurrenderStrengthRatio < 0)
