@@ -41,6 +41,18 @@ ui --dev-culture=tr-TR
 ui --dev-language=tr
 ui --dev-language=tr --dev-culture=tr-TR
 
+sweep() { # language, size
+    local out code
+    out=$(godot-mono --headless --path . --resolution $2 res://scenes/dev/UiTest.tscn -- --layout-sweep --dev-language=$1 2>&1); code=$?
+    [[ $out == *"[uitest] PASS"* ]] || code=1
+    report "layout $1 $2" $code "$(print -- "$out" | grep -E '\[uitest\] FAIL|failure|Unhandled')"
+}
+for language in en tr; do
+    for size in 1024x640 1280x720 2560x1080; do
+        sweep $language $size
+    done
+done
+
 out=$(tools/nettest.sh 2>&1); code=$?
 report "two-process network" $code "$out"
 

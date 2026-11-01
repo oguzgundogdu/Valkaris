@@ -42,6 +42,8 @@ public partial class UiTest : Control
                 await NetReport();
             else if (netWindow is not null)
                 await NetWindow(netWindow);
+            else if (OS.GetCmdlineUserArgs().Contains("--layout-sweep"))
+                await LayoutSweep();
             else if (OS.GetCmdlineUserArgs().Contains("--real-input"))
                 await RealInputOnly();
             else
@@ -3581,6 +3583,168 @@ public partial class UiTest : Control
 
         UserSettings.EffectsVolume = 0.8f;
         Sound.ApplySettings();
+    }
+
+    /// <summary>Every screen at the window size and language given: nothing leaves the window, and nothing important is covered.</summary>
+    private async Task LayoutSweep()
+    {
+        UseSettings("user://uitest_settings.cfg");
+        var data = GameData.Load(new GodotDataSource());
+        _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
+        _main.IdleOpponents = true;
+        AddChild(_main);
+        await Frames();
+
+        var start = Find<StartScreen>();
+        await Shot("start");
+        Press(start.GetNode<Button>("%Settings"));
+        await Frames();
+        await Shot("start-settings");
+        Press(start.GetNode<Button>("%Host"));
+        await Frames();
+        await Shot("connect");
+        _main.OpenHostLobby(new MemoryNetwork().Host, "Oğuz", null, Array.Empty<string>(), Handshake.DefaultPort);
+        await Frames();
+        await Shot("lobby");
+        _main.QueueFree();
+        await Frames();
+
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
+        session.Send(new SendTroopsCommand(1, 2, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 2 }));
+        await RunUntilArrived(session);
+        await SweepGame(game, session);
+
+        (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages, rivalAttacks: true);
+        await RunUntilCapitalLost(session);
+        await Frames();
+        await Shot("capital-dialog");
+
+        (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, players: 3, rivalAttacks: true);
+        await RunUntilArrived(session);
+        await Frames();
+        await Shot("eliminated");
+        Press(game.GetNode<Overlay>("%EliminatedOverlay").GetNode<Button>("%Action"));
+        await Settle(0.3);
+        await Shot("watching");
+        session.Tick(TestDuration);
+        await Frames();
+        await Shot("match-end");
+    }
+
+    private async Task SweepGame(GameScreen game, LocalGameSession session)
+    {
+        var bar = game.GetNode<ResourceBar>("%ResourceBar");
+        var drawer = game.GetNode<Drawer>("%Drawer");
+        var view = game.GetNode<VillageView>("%VillageView");
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var window = GetViewportRect();
+        var popups = new[] { "%BuildingPopup", "%TroopsPopup", "%SendPopup" }.Select(path => game.GetNode<PopupFrame>(path)).ToList();
+
+        void CheckCovered(string name)
+        {
+            var barBottom = bar.GetGlobalRect().End.Y;
+            Expect(bar.ContentWidth <= bar.GetNode<Control>("%Clip").Size.X + 1, $"{name}: the top bar fits");
+            foreach (var popup in popups.Where(p => p.Visible))
+            {
+                var rect = popup.GetGlobalRect();
+                Expect(window.Encloses(rect), $"{name}: {popup.Name} stays in the window, {rect}");
+                Expect(rect.Position.Y >= barBottom, $"{name}: {popup.Name} leaves the top bar clear");
+            }
+            if (drawer.IsOpen)
+            {
+                Expect(drawer.GetNode<Control>("Tabs").GetGlobalRect().Position.Y >= barBottom, $"{name}: the drawer leaves the top bar clear");
+                Expect(window.Encloses(drawer.SheetRect), $"{name}: the drawer stays in the window");
+            }
+        }
+
+        async Task Step(string name)
+        {
+            await Frames();
+            await Frames();
+            CheckCovered(name);
+            await Shot(name);
+        }
+
+        // Every item in the top bar at once, on the fullest screen.
+        Valkaris.Core.Dev.DevScenario.AddThirdPartyActivity(session.State, 1, 2);
+        Valkaris.Core.Dev.DevScenario.SetCapitalDeadline(session.State, 1, session.State.ElapsedTime + 45);
+        await Frames();
+        Press(game.GetNode<CapitalDialog>("%CapitalDialog").GetNode<Button>("%Later"));
+        await Step("bar-full");
+
+        foreach (var mainView in new[] { GameScreen.MainView.Village, GameScreen.MainView.World })
+        {
+            game.ShowView(mainView);
+            await Step($"view-{mainView}");
+            foreach (var fraction in new[] { Drawer.MinFraction, 0.2f, Drawer.MaxFraction })
+            {
+                drawer.SetHeightFraction(fraction);
+                drawer.Open(Drawer.Tab.Overview);
+                await Step($"overview-{mainView}-{fraction:0.00}");
+                drawer.Open(Drawer.Tab.Reports);
+                await Step($"reports-{mainView}-{fraction:0.00}");
+                foreach (var panel in new[] { GameScreen.GamePanel.Building, GameScreen.GamePanel.Training, GameScreen.GamePanel.Send })
+                {
+                    game.ShowPanel(panel);
+                    await Step($"{panel}-over-drawer-{mainView}-{fraction:0.00}");
+                }
+                popups[2].Close();
+            }
+            drawer.SetHeightFraction(0.2f);
+            drawer.Close();
+            await Settle(0.1);
+        }
+
+        game.ShowView(GameScreen.MainView.Village);
+        foreach (var building in new[] { BuildingType.Barracks, BuildingType.Marketplace, BuildingType.Farm })
+        {
+            view.TestHoveredBuilding = building;
+            await Settle(0.45);
+            await Step($"card-{building}");
+            Expect(new Rect2(Vector2.Zero, view.Size).Encloses(view.Card.GetRect()), $"The {building} card stays in the view");
+            view.TestHoveredBuilding = null;
+            await Settle(0.45);
+        }
+
+        // A popup beside a village in each corner of the view still fits.
+        game.ShowView(GameScreen.MainView.World);
+        var target = session.State.Villages[2];
+        foreach (var corner in new[] { Vector2.Zero, new Vector2(1, 0), new Vector2(0, 1), Vector2.One })
+        {
+            var rect = new Rect2(window.Size * corner * 0.9f + window.Size * 0.02f, new Vector2(48, 48));
+            popups[2].Open(rect);
+            await Step($"send-corner-{corner.X}-{corner.Y}");
+            Expect(!popups[2].GetGlobalRect().Intersects(rect) || popups[2].GetGlobalRect().GetCenter().DistanceTo(window.GetCenter()) < 2, $"The popup avoids its target at corner {corner}");
+        }
+        popups[2].Close();
+
+        world.CentreOn(target);
+        await Frames();
+        world._GuiInput(new InputEventMouseMotion { Position = world.WorldToView(WorldMapView.VillageWorldPosition(target)) });
+        await Settle(0.45);
+        await Step("hover-card");
+        Expect(new Rect2(Vector2.Zero, world.Size).Encloses(world.GetNode<VillagePopup>("Popup").GetRect()), "The hover card stays in the view");
+        world._GuiInput(new InputEventMouseMotion { Position = new Vector2(world.Size.X - 2, world.Size.Y - 2) });
+        await Settle(0.45);
+
+        var dialog = game.GetNode<ReportDialog>("%ReportDialog");
+        dialog.ShowReport(session, session.State.Reports[0]);
+        await Step("report");
+        dialog.Visible = false;
+
+        var pause = game.GetNode<Overlay>("%PauseOverlay");
+        Press(bar.GetNode<Button>("%Pause"));
+        await Step("menu");
+        Press(pause.GetNode<Button>("%Settings"));
+        await Step("settings");
+        game.GetNode<SettingsScreen>("%SettingsScreen").Close();
+        await Frames();
+        Press(pause.GetNode<Button>("%Secondary"));
+        await Step("leave");
+        Press(game.GetNode<Overlay>("%LeaveOverlay").GetNode<Button>("%Secondary"));
+        await Frames();
+        Press(pause.GetNode<Button>("%Tertiary"));
+        await Step("surrender");
     }
 
     private async Task RealInputOnly()

@@ -18,7 +18,7 @@ public partial class WorldMapView : Control
     private const float PopupGap = 44;
     private static readonly Vector2 MarkerHalfSize = new(60, 60);
 
-    private static readonly Color Sea = new(0.15f, 0.32f, 0.49f);
+    private static readonly Color Sea = new(0.173f, 0.314f, 0.416f);
     private static readonly Color Shore = new(0.72f, 0.64f, 0.47f);
     private const float ShoreWidth = 3;
 
@@ -134,7 +134,30 @@ public partial class WorldMapView : Control
     {
         DrawRect(new Rect2(Vector2.Zero, Size), Sea);
         if (_built)
-            DrawRect(new Rect2(_world.Position, _worldSize * _zoom).Grow(ShoreWidth / 2), Shore, filled: false, width: ShoreWidth);
+            DrawShore();
+    }
+
+    /// <summary>Sand only where land reaches the map's edge. Water there runs straight into the sea around it.</summary>
+    private void DrawShore()
+    {
+        var map = _session!.State.Map;
+        var tile = TileSize * _zoom;
+        for (var x = 0; x < map.Width; x++)
+        {
+            ShoreAt(new TileCoord(x, 0), new Rect2(_world.Position + new Vector2(x * tile, -ShoreWidth), tile, ShoreWidth));
+            ShoreAt(new TileCoord(x, map.Height - 1), new Rect2(_world.Position + new Vector2(x * tile, map.Height * tile), tile, ShoreWidth));
+        }
+        for (var y = 0; y < map.Height; y++)
+        {
+            ShoreAt(new TileCoord(0, y), new Rect2(_world.Position + new Vector2(-ShoreWidth, y * tile), ShoreWidth, tile));
+            ShoreAt(new TileCoord(map.Width - 1, y), new Rect2(_world.Position + new Vector2(map.Width * tile, y * tile), ShoreWidth, tile));
+        }
+
+        void ShoreAt(TileCoord coord, Rect2 rect)
+        {
+            if (map.TileAt(coord).Terrain != Terrain.Water)
+                DrawRect(rect, Shore);
+        }
     }
 
     public void Refresh(IGameSession session, Village? currentVillage)
