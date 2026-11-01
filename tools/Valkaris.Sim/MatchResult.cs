@@ -52,7 +52,10 @@ public sealed record SeatResult(
     IReadOnlyDictionary<int, int> AttacksAtPlayers,
     SeatDefence? Defence = null,
     SeatScouting? Scouting = null,
-    IReadOnlyDictionary<UnitType, double>? UnitSpending = null);
+    IReadOnlyDictionary<UnitType, double>? UnitSpending = null,
+    Nation Nation = Nation.Valdren,
+    double LootTaken = 0,
+    double MeanAttackTravelSeconds = 0);
 
 /// <summary>Everything recorded about one match. Only numbers from the match, so the same seed always gives the same record.</summary>
 public sealed record MatchResult(

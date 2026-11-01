@@ -209,7 +209,10 @@ public sealed class MatchRecorder
                     atEnd.Home,
                     sent.Count(r => r.AttackerWon)),
                 ScoutingOf(player, sent),
-                _unitSpending.TryGetValue(player.Id, out var spending) ? spending.OrderBy(s => s.Key).ToDictionary(s => s.Key, s => s.Value) : new Dictionary<UnitType, double>());
+                _unitSpending.TryGetValue(player.Id, out var spending) ? spending.OrderBy(s => s.Key).ToDictionary(s => s.Key, s => s.Value) : new Dictionary<UnitType, double>(),
+                player.Nation,
+                battles.Where(r => r.AttackerId == player.Id).Sum(r => Total(r.Loot)),
+                sent.Count == 0 ? 0 : sent.Average(TravelAllowance));
         }).ToList();
 
         return new MatchResult(

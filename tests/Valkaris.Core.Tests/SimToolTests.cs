@@ -39,6 +39,38 @@ public class SimToolTests
     }
 
     [Fact]
+    public void NationsAreParsedAndRotateAcrossSeats()
+    {
+        var options = SimOptions.Parse(new[] { "--nations=Karuk,Solari" });
+        Assert.Equal(new Nation?[] { Nation.Karuk, Nation.Solari }, options.Nations);
+        Assert.Equal(new Nation?[] { null }, SimOptions.Parse(new[] { "--nations=Random" }).Nations);
+
+        var quick = Quick with { Nations = options.Nations };
+        Assert.Equal(new[] { Nation.Karuk, Nation.Solari }, MatchRunner.RunOne(quick, TestData.Shipped, 1, 0).Seats.Select(s => s.Nation));
+        Assert.Equal(new[] { Nation.Solari, Nation.Karuk }, MatchRunner.RunOne(quick, TestData.Shipped, 1, 1).Seats.Select(s => s.Nation));
+    }
+
+    [Fact]
+    public void TheReportCountsNationsAndMatchups()
+    {
+        var quick = Quick with { Nations = new Nation?[] { Nation.Karuk, Nation.Solari } };
+        var results = Enumerable.Range(0, 4).Select(i => MatchRunner.RunOne(quick, TestData.Shipped, (ulong)i, i)).ToList();
+
+        var report = SimReport.Build(results, Array.Empty<MatchFailure>());
+
+        Assert.Equal(new[] { Nation.Karuk, Nation.Solari }, report.ByNation!.Select(n => n.Nation));
+        Assert.All(report.ByNation!, n => Assert.Equal(4, n.Seats));
+        var matchup = Assert.Single(report.Matchups!);
+        Assert.Equal((Nation.Karuk, Nation.Solari, 4), (matchup.First, matchup.Second, matchup.Matches));
+        Assert.Equal(4, matchup.FirstWins + matchup.SecondWins + matchup.Draws);
+        Assert.Equal(report.ByNation!.Sum(n => n.Wins), matchup.FirstWins + matchup.SecondWins);
+
+        // A list of nations rotates along with the difficulties, so each nation stays on one here. Random is what mixes them.
+        Assert.Equal(2, report.ByNationAndDifficulty!.Count);
+        Assert.Contains("Karuk v Solari", report.ToTable());
+    }
+
+    [Fact]
     public void DifficultiesRotateAcrossSeats()
     {
         Assert.Equal(AiDifficulty.Easy, MatchRunner.DifficultyOf(Quick, 0, 0));

@@ -8,6 +8,8 @@ public sealed record SimOptions
     public int Matches { get; init; } = 100;
     public int Players { get; init; } = 4;
     public IReadOnlyList<AiDifficulty> Difficulties { get; init; } = new[] { AiDifficulty.Normal };
+    /// <summary>One entry per seat, rotating each match like difficulties do. Null is Random, drawn from the match seed.</summary>
+    public IReadOnlyList<Nation?> Nations { get; init; } = new Nation?[] { null };
     public MapSize Map { get; init; } = MapSize.Small;
     /// <summary>Null runs Unlimited matches, up to CapMinutes.</summary>
     public double? Minutes { get; init; } = 30;
@@ -41,6 +43,7 @@ public sealed record SimOptions
                 "--matches" => options with { Matches = int.Parse(value, CultureInfo.InvariantCulture) },
                 "--players" => options with { Players = int.Parse(value, CultureInfo.InvariantCulture) },
                 "--difficulty" => options with { Difficulties = value.Split(',').Select(Enum.Parse<AiDifficulty>).ToList() },
+                "--nations" => options with { Nations = value.Split(',').Select(n => n == "Random" ? (Nation?)null : Enum.Parse<Nation>(n)).ToList() },
                 "--map" => options with { Map = Enum.Parse<MapSize>(value) },
                 "--minutes" => options with { Minutes = value == "unlimited" ? null : double.Parse(value, CultureInfo.InvariantCulture) },
                 "--cap-minutes" => options with { CapMinutes = double.Parse(value, CultureInfo.InvariantCulture) },

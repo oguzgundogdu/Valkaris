@@ -70,6 +70,27 @@ public sealed record AttackSpread(
 }
 
 /// <summary>The summary of a run. It holds only match results, so it is the same at any thread count.</summary>
+public sealed record NationStats(
+    Nation Nation,
+    int Seats,
+    int Wins,
+    double WinShare,
+    IReadOnlyDictionary<UnitType, double> UnitMix,
+    double UnitSpendingPerSeat,
+    double LootPerSeat,
+    double WallAtEnd,
+    double ScoutSuccess,
+    double WatchtowerAtEnd,
+    double MeanTravelSeconds,
+    double FirstLordSeconds,
+    double FirstCaptureSeconds,
+    double VillagesAtEnd);
+
+/// <summary>One nation against another. In a mirror match, First is whoever held the first seat.</summary>
+public sealed record MatchupStats(Nation First, Nation Second, int Matches, int FirstWins, int SecondWins, int Draws);
+
+public sealed record NationDifficultyStats(Nation Nation, AiDifficulty Difficulty, int Seats, double WinShare);
+
 public sealed record SimReport(
     int Matches,
     int Failed,
@@ -109,7 +130,10 @@ public sealed record SimReport(
     int Rejected,
     double RejectedShare,
     IReadOnlyDictionary<string, int> Rejections,
-    IReadOnlyList<MatchFailure> Failures)
+    IReadOnlyList<MatchFailure> Failures,
+    IReadOnlyList<NationStats>? ByNation = null,
+    IReadOnlyList<MatchupStats>? Matchups = null,
+    IReadOnlyList<NationDifficultyStats>? ByNationAndDifficulty = null)
 {
     private const double TwoHours = 2 * 60 * 60;
 
@@ -181,7 +205,75 @@ public sealed record SimReport(
             rejected,
             Safe(rejected, commands),
             rejections,
-            failures);
+            failures,
+            Enum.GetValues<Nation>().Select(n => ForNation(n, results)).Where(n => n.Seats > 0).ToList(),
+            MatchupsFrom(results),
+            NationsByDifficulty(results));
+    }
+
+    private static NationStats ForNation(Nation nation, IReadOnlyList<MatchResult> results)
+    {
+        var seats = results.SelectMany(r => r.Seats.Where(s => s.Nation == nation).Select(s => (Match: r, Seat: s))).ToList();
+        double Mean(Func<SeatResult, double> selector) => seats.Count == 0 ? 0 : seats.Average(s => selector(s.Seat));
+        double MeanOf(Func<SeatResult, double?> selector)
+        {
+            var values = seats.Select(s => selector(s.Seat)).OfType<double>().ToList();
+            return values.Count == 0 ? 0 : values.Average();
+        }
+
+        var wins = seats.Count(s => s.Seat.Won && !s.Match.IsDraw);
+        var spending = seats.Where(s => s.Seat.UnitSpending is not null).SelectMany(s => s.Seat.UnitSpending!).GroupBy(u => u.Key).ToDictionary(g => g.Key, g => g.Sum(u => u.Value));
+        var spent = spending.Values.Sum();
+        var sent = seats.Sum(s => s.Seat.Scouting?.Sent ?? 0);
+        var succeeded = seats.Sum(s => s.Seat.Scouting?.Succeeded ?? 0);
+        var travelled = seats.Where(s => s.Seat.MeanAttackTravelSeconds > 0).Select(s => s.Seat.MeanAttackTravelSeconds).ToList();
+        return new NationStats(
+            nation,
+            seats.Count,
+            wins,
+            Safe(wins, seats.Count),
+            spending.OrderBy(u => u.Key).ToDictionary(u => u.Key, u => Safe(u.Value, spent)),
+            Safe(spent, seats.Count),
+            Mean(s => s.LootTaken),
+            Mean(s => s.Defence?.WallAtEnd ?? 0),
+            Safe(succeeded, sent),
+            Mean(s => s.Scouting?.WatchtowerAtEnd ?? 0),
+            travelled.Count == 0 ? 0 : travelled.Average(),
+            MeanOf(s => s.FirstLord),
+            MeanOf(s => s.FirstCapture),
+            Mean(s => s.Villages));
+    }
+
+    /// <summary>One-against-one matches only, each pair counted once however the seats fell.</summary>
+    private static List<MatchupStats> MatchupsFrom(IReadOnlyList<MatchResult> results)
+    {
+        var duels = results.Where(r => r.Seats.Count == 2).ToList();
+        return duels
+            .GroupBy(r => r.Seats.Select(s => s.Nation).OrderBy(n => n).ToArray(), new NationPairComparer())
+            .OrderBy(g => g.Key[0]).ThenBy(g => g.Key[1])
+            .Select(g =>
+            {
+                var (first, second) = (g.Key[0], g.Key[1]);
+                var decided = g.Where(r => !r.IsDraw).ToList();
+                var firstWins = first == second
+                    ? decided.Count(r => r.Seats[0].Won)
+                    : decided.Count(r => r.Seats.Any(s => s.Won && s.Nation == first));
+                return new MatchupStats(first, second, g.Count(), firstWins, decided.Count - firstWins, g.Count() - decided.Count);
+            })
+            .ToList();
+    }
+
+    private static List<NationDifficultyStats> NationsByDifficulty(IReadOnlyList<MatchResult> results) =>
+        results.SelectMany(r => r.Seats.Select(s => (Match: r, Seat: s)))
+            .GroupBy(s => (s.Seat.Nation, s.Seat.Difficulty))
+            .OrderBy(g => g.Key.Nation).ThenBy(g => g.Key.Difficulty)
+            .Select(g => new NationDifficultyStats(g.Key.Nation, g.Key.Difficulty, g.Count(), Safe(g.Count(s => s.Seat.Won && !s.Match.IsDraw), g.Count())))
+            .ToList();
+
+    private sealed class NationPairComparer : IEqualityComparer<Nation[]>
+    {
+        public bool Equals(Nation[]? a, Nation[]? b) => a!.SequenceEqual(b!);
+        public int GetHashCode(Nation[] pair) => HashCode.Combine(pair[0], pair[1]);
     }
 
     private static DifficultyStats ForDifficulty(AiDifficulty difficulty, IReadOnlyList<MatchResult> results)
@@ -350,6 +442,26 @@ public sealed record SimReport(
             Line("Attacks with fresh intel", Pct(d.Scouting.AttacksWithIntelShare));
             Line("Attack wins by intel", $"exact {Pct(d.Scouting.WinShareWithExact)} of {d.Scouting.AttacksWithExact}, ranged {Pct(d.Scouting.WinShareWithRange)} of {d.Scouting.AttacksWithRange}, none {Pct(d.Scouting.WinShareWithNone)} of {d.Scouting.AttacksWithNone}");
             Line("Unit mix", string.Join("  ", d.UnitMix.Select(u => $"{u.Key} {Pct(u.Value)}")));
+        }
+        if (ByNation is { Count: > 0 })
+        {
+            text.AppendLine("Nations");
+            foreach (var n in ByNation)
+            {
+                Line($"{n.Nation}", $"{n.Wins} of {n.Seats} seats ({Pct(n.WinShare)})");
+                Line("  Unit mix", string.Join("  ", n.UnitMix.Select(u => $"{u.Key} {Pct(u.Value)}")));
+                Line("  Spent on units per seat", $"{n.UnitSpendingPerSeat:0}");
+                Line("  Loot per seat", $"{n.LootPerSeat:0}");
+                Line("  Wall, Watchtower at end", $"{n.WallAtEnd:0.0}, {n.WatchtowerAtEnd:0.0}");
+                Line("  Scout success", Pct(n.ScoutSuccess));
+                Line("  Attack travel", $"{n.MeanTravelSeconds:0}s");
+                Line("  First Lord, first capture", $"{n.FirstLordSeconds / 60:0.0}m, {n.FirstCaptureSeconds / 60:0.0}m");
+                Line("  Villages at end", $"{n.VillagesAtEnd:0.0}");
+            }
+            foreach (var m in Matchups ?? Array.Empty<MatchupStats>())
+                Line($"{m.First} v {m.Second}", $"{m.FirstWins}-{m.SecondWins}, draws {m.Draws}, of {m.Matches}");
+            foreach (var d in ByNationAndDifficulty ?? Array.Empty<NationDifficultyStats>())
+                Line($"{d.Nation} at {d.Difficulty}", $"{Pct(d.WinShare)} of {d.Seats} seats");
         }
         text.AppendLine("Economy");
         Line("Resources at the cap", Pct(AtCapShare));

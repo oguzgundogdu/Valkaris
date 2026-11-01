@@ -42,7 +42,7 @@ public static class MatchRunner
     public static MatchResult RunOne(SimOptions options, GameData data, ulong seed, int matchIndex)
     {
         var slots = Enumerable.Range(0, options.Players)
-            .Select(seat => new PlayerSlot($"AI {seat + 1}", Nation.Valdren, true, DifficultyOf(options, seat, matchIndex)))
+            .Select(seat => new PlayerSlot($"AI {seat + 1}", NationPicker.Resolve(options.Nations[(seat + matchIndex) % options.Nations.Count], seed, seat), true, DifficultyOf(options, seat, matchIndex)))
             .ToArray();
         var settings = new GameSettings(options.Minutes * 60, options.Speed, options.Map, seed);
         var state = GameFactory.CreateMatch(settings, slots, data);
