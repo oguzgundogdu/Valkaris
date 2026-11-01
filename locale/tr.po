@@ -1208,3 +1208,9 @@ msgstr "Daha ucuz ve daha hızlı eğitilen, daha çok ganimet taşıyan birlikl
 
 msgid "nation.solari_desc"
 msgstr "Daha hızlı birlikler, daha kısa inşaat ve daha güçlü Öncüler, ama daha pahalı birlikler."
+
+msgid "map.zoom_in_tip"
+msgstr "Yakınlaştır (+)"
+
+msgid "map.zoom_out_tip"
+msgstr "Uzaklaştır (-)"

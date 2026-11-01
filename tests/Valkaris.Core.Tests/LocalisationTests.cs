@@ -133,6 +133,8 @@ public class LocalisationTests
         ("UserSettings.cs", "music"),
         ("UserSettings.cs", "effects"),
         ("UserSettings.cs", "muted"),
+        ("WorldMapView.cs", "In"), // Node names of the zoom buttons.
+        ("WorldMapView.cs", "Out"),
         ("Sound.cs", "Master"), // Audio bus names.
         ("Sound.cs", "Music"),
         ("Sound.cs", "Effects"),

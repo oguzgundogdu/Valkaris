@@ -12,7 +12,9 @@ public partial class WorldMapView : Control
 {
     public const float TileSize = 64;
 
-    private const float MaxZoom = 1.6f;
+    private const float MaxZoomOverFit = 2;
+    private const float ZoomButtonSize = 40;
+    private const float ZoomButtonInset = 10;
     private const float ZoomStep = 1.15f;
     private const float DragThreshold = 4;
     private const float PopupGap = 44;
@@ -77,6 +79,14 @@ public partial class WorldMapView : Control
 
     private float MinZoom => Mathf.Min(Size.X / _worldSize.X, Size.Y / _worldSize.Y);
 
+    /// <summary>From the whole map to twice as close, at any window size.</summary>
+    public float MaxZoom => MinZoom * MaxZoomOverFit;
+    public float FitZoom => MinZoom;
+
+    public void ZoomIn() => ZoomAround(Size / 2, ZoomStep);
+
+    public void ZoomOut() => ZoomAround(Size / 2, 1 / ZoomStep);
+
     public Vector2 WorldToView(Vector2 world) => _world.Position + world * _zoom;
 
     public Vector2 ViewToWorld(Vector2 view) => (view - _world.Position) / _zoom;
@@ -85,6 +95,27 @@ public partial class WorldMapView : Control
 
     public static Vector2 TileWorldPosition(TileCoord tile) =>
         (new Vector2(tile.X, tile.Y) + new Vector2(0.5f, 0.5f)) * TileSize;
+
+    private VBoxContainer BuildZoomButtons()
+    {
+        var box = new VBoxContainer { Name = "Zoom" };
+        box.SetAnchorsAndOffsetsPreset(LayoutPreset.TopRight, LayoutPresetMode.Minsize);
+        box.GrowHorizontal = GrowDirection.Begin;
+        box.OffsetRight = -ZoomButtonInset;
+        box.OffsetTop = ZoomButtonInset;
+
+        Button Make(string name, string symbol, string tip, System.Action act)
+        {
+            var button = new Button { Name = name, Text = symbol, TooltipText = L.T(tip), ThemeTypeVariation = "SecondaryButton", FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(ZoomButtonSize, ZoomButtonSize) };
+            button.Pressed += act;
+            box.AddChild(button);
+            return button;
+        }
+
+        Make("In", "+", "map.zoom_in_tip", ZoomIn);
+        Make("Out", "\u2212", "map.zoom_out_tip", ZoomOut);
+        return box;
+    }
 
     public override void _Ready()
     {
@@ -107,6 +138,8 @@ public partial class WorldMapView : Control
 
         _clashes = new ClashLayer { Name = "Clashes", MouseFilter = MouseFilterEnum.Ignore };
         _world.AddChild(_clashes);
+
+        AddChild(BuildZoomButtons());
 
         _popup = GD.Load<PackedScene>("res://scenes/VillagePopup.tscn").Instantiate<VillagePopup>();
         _popup.Name = "Popup";

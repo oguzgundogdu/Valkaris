@@ -272,6 +272,14 @@ public partial class GameScreen : Control
             return;
         else if (key.Keycode == Key.Space && CurrentView == MainView.World)
             _worldMap.ToggleWholeMap();
+        else if (CurrentView == MainView.World && IsZoomKey(key, out var zoomIn))
+        {
+            if (zoomIn)
+                _worldMap.ZoomIn();
+            else
+                _worldMap.ZoomOut();
+            GetViewport().SetInputAsHandled();
+        }
         else if (HandleMapShortcut(key.Keycode))
             GetViewport().SetInputAsHandled();
         else if (key.Keycode == Key.M)
@@ -549,6 +557,13 @@ public partial class GameScreen : Control
     }
 
     /// <summary>A, R, S, T and Enter act on the village under the cursor. Keys typed into a field never get here.</summary>
+    /// <summary>By the character as well, since keyboards put + and - in different places.</summary>
+    private static bool IsZoomKey(InputEventKey key, out bool zoomIn)
+    {
+        zoomIn = key.Unicode == '+' || key.Unicode == '=' || key.Keycode is Key.Plus or Key.Equal or Key.KpAdd;
+        return zoomIn || key.Unicode == '-' || key.Keycode is Key.Minus or Key.KpSubtract;
+    }
+
     private bool HandleMapShortcut(Key key)
     {
         if (CurrentView != MainView.World || _currentVillageId is null || _worldMap.HoveredVillageId is not { } id)

@@ -1211,3 +1211,9 @@ msgstr "Cheaper, faster-trained troops that carry more loot, but weaker Walls."
 
 msgid "nation.solari_desc"
 msgstr "Faster troops, quicker building and stronger Scouts, but costlier troops."
+
+msgid "map.zoom_in_tip"
+msgstr "Zoom in (+)"
+
+msgid "map.zoom_out_tip"
+msgstr "Zoom out (-)"

@@ -1493,7 +1493,7 @@ public partial class UiTest : Control
 
         for (var i = 0; i < 40; i++)
             Wheel(MouseButton.WheelUp, cursor);
-        Expect(world.Zoom <= 1.6f + 0.001f, "Zoom in stops at the limit");
+        Expect(world.Zoom <= world.FitZoom * 2 + 0.001f, "Zoom in stops at twice the fit");
 
         // Dragging moves the map, but never off screen.
         var before = world.CameraPosition;
@@ -3868,6 +3868,7 @@ public partial class UiTest : Control
                 await OverlaysByMouse(game, rounds);
             }
 
+            await ZoomByInput(game);
             await PopupsByMouse(game, rounds);
             await TestCapitalDialogByMouse(data);
             await TestEliminatedByMouse(data);
@@ -3876,6 +3877,59 @@ public partial class UiTest : Control
         {
             Drawer.Instant = true;
         }
+    }
+
+    /// <summary>Wheel, the trackpad's pinch event, keys and buttons, all held between the whole map and twice as close.</summary>
+    private async Task ZoomByInput(GameScreen game)
+    {
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        game.ShowView(GameScreen.MainView.World);
+        await Settle(0.1);
+        var centre = world.GetGlobalRect().GetCenter();
+
+        async Task Wheel(MouseButton button)
+        {
+            GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = button, Pressed = true, Position = centre, GlobalPosition = centre, Factor = 1 }, true);
+            GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = button, Pressed = false, Position = centre, GlobalPosition = centre }, true);
+            await Frames(1);
+        }
+
+        async Task Pinch(float factor)
+        {
+            GetViewport().PushInput(new InputEventMagnifyGesture { Position = centre, Factor = factor }, true);
+            await Frames(1);
+        }
+
+        await MoveMouse(centre);
+        async Task Check(string name, Func<Task> zoomIn, Func<Task> zoomOut)
+        {
+            var before = world.Zoom;
+            await zoomOut();
+            await zoomIn();
+            await zoomIn();
+            Expect(world.Zoom > Mathf.Min(before, world.FitZoom) && world.Zoom != before, $"{name} zooms in");
+            for (var i = 0; i < 20; i++)
+                await zoomIn();
+            Expect(Mathf.IsEqualApprox(world.Zoom, world.MaxZoom), $"{name} stops at twice the fit, got {world.Zoom} of {world.MaxZoom}");
+            await zoomOut();
+            Expect(world.Zoom < world.MaxZoom, $"{name} zooms out");
+            for (var i = 0; i < 20; i++)
+                await zoomOut();
+            Expect(Mathf.IsEqualApprox(world.Zoom, world.FitZoom), $"{name} stops at the whole map, got {world.Zoom} of {world.FitZoom}");
+        }
+
+        await Check("The wheel", () => Wheel(MouseButton.WheelUp), () => Wheel(MouseButton.WheelDown));
+        await Check("A pinch", () => Pinch(1.15f), () => Pinch(1 / 1.15f));
+        await Check("The keys", () => PressKeyEvent(Key.Equal), () => PressKeyEvent(Key.Minus));
+        var buttons = world.GetNode<Control>("Zoom");
+        await Check("The buttons", () => ClickAndSettle(buttons.GetNode<Button>("In")), () => ClickAndSettle(buttons.GetNode<Button>("Out")));
+        Expect(GetViewportRect().Encloses(buttons.GetGlobalRect()) && buttons.GetGlobalRect().Position.Y >= game.GetNode<ResourceBar>("%ResourceBar").GetGlobalRect().End.Y, "The zoom buttons are in the window, below the top bar");
+
+        await PressKeyEvent(Key.Equal);
+        game.ShowView(GameScreen.MainView.Village);
+        var zoom = world.Zoom;
+        await PressKeyEvent(Key.Equal);
+        Expect(world.Zoom == zoom, "The keys do nothing in the village");
     }
 
     private async Task DrawerByMouse(GameScreen game, int rounds, bool check)
