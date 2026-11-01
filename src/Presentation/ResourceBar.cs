@@ -11,6 +11,10 @@ namespace Valkaris.Presentation;
 /// <summary>Top bar: resources of the current village and the match clock.</summary>
 public partial class ResourceBar : PanelContainer
 {
+    private const float IconButtonWidth = 44;
+    private const string ViewVillageIcon = "res://assets/icons/view_village.svg";
+    private const string ViewWorldIcon = "res://assets/icons/view_world.svg";
+
     private sealed record Chip(Label Amount, Label Capacity, Label Rate);
 
     private readonly Dictionary<ResourceType, Chip> _chips = new();
@@ -21,7 +25,19 @@ public partial class ResourceBar : PanelContainer
     private Button _viewVillage = null!;
     private Button _viewWorld = null!;
 
+    private readonly List<Control> _extraItems = new();
     private int _incomingTarget;
+    private string _fitKey = "";
+    private TopBarPlan _plan = TopBarLayout.Levels[0];
+    private string _capitalTime = "";
+    private string _incomingMission = "";
+    private string _incomingTime = "";
+
+    /// <summary>The bar's parts at the current level of detail, for the UI test.</summary>
+    public TopBarPlan Plan => _plan;
+
+    /// <summary>The width its contents need, for the UI test: it must never be more than the bar has.</summary>
+    public float ContentWidth => GetNode<Control>("%Box").GetCombinedMinimumSize().X;
 
     public event Action? PauseRequested;
     public event Action? CapitalWarningPressed;
@@ -42,10 +58,22 @@ public partial class ResourceBar : PanelContainer
         _viewVillage.Pressed += () => ViewRequested?.Invoke(GameScreen.MainView.Village);
         _viewWorld.Pressed += () => ViewRequested?.Invoke(GameScreen.MainView.World);
 
+        foreach (var button in new[] { _viewVillage, _viewWorld })
+            button.ExpandIcon = true;
+
         var chips = GetNode<HBoxContainer>("%Chips");
         foreach (var type in Enum.GetValues<ResourceType>())
             _chips[type] = AddChip(chips, type);
+
+        // The row sits in a clipped box of no minimum width, so it can never push the window wider.
+        var clip = GetNode<Control>("%Clip");
+        clip.CustomMinimumSize = new Vector2(0, GetNode<Control>("%Box").GetCombinedMinimumSize().Y);
     }
+
+    /// <summary>Something else that always shows in the bar, such as the God mode badge.</summary>
+    public void AddFixedItem(Control item) => _extraItems.Add(item);
+
+    public void RemoveFixedItem(Control item) => _extraItems.Remove(item);
 
     private static Chip AddChip(HBoxContainer parent, ResourceType type)
     {
@@ -78,8 +106,7 @@ public partial class ResourceBar : PanelContainer
     {
         var warning = GetNode<Button>("%CapitalWarning");
         warning.Visible = secondsLeft is not null;
-        if (secondsLeft is { } seconds)
-            warning.Text = L.T("bar.choose_capital", ("time", Format.Time(seconds)));
+        _capitalTime = secondsLeft is { } seconds ? Format.Time(seconds) : "";
     }
 
     private void RefreshResources(IGameSession session, Village village)
@@ -124,8 +151,122 @@ public partial class ResourceBar : PanelContainer
             .FirstOrDefault();
         _incoming.Visible = hostile is not null;
         if (hostile is not null)
+        {
             _incomingTarget = hostile.ToVillageId!.Value;
-        if (hostile is not null)
-            _incoming.Text = L.T("bar.incoming", ("mission", UiContent.MissionName(hostile.Type)), ("time", Format.Time(hostile.ArrivalTime - session.State.ElapsedTime)));
+            _incomingMission = UiContent.MissionName(hostile.Type);
+            _incomingTime = Format.Time(hostile.ArrivalTime - session.State.ElapsedTime);
+        }
+
+        RefreshStats(session, village is not null);
+        Fit();
+    }
+
+    /// <summary>Only ever the player's own. Other players' figures stay hidden until the match ends.</summary>
+    private void RefreshStats(IGameSession session, bool show)
+    {
+        var state = session.State;
+        var score = ScoreRules.For(state, session.Data, state.Players[session.LocalPlayerId]);
+        GetNode<Control>("%Stats").Modulate = show ? Colors.White : Colors.Transparent;
+        GetNode<Label>("%Population").Text = Format.Whole(score.Population);
+        GetNode<Label>("%Score").Text = Format.Whole((int)score.Score);
+    }
+
+    private string CapitalText(TopBarWarning level) => level switch
+    {
+        TopBarWarning.Full => L.T("bar.choose_capital", ("time", _capitalTime)),
+        TopBarWarning.Short => L.T("bar.choose_capital_short", ("time", _capitalTime)),
+        _ => _capitalTime,
+    };
+
+    private string IncomingText(TopBarWarning level) => level switch
+    {
+        TopBarWarning.Full => L.T("bar.incoming", ("mission", _incomingMission), ("time", _incomingTime)),
+        TopBarWarning.Short => L.T("bar.incoming_short", ("mission", _incomingMission), ("time", _incomingTime)),
+        _ => _incomingTime,
+    };
+
+    /// <summary>Text only changes width when its length does, so the level is rarely worked out again.</summary>
+    private void Fit()
+    {
+        var capital = GetNode<Button>("%CapitalWarning");
+        var available = GetNode<Control>("%Clip").Size.X;
+        var key = string.Join(',', available, capital.Visible, CapitalText(TopBarWarning.Full).Length, _incoming.Visible, IncomingText(TopBarWarning.Full).Length,
+            _clock.Text.Length, GetNode<Label>("%Population").Text.Length, GetNode<Label>("%Score").Text.Length, _extraItems.Count(i => i.Visible),
+            string.Concat(_chips.Values.Select(c => c.Amount.Text.Length + c.Capacity.Text.Length + c.Rate.Text.Length)));
+        if (key != _fitKey)
+        {
+            _fitKey = key;
+            _plan = TopBarLayout.Choose(MeasureWidths(capital), available);
+            ApplyPlan();
+        }
+
+        if (capital.Visible)
+            capital.Text = CapitalText(_plan.Warning);
+        if (_incoming.Visible)
+            _incoming.Text = IncomingText(_plan.Warning);
+    }
+
+    private static float TextWidth(Control control, string text) =>
+        control.GetThemeFont("font").GetStringSize(text, HorizontalAlignment.Left, -1, control.GetThemeFontSize("font_size")).X;
+
+    private TopBarWidths MeasureWidths(Button capital)
+    {
+        // A chip's parts have a small gap between them, and a button has margins around its text.
+        const float partGap = 6, iconWidth = 26, buttonMargin = 28, iconButton = IconButtonWidth, statGap = 14, toggleGap = 2;
+
+        float Warnings(TopBarWarning level) =>
+            (capital.Visible ? TextWidth(capital, CapitalText(level)) + buttonMargin : 0)
+            + (_incoming.Visible ? TextWidth(_incoming, IncomingText(level)) + buttonMargin : 0);
+
+        float Parts(Func<Chip, Label> part) => _chips.Values.Sum(chip => TextWidth(part(chip), part(chip).Text) + partGap);
+
+        var population = GetNode<Label>("%Population");
+        var score = GetNode<Label>("%Score");
+        var populationLabel = GetNode<Label>("%PopulationLabel");
+        var scoreLabel = GetNode<Label>("%ScoreLabel");
+        var viewVillage = TextWidth(_viewVillage, L.T("ui.bar.village")) + buttonMargin;
+        var viewWorld = TextWidth(_viewWorld, L.T("ui.bar.world")) + buttonMargin;
+        var brand = GetNode<Label>("%Brand");
+        var fixedParts = TextWidth(_clock, _clock.Text) + _pause.GetCombinedMinimumSize().X + _extraItems.Where(i => i.Visible).Sum(i => i.GetCombinedMinimumSize().X);
+        var visibleExtras = _extraItems.Count(i => i.Visible) + (capital.Visible ? 1 : 0) + (_incoming.Visible ? 1 : 0);
+
+        return new TopBarWidths(
+            TextWidth(brand, brand.Text),
+            _chips.Count * iconWidth + Parts(c => c.Amount),
+            Parts(c => c.Rate),
+            Parts(c => c.Capacity),
+            TextWidth(population, population.Text) + TextWidth(score, score.Text) + statGap,
+            TextWidth(populationLabel, populationLabel.Text) + TextWidth(scoreLabel, scoreLabel.Text) + statGap * 2,
+            viewVillage + viewWorld + toggleGap,
+            iconButton * 2 + toggleGap,
+            Warnings(TopBarWarning.Full),
+            Warnings(TopBarWarning.Short),
+            Warnings(TopBarWarning.TimeOnly),
+            fixedParts,
+            Gaps: 5 + visibleExtras,
+            ChipGaps: _chips.Count - 1);
+    }
+
+    private void ApplyPlan()
+    {
+        var box = GetNode<HBoxContainer>("%Box");
+        box.AddThemeConstantOverride("separation", (int)(_plan.WideSpacing ? TopBarLayout.WideGap : TopBarLayout.NarrowGap));
+        GetNode<HBoxContainer>("%Chips").AddThemeConstantOverride("separation", (int)(_plan.WideSpacing ? TopBarLayout.WideChipGap : TopBarLayout.NarrowChipGap));
+        GetNode<Control>("%Brand").Visible = _plan.Brand;
+        foreach (var chip in _chips.Values)
+        {
+            chip.Rate.Visible = _plan.Rates;
+            chip.Capacity.Visible = _plan.Capacity;
+        }
+        GetNode<Control>("%PopulationLabel").Visible = _plan.StatLabels;
+        GetNode<Control>("%ScoreLabel").Visible = _plan.StatLabels;
+
+        _viewVillage.Text = _plan.ViewLabels ? L.T("ui.bar.village") : "";
+        _viewWorld.Text = _plan.ViewLabels ? L.T("ui.bar.world") : "";
+        _viewVillage.Icon = _plan.ViewLabels ? null : GD.Load<Texture2D>(ViewVillageIcon);
+        _viewWorld.Icon = _plan.ViewLabels ? null : GD.Load<Texture2D>(ViewWorldIcon);
+        var iconSize = _plan.ViewLabels ? Vector2.Zero : new Vector2(IconButtonWidth, 0);
+        _viewVillage.CustomMinimumSize = iconSize;
+        _viewWorld.CustomMinimumSize = iconSize;
     }
 }

@@ -28,6 +28,10 @@ public static class DevScenario
         state.AddBattleArrival(new BattleArrival(state.ElapsedTime, other.OwnerId, playerId, other.Name, near.Id, near.Name));
     }
 
+    /// <summary>Asks a player for a new capital, or stops asking, without taking their old one.</summary>
+    public static void SetCapitalDeadline(GameState state, int playerId, double? deadline) =>
+        state.Players[playerId].CapitalChoiceDeadline = deadline;
+
     /// <summary>Takes back the movements added above.</summary>
     public static void RemoveMovementsOf(GameState state, int ownerId)
     {

@@ -1070,3 +1070,21 @@ msgstr "Back to start"
 
 msgid "toast.disconnected"
 msgstr "{owner} disconnected. An AI plays on in their place."
+
+msgid "ui.bar.population"
+msgstr "pop"
+
+msgid "ui.bar.score"
+msgstr "score"
+
+msgid "ui.bar.population_tip"
+msgstr "Your population: the building levels across your villages."
+
+msgid "ui.bar.score_tip"
+msgstr "Your score. Other players' scores stay hidden until the match ends."
+
+msgid "bar.choose_capital_short"
+msgstr "Capital {time}"
+
+msgid "bar.incoming_short"
+msgstr "{mission} {time}"

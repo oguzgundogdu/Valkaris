@@ -111,7 +111,7 @@ public class LocalisationTests
     private static readonly HashSet<string> NonTextCalls = new()
     {
         "GetNode", "Load", "AddThemeColorOverride", "RemoveThemeColorOverride", "AddThemeConstantOverride", "AddThemeFontSizeOverride", "AddThemeStyleboxOverride",
-        "TweenProperty", "T", "N", "Key", "ResizedIcon", "GetValue", "SetValue", "Open",
+        "TweenProperty", "GetThemeFont", "GetThemeFontSize", "T", "N", "Key", "ResizedIcon", "GetValue", "SetValue", "Open",
     };
 
     // Properties whose values are never shown to the player.
@@ -367,7 +367,7 @@ public class LocalisationTests
         // Only text made up entirely of names and placeholders may match.
         Assert.Equal(new[]
         {
-            "difficulty.normal", "end.difficulty", "language.en", "language.tr", "lobby.player_village", "movement.to", "queue.train_item", "report.unit_count", "scout.building_level", "start.map_size",
+            "bar.incoming_short", "difficulty.normal", "end.difficulty", "language.en", "language.tr", "lobby.player_village", "movement.to", "queue.train_item", "report.unit_count", "scout.building_level", "start.map_size",
         }, same);
     }
 }

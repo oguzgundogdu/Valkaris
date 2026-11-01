@@ -1067,3 +1067,21 @@ msgstr "Başlangıca dön"
 
 msgid "toast.disconnected"
 msgstr "{owner} bağlantısı koptu. Yerine yapay zekâ oynuyor."
+
+msgid "ui.bar.population"
+msgstr "nüfus"
+
+msgid "ui.bar.score"
+msgstr "puan"
+
+msgid "ui.bar.population_tip"
+msgstr "Nüfusun: köylerindeki bina seviyelerinin toplamı."
+
+msgid "ui.bar.score_tip"
+msgstr "Puanın. Diğer oyuncuların puanı oyun bitene kadar gizli kalır."
+
+msgid "bar.choose_capital_short"
+msgstr "Başkent {time}"
+
+msgid "bar.incoming_short"
+msgstr "{mission} {time}"

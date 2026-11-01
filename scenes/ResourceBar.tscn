@@ -6,27 +6,68 @@
 theme_type_variation = &"TopBarPanel"
 script = ExtResource("1")
 
-[node name="Box" type="HBoxContainer" parent="."]
+[node name="Clip" type="Control" parent="."]
+unique_name_in_owner = true
+clip_contents = true
 layout_mode = 2
+
+[node name="Box" type="HBoxContainer" parent="Clip"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 theme_override_constants/separation = 28
 
-[node name="Brand" type="Label" parent="Box"]
+[node name="Brand" type="Label" parent="Clip/Box"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"BrandLabel"
 text = "VALKARIS"
 
-[node name="Chips" type="HBoxContainer" parent="Box"]
+[node name="Chips" type="HBoxContainer" parent="Clip/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 26
 
-[node name="ViewToggle" type="HBoxContainer" parent="Box"]
+[node name="Stats" type="HBoxContainer" parent="Clip/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Population" type="Label" parent="Clip/Box/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "ui.bar.population_tip"
+mouse_filter = 0
+theme_type_variation = &"StrongLabel"
+
+[node name="PopulationLabel" type="Label" parent="Clip/Box/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "ui.bar.population"
+
+[node name="Score" type="Label" parent="Clip/Box/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "ui.bar.score_tip"
+mouse_filter = 0
+theme_type_variation = &"StrongLabel"
+
+[node name="ScoreLabel" type="Label" parent="Clip/Box/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "ui.bar.score"
+
+[node name="ViewToggle" type="HBoxContainer" parent="Clip/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="ViewVillage" type="Button" parent="Box/ViewToggle"]
+[node name="ViewVillage" type="Button" parent="Clip/Box/ViewToggle"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "ui.bar.village_tip"
@@ -35,7 +76,7 @@ theme_type_variation = &"SecondaryButton"
 toggle_mode = true
 text = "ui.bar.village"
 
-[node name="ViewWorld" type="Button" parent="Box/ViewToggle"]
+[node name="ViewWorld" type="Button" parent="Clip/Box/ViewToggle"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "ui.bar.world_tip"
@@ -44,7 +85,7 @@ theme_type_variation = &"SecondaryButton"
 toggle_mode = true
 text = "ui.bar.world"
 
-[node name="CapitalWarning" type="Button" parent="Box"]
+[node name="CapitalWarning" type="Button" parent="Clip/Box"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -54,7 +95,7 @@ theme_type_variation = &"SecondaryButton"
 theme_override_colors/font_color = Color(0.898, 0.439, 0.345, 1)
 theme_override_colors/font_hover_color = Color(0.898, 0.439, 0.345, 1)
 
-[node name="Incoming" type="Button" parent="Box"]
+[node name="Incoming" type="Button" parent="Clip/Box"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -64,7 +105,7 @@ theme_type_variation = &"SecondaryButton"
 theme_override_colors/font_color = Color(0.961, 0.682, 0.243, 1)
 theme_override_colors/font_hover_color = Color(0.961, 0.682, 0.243, 1)
 
-[node name="Pause" type="Button" parent="Box"]
+[node name="Pause" type="Button" parent="Clip/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "ui.bar.pause_tip"
@@ -72,7 +113,7 @@ focus_mode = 0
 theme_type_variation = &"SecondaryButton"
 text = "ui.bar.pause"
 
-[node name="Clock" type="Label" parent="Box"]
+[node name="Clock" type="Label" parent="Clip/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"HeadingLabel"

@@ -603,13 +603,13 @@ public partial class UiTest : Control
         await Frames();
         Expect(panel.GetNode<Label>("%Level").Text == L.T("common.level", ("level", "2")), "Level changes when the build completes");
 
-        var woodLabel = Find<ResourceBar>().GetNode<Label>("Box/Chips/Wood/Amount");
+        var woodLabel = Find<ResourceBar>().GetNode<Label>("%Chips/Wood/Amount");
         var shownWood = woodLabel.Text;
         session.Tick(10);
         await Frames();
         Expect(woodLabel.Text != shownWood, "Resource amount ticks up");
 
-        var rate = Find<ResourceBar>().GetNode<Label>("Box/Chips/Stone/Rate").Text;
+        var rate = Find<ResourceBar>().GetNode<Label>("%Chips/Stone/Rate").Text;
         Expect(rate == "+3.0/s", $"Numbers ignore the system locale, got '{rate}'");
 
         await TestQueue(game, panel);
@@ -707,6 +707,7 @@ public partial class UiTest : Control
         TestDevOptions();
         await TestViewSwitching();
         await TestThirdParty();
+        await TestTopBar();
         await TestCamera();
         await TestSelection();
         await TestSendFromMap();
@@ -976,6 +977,52 @@ public partial class UiTest : Control
         await Frames();
         sessions[1].Tick(0);
         Expect(heardLoss && Find<StartScreen>() is not null, "The host leaving reaches the others");
+    }
+
+    /// <summary>The bar with everything showing at once, as in the screenshot that found the overflow.</summary>
+    private async Task TestTopBar()
+    {
+        var game = Find<GameScreen>();
+        var bar = Find<ResourceBar>();
+        var session = game.Session;
+        var state = session.State;
+        var other = state.Villages.Values.First(v => !v.IsBarbarian && v.OwnerId != session.LocalPlayerId);
+        var capital = bar.GetNode<Button>("%CapitalWarning");
+
+        Expect(bar.GetNode<Label>("%Population").Text == Format.Whole(ScoreRules.For(state, session.Data, state.Players[1]).Population), "The bar shows my population");
+        Expect(bar.GetNode<Label>("%Score").Text == Format.Whole((int)ScoreRules.For(state, session.Data, state.Players[1]).Score), "The bar shows my score");
+
+        var badge = new Label { Name = "TestBadge", Text = "GOD MODE" };
+        bar.GetNode<HBoxContainer>("%Box").AddChild(badge);
+        bar.AddFixedItem(badge);
+        Valkaris.Core.Dev.DevScenario.AddThirdPartyActivity(state, session.LocalPlayerId, other.Id);
+        var deadline = state.ElapsedTime + 45;
+        Valkaris.Core.Dev.DevScenario.SetCapitalDeadline(state, session.LocalPlayerId, deadline);
+        await Frames();
+        Press(game.GetNode<CapitalDialog>("%CapitalDialog").GetNode<Button>("%Later"));
+        await Frames();
+        Expect(capital.Visible && Find<ResourceBar>().GetNode<Button>("%Incoming").Visible && !game.GetNode<CapitalDialog>("%CapitalDialog").Visible, "Both warnings and the badge show at once");
+
+        var window = GetWindow().Size;
+        foreach (var size in new[] { window, new Vector2I(1024, 640), new Vector2I(1280, 720), new Vector2I(2560, 1080) })
+        {
+            GetWindow().Size = size;
+            await Frames();
+            await Frames();
+            Expect(GetWindow().Size.X == size.X || DisplayServer.GetName() == "headless", $"The window took size {size}");
+            Expect(bar.ContentWidth <= bar.GetNode<Control>("%Clip").Size.X + 1, $"Everything in the bar fits at {GetWindow().Size}: needs {bar.ContentWidth}, has {bar.GetNode<Control>("%Clip").Size.X}");
+            Expect(bar.Size.X <= GetViewportRect().Size.X + 1 && game.Size.X <= GetViewportRect().Size.X + 1, $"The bar never pushes the layout wider at {GetWindow().Size}");
+            Expect(capital.Text.Contains(Format.Time(deadline - state.ElapsedTime)), $"A warning always keeps its time: {capital.Text}");
+            await Shot($"topbar-{size.X}");
+        }
+        GetWindow().Size = window;
+        await Frames();
+
+        Valkaris.Core.Dev.DevScenario.SetCapitalDeadline(state, session.LocalPlayerId, null);
+        bar.RemoveFixedItem(badge);
+        badge.Free();
+        Valkaris.Core.Dev.DevScenario.RemoveMovementsOf(state, other.OwnerId);
+        await Frames();
     }
 
     private async Task TestThirdParty()
@@ -1680,7 +1727,7 @@ public partial class UiTest : Control
 
         session.Tick(600);
         await Frames();
-        var amount = Find<ResourceBar>().GetNode<Label>("Box/Chips/Stone/Amount");
+        var amount = Find<ResourceBar>().GetNode<Label>("%Chips/Stone/Amount");
         Expect(amount.GetThemeColor("font_color") == UiContent.Warning, "A resource at its cap turns amber");
         await Shot("at-cap");
     }
@@ -2551,7 +2598,7 @@ public partial class UiTest : Control
         control.Init(session);
         game.AddChild(control);
         await Frames();
-        var badge = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Label>("Box/GodBadge");
+        var badge = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Label>("%Box/GodBadge");
         Expect(!badge.Visible, "No badge while god mode is off");
 
         void PressF9() => control._Input(new InputEventKey { Keycode = Key.F9, Pressed = true });

@@ -13,11 +13,12 @@ public partial class GodModeControl : Node
 
     public override void _Ready()
     {
-        var box = GetParent().GetNode<ResourceBar>("%ResourceBar").GetNode<HBoxContainer>("Box");
+        var box = GetParent().GetNode<ResourceBar>("%ResourceBar").GetNode<HBoxContainer>("%Box");
         _badge = new Label { Name = "GodBadge", Text = "GOD MODE", ThemeTypeVariation = "StrongLabel" };
         _badge.AddThemeColorOverride("font_color", UiContent.Warning);
         box.AddChild(_badge);
         box.MoveChild(_badge, box.GetNode("Pause").GetIndex());
+        GetParent().GetNode<ResourceBar>("%ResourceBar").AddFixedItem(_badge);
     }
 
     public override void _Process(double delta) => _badge.Visible = _session.IsGodMode;
