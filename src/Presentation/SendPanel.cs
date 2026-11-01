@@ -43,11 +43,11 @@ public partial class SendPanel : VBoxContainer
 
     public event Action? MapRequested;
 
-    public void SetTarget(int villageId, bool sendResources = false)
+    public void SetTarget(int villageId, MovementType? mission = null)
     {
         _targetId = villageId;
-        _sendingResources = sendResources;
-        _wantedMission = sendResources ? MovementType.Transfer : MovementType.Reinforce;
+        _sendingResources = mission == MovementType.Transfer;
+        _wantedMission = mission;
     }
 
     /// <summary>Opens the resource form from the Marketplace. A target that isn't the player's own is dropped.</summary>

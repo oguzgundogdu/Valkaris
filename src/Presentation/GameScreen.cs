@@ -129,21 +129,9 @@ public partial class GameScreen : Control
             if (_currentVillageId is { } from)
                 Session.Send(new FoundVillageCommand(from, tile));
         };
-        _worldMap.SendRequested += villageId =>
-        {
-            _sendPanel.SetTarget(villageId);
-            ShowTab(SideTab.Send);
-        };
-        _worldMap.ReinforceRequested += villageId =>
-        {
-            _sendPanel.SetTarget(villageId);
-            ShowTab(SideTab.Send);
-        };
-        _worldMap.SendResourcesRequested += villageId =>
-        {
-            _sendPanel.SetTarget(villageId, sendResources: true);
-            ShowTab(SideTab.Send);
-        };
+        _worldMap.SendRequested += OpenSend;
+        _worldMap.ReinforceRequested += villageId => OpenSend(villageId, MovementType.Reinforce);
+        _worldMap.SendResourcesRequested += villageId => OpenSend(villageId, MovementType.Transfer);
         _buildingPanel.SendResourcesRequested += () =>
         {
             _sendPanel.ShowResourceForm();
@@ -248,13 +236,19 @@ public partial class GameScreen : Control
         if (@event is not InputEventKey { Pressed: true, Echo: false } key)
             return;
 
-        if (key.Keycode == Key.Escape && CloseTopPopup())
+        if (key.Keycode == Key.Escape)
+        {
+            if (!CloseTopPopup())
+                _worldMap.ClearSelection();
             return;
+        }
 
         if (key.Keycode == Key.P)
             TogglePause();
         else if (Session.IsPaused || Session.State.IsMatchOver || _currentVillageId is null || _capitalDialog.Visible)
             return;
+        else if (HandleMapShortcut(key.Keycode))
+            GetViewport().SetInputAsHandled();
         else if (key.Keycode == Key.M)
             ShowView(CurrentView == MainView.Village ? MainView.World : MainView.Village);
         else if (key.Keycode == Key.Q)
@@ -458,6 +452,56 @@ public partial class GameScreen : Control
 
         _hostLost = true;
         _leaveOverlay.Configure(L.T("overlay.host_left.title"), L.T("overlay.host_left.message"), L.T("overlay.host_left.back"));
+    }
+
+    /// <summary>Opens the send form at a village, beside it on the map.</summary>
+    private void OpenSend(int villageId, MovementType mission)
+    {
+        _sendPanel.SetTarget(villageId, mission);
+        ShowTab(SideTab.Send);
+        _sendPopup.Open(_worldMap.VillageScreenRect(villageId));
+        _worldMap.ClearSelection();
+    }
+
+    /// <summary>A, R, S, T and Enter act on the village under the cursor. Keys typed into a field never get here.</summary>
+    private bool HandleMapShortcut(Key key)
+    {
+        if (CurrentView != MainView.World || _currentVillageId is null || _worldMap.HoveredVillageId is not { } id)
+            return false;
+
+        var isOwn = Session.State.Villages[id].OwnerId == Session.LocalPlayerId;
+        switch (key)
+        {
+            case Key.A or Key.R or Key.S when isOwn:
+                _toast.ShowMessage(UiContent.RejectionText(CommandRejection.InvalidMission));
+                return true;
+            case Key.A:
+                OpenSend(id, MovementType.Attack);
+                return true;
+            case Key.R:
+                OpenSend(id, MovementType.Raid);
+                return true;
+            case Key.S:
+                OpenSend(id, MovementType.Scout);
+                return true;
+            case Key.T when !isOwn:
+                _toast.ShowMessage(UiContent.RejectionText(CommandRejection.TargetNotYours));
+                return true;
+            case Key.T when id == _currentVillageId:
+                _toast.ShowMessage(UiContent.RejectionText(CommandRejection.SameVillage));
+                return true;
+            case Key.T:
+                OpenSend(id, MovementType.Transfer);
+                return true;
+            case Key.Enter or Key.KpEnter when !isOwn:
+                _toast.ShowMessage(UiContent.RejectionText(CommandRejection.NotOwner));
+                return true;
+            case Key.Enter or Key.KpEnter:
+                EnterVillage(id);
+                return true;
+            default:
+                return false;
+        }
     }
 
     private bool CloseTopPopup()

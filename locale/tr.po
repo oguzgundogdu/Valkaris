@@ -900,17 +900,14 @@ msgstr "Duraklat"
 msgid "ui.bar.clock_tip"
 msgstr "Oyunda kalan süre"
 
-msgid "ui.popup.send"
-msgstr "Asker gönder"
-
 msgid "ui.popup.enter"
-msgstr "Köye gir"
+msgstr "Köye gir (Enter)"
 
 msgid "ui.popup.reinforce"
 msgstr "Takviye"
 
 msgid "ui.popup.resources"
-msgstr "Kaynak gönder"
+msgstr "Kaynak gönder (T)"
 
 msgid "ui.popup.settler"
 msgstr "Öncü gönder"
@@ -1085,3 +1082,12 @@ msgstr "Kapat"
 
 msgid "ui.send.from"
 msgstr "Nereden"
+
+msgid "ui.popup.attack"
+msgstr "Saldır (A)"
+
+msgid "ui.popup.raid"
+msgstr "Yağma (R)"
+
+msgid "ui.popup.scout"
+msgstr "Keşif (S)"

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Godot;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
@@ -15,6 +16,7 @@ public partial class WorldMapView : Control
     private const float ZoomStep = 1.15f;
     private const float DragThreshold = 4;
     private const float PopupGap = 44;
+    private static readonly Vector2 MarkerHalfSize = new(60, 60);
 
     private static readonly Color Surround = new(0.09f, 0.14f, 0.18f);
 
@@ -39,14 +41,33 @@ public partial class WorldMapView : Control
     private TileCoord? _selectedTile;
     private Village? _currentVillage;
     private Vector2? _hoverPoint;
+    private readonly HoverTimer<HoverTarget> _hover = new();
 
-    public event Action<int>? SendRequested;
+    /// <summary>What a hover card can be about: a village, or land a Settler could go to.</summary>
+    private readonly record struct HoverTarget(int? VillageId, TileCoord? Tile);
+
+    public event Action<int, MovementType>? SendRequested;
     public event Action<int>? EnterRequested;
     public event Action<TileCoord>? FoundRequested;
     public event Action<int>? ReinforceRequested;
     public event Action<int>? SendResourcesRequested;
 
     public int? SelectedVillageId => _selectedId;
+
+    /// <summary>The village the keyboard shortcuts act on: under the cursor, or on the open card.</summary>
+    public int? HoveredVillageId => _hoverPoint is { } point && VillageAt(point) is { } under ? under : CardVillageId;
+
+    public int? CardVillageId => _selectedId ?? _hover.Shown?.VillageId;
+
+    /// <summary>Lets the UI test stand in for a cursor resting on the card, which a headless run can't do.</summary>
+    public bool TestCursorOnCard { get; set; }
+
+    /// <summary>A village's marker with its name, in window coordinates: what a popup must not cover.</summary>
+    public Rect2 VillageScreenRect(int villageId)
+    {
+        var centre = GlobalPosition + WorldToView(VillageWorldPosition(_session!.State.Villages[villageId]));
+        return new Rect2(centre - MarkerHalfSize, MarkerHalfSize * 2);
+    }
     public TileCoord? SelectedTile => _selectedTile;
     public float Zoom => _zoom;
     public Vector2 CameraPosition => _world.Position;
@@ -92,13 +113,13 @@ public partial class WorldMapView : Control
         _hoverLabel.AddThemeColorOverride("font_outline_color", new Color(0.08f, 0.07f, 0.05f, 0.9f));
         AddChild(_hoverLabel);
 
-        _popup.SendRequested += id => SendRequested?.Invoke(id);
+        _popup.SendRequested += (id, mission) => SendRequested?.Invoke(id, mission);
         _popup.EnterRequested += id => EnterRequested?.Invoke(id);
         _popup.ReinforceRequested += id => ReinforceRequested?.Invoke(id);
         _popup.SendResourcesRequested += id => SendResourcesRequested?.Invoke(id);
         _popup.FoundRequested += tile =>
         {
-            _selectedTile = null;
+            ClearSelection();
             FoundRequested?.Invoke(tile);
         };
 
@@ -130,24 +151,42 @@ public partial class WorldMapView : Control
         if (currentVillage is null || currentVillage.TroopCount(UnitType.Settler) == 0)
             _selectedTile = null;
 
-        _popup.Visible = _selectedId is not null || _selectedTile is not null;
-        if (_selectedId is { } selected)
+        UpdateHover();
+        var cardVillage = _selectedId ?? (_selectedTile is null ? _hover.Shown?.VillageId : null);
+        var cardTile = _selectedTile ?? (_selectedId is null ? _hover.Shown?.Tile : null);
+        _popup.Visible = cardVillage is not null || (cardTile is not null && currentVillage is not null);
+        if (cardVillage is { } shown)
         {
-            var village = session.State.Villages[selected];
+            var village = session.State.Villages[shown];
             _popup.Refresh(session, village, currentVillage);
             PlacePopup(VillageWorldPosition(village));
         }
-        else if (_selectedTile is { } tile)
+        else if (cardTile is { } tile && currentVillage is not null)
         {
-            _popup.RefreshLand(session, tile, currentVillage!);
+            _popup.RefreshLand(session, tile, currentVillage);
             PlacePopup(TileWorldPosition(tile));
         }
+    }
+
+    private void UpdateHover()
+    {
+        var overCard = TestCursorOnCard || (_popup.Visible && _popup.GetGlobalRect().HasPoint(GetGlobalMousePosition()));
+        HoverTarget? under = null;
+        if (!_pressed && !overCard && _hoverPoint is { } point)
+        {
+            if (VillageAt(point) is { } id)
+                under = new HoverTarget(id, null);
+            else if (LandForSettlerAt(point) is { } tile)
+                under = new HoverTarget(null, tile);
+        }
+        _hover.Update(under, overCard, GetProcessDeltaTime());
     }
 
     public void ClearSelection()
     {
         _selectedId = null;
         _selectedTile = null;
+        _hover.Clear();
     }
 
     /// <summary>Puts a village in the middle of the view, as far as the map's edges allow.</summary>
@@ -260,6 +299,12 @@ public partial class WorldMapView : Control
         _zoom = MinZoom;
         _world.Position = (Size - _worldSize * _zoom) / 2;
         ApplyZoom();
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationMouseExit)
+            _hoverPoint = null;
     }
 
     public override void _GuiInput(InputEvent @event)

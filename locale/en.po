@@ -903,17 +903,14 @@ msgstr "Pause"
 msgid "ui.bar.clock_tip"
 msgstr "Time left in the match"
 
-msgid "ui.popup.send"
-msgstr "Send troops"
-
 msgid "ui.popup.enter"
-msgstr "Enter village"
+msgstr "Enter village (Enter)"
 
 msgid "ui.popup.reinforce"
 msgstr "Reinforce"
 
 msgid "ui.popup.resources"
-msgstr "Send resources"
+msgstr "Send resources (T)"
 
 msgid "ui.popup.settler"
 msgstr "Send settler"
@@ -1088,3 +1085,12 @@ msgstr "Close"
 
 msgid "ui.send.from"
 msgstr "From"
+
+msgid "ui.popup.attack"
+msgstr "Attack (A)"
+
+msgid "ui.popup.raid"
+msgstr "Raid (R)"
+
+msgid "ui.popup.scout"
+msgstr "Scout (S)"

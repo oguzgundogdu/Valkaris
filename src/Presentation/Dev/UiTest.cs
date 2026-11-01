@@ -711,6 +711,7 @@ public partial class UiTest : Control
         await TestThirdParty();
         await TestTopBar();
         await TestPopups();
+        await TestHoverCard();
         await TestCamera();
         await TestSelection();
         await TestSendFromMap();
@@ -983,6 +984,99 @@ public partial class UiTest : Control
     }
 
     /// <summary>The bar with everything showing at once, as in the screenshot that found the overflow.</summary>
+    private async Task TestHoverCard()
+    {
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var card = world.GetNode<VillagePopup>("Popup");
+        var send = game.GetNode<PopupFrame>("%SendPopup");
+        var panel = game.GetNode<SendPanel>("%Send");
+        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowTab(GameScreen.SideTab.Village);
+        game.GetNode<PopupFrame>("%BuildingPopup").Close();
+        game.ShowView(GameScreen.MainView.World);
+        world.ClearSelection();
+        await Frames();
+
+        var rival = session.State.Villages.Values.First(v => !v.IsBarbarian && v.OwnerId != session.LocalPlayerId);
+        var own = session.State.Villages[game.CurrentVillageId!.Value];
+        Vector2 At(Village village) => world.WorldToView(WorldMapView.VillageWorldPosition(village));
+        void Hover(Vector2 point) => world._GuiInput(new InputEventMouseMotion { Position = point });
+        async Task Wait(double seconds) => await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
+
+        var empty = new Vector2(world.Size.X - 2, world.Size.Y - 2);
+        Hover(At(rival));
+        await Frames();
+        Expect(!card.Visible, "The card waits a moment");
+        await Wait(0.45);
+        Expect(card.Visible && card.GetNode<Label>("%Name").Text == rival.Name, "Resting on a village opens its card");
+        Expect(card.GetNode<Button>("%Attack").Visible && card.GetNode<Button>("%Raid").Visible && card.GetNode<Button>("%Scout").Visible, "A rival's card offers Attack, Raid and Scout");
+        Expect(new Rect2(Vector2.Zero, world.Size).Encloses(card.GetRect()), "The card stays in the view");
+        await Shot("hover-card");
+
+        Hover(empty);
+        world.TestCursorOnCard = true;
+        await Wait(0.45);
+        Expect(card.Visible, "The card stays while the cursor is on it");
+        world.TestCursorOnCard = false;
+        await Wait(0.45);
+        Expect(!card.Visible, "The card closes when the cursor leaves");
+
+        // Shortcuts act on what is under the cursor, with no wait.
+        foreach (var (key, mission) in new[] { (Key.A, MovementType.Attack), (Key.R, MovementType.Raid), (Key.S, MovementType.Scout) })
+        {
+            Hover(At(rival));
+            PressKey(game, key);
+            await Frames();
+            await Frames();
+            Expect(send.Visible && panel.GetNode<OptionButton>("%Mission").Text == UiContent.MissionName(mission), $"{key} opens the send popup for {mission}");
+            Expect(panel.GetNode<Label>("%TargetLine").Text.Contains(rival.Name), $"{key} aims at the village under the cursor");
+            Expect(!send.GetGlobalRect().Intersects(world.VillageScreenRect(rival.Id)), $"The send popup doesn't cover its target: {send.GetGlobalRect()} and {world.VillageScreenRect(rival.Id)}");
+            Expect(GetViewportRect().Encloses(send.GetGlobalRect()), "The send popup stays in the window");
+            if (key == Key.R)
+                await Shot("send-beside-target");
+            PressKey(game, Key.Escape);
+            await Frames();
+        }
+
+        Hover(At(rival));
+        PressKey(game, Key.T);
+        await Frames();
+        Expect(!send.Visible, "T on a rival opens nothing");
+        PressKey(game, Key.Enter);
+        await Frames();
+        Expect(game.CurrentView == GameScreen.MainView.World, "Enter on a rival doesn't enter it");
+
+        Hover(At(own));
+        PressKey(game, Key.A);
+        await Frames();
+        Expect(!send.Visible, "A on your own village opens nothing");
+        PressKey(game, Key.Enter);
+        await Frames();
+        Expect(game.CurrentView == GameScreen.MainView.Village && game.CurrentVillageId == own.Id, "Enter walks into your own village");
+
+        // Nothing fires while typing.
+        game.ShowView(GameScreen.MainView.World);
+        Hover(At(rival));
+        PressKey(game, Key.R);
+        await Frames();
+        await Frames();
+        var field = panel.GetNode<SpinBox>("%Units/Spearman/Amount").GetLineEdit();
+        field.GrabFocus();
+        await Frames();
+        Input.ParseInputEvent(new InputEventKey { Pressed = true, Keycode = Key.A, PhysicalKeycode = Key.A, Unicode = 'a' });
+        Input.FlushBufferedEvents();
+        await Frames();
+        Expect(panel.GetNode<OptionButton>("%Mission").Text == UiContent.MissionName(MovementType.Raid), "A goes to the field while typing");
+        field.ReleaseFocus();
+        send.Close();
+        Hover(empty);
+        world.ClearSelection();
+        game.ShowView(GameScreen.MainView.Village);
+        await Frames();
+    }
+
     private async Task TestPopups()
     {
         var game = Find<GameScreen>();
@@ -1206,7 +1300,7 @@ public partial class UiTest : Control
         var tier = UiContent.TierName(session, camp.BarbarianTier!.Value);
         Expect(popup.GetNode<Label>("%Owner").Text == Format.Dotted(L.T("player.barbarians"), tier), $"The popup shows the owner and tier, got '{popup.GetNode<Label>("%Owner").Text}'");
         Expect(Shows(popup.GetNode<Label>("%Distance").Text, "common.tiles_away"), "The popup shows the distance");
-        Expect(popup.GetNode<Button>("%Send").Visible && !popup.GetNode<Button>("%Enter").Visible, "An enemy village offers Send");
+        Expect(popup.GetNode<Control>("%Missions").Visible && !popup.GetNode<Button>("%Enter").Visible, "An enemy village offers Send");
         Expect(new Rect2(Vector2.Zero, world.Size).Encloses(popup.GetRect()), "The popup stays inside the view");
         await Shot("map-popup");
 
@@ -1216,7 +1310,7 @@ public partial class UiTest : Control
 
         await Click(At(own));
         Expect(world.SelectedVillageId == own.Id, "Clicking another marker moves the selection");
-        Expect(popup.GetNode<Button>("%Enter").Visible && !popup.GetNode<Button>("%Send").Visible, "Your own village offers Enter");
+        Expect(popup.GetNode<Button>("%Enter").Visible && !popup.GetNode<Control>("%Missions").Visible, "Your own village offers Enter");
         Expect(!popup.GetNode<Label>("%Distance").Visible, "No distance to the village you're in");
 
         var empty = Enumerable.Range(0, session.State.Map.Tiles.Count)
@@ -1292,7 +1386,7 @@ public partial class UiTest : Control
         await Frames();
         game.ShowTab(GameScreen.SideTab.Village);
         await Frames();
-        world.GetNode<VillagePopup>("Popup").GetNode<Button>("%Send").EmitSignal(BaseButton.SignalName.Pressed);
+        world.GetNode<VillagePopup>("Popup").GetNode<Button>("%Attack").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
         Expect(send.IsVisibleInTree(), "The popup opens the Send tab");
         Expect(send.GetNode<Label>("%TargetLine").Text.StartsWith(Format.Dotted(camp.Name, L.T("player.barbarians"))), $"The popup sets the target, got '{send.GetNode<Label>("%TargetLine").Text}'");
@@ -2293,7 +2387,7 @@ public partial class UiTest : Control
         await Frames();
         Expect(popup.GetNode<Button>("%Reinforce").Visible, "Your other village offers Reinforce");
         Expect(popup.GetNode<Button>("%Enter").Visible, "Your other village offers Enter");
-        Expect(!popup.GetNode<Button>("%Send").Visible, "Your own village offers no attack");
+        Expect(!popup.GetNode<Control>("%Missions").Visible, "Your own village offers no attack");
         await Shot("reinforce-popup");
 
         Press(popup.GetNode<Button>("%Reinforce"));
@@ -2436,7 +2530,7 @@ public partial class UiTest : Control
         Expect(CarrierRules.Free(session.State, data, from) == free, "The carriers are free again");
 
         // Sending to itself, and to a rival.
-        send.SetTarget(from.Id, sendResources: true);
+        send.SetTarget(from.Id, MovementType.Transfer);
         await Frames();
         wood.Value = 10;
         await Frames();
@@ -2975,7 +3069,7 @@ public partial class UiTest : Control
         var popup = world.GetNode<VillagePopup>("Popup");
         Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(session.State.Villages[2])));
         await Frames();
-        Expect(popup.Visible && !popup.GetNode<Button>("%Send").Visible, "A watcher can look but not send");
+        Expect(popup.Visible && !popup.GetNode<Control>("%Missions").Visible, "A watcher can look but not send");
         await Shot("watching");
 
         session.Tick(10);

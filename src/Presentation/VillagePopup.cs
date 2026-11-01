@@ -12,7 +12,7 @@ public partial class VillagePopup : PanelContainer
     private int _villageId;
     private TileCoord _tile;
 
-    public event Action<int>? SendRequested;
+    public event Action<int, MovementType>? SendRequested;
     public event Action<int>? EnterRequested;
     public event Action<int>? ReinforceRequested;
     public event Action<int>? SendResourcesRequested;
@@ -20,7 +20,9 @@ public partial class VillagePopup : PanelContainer
 
     public override void _Ready()
     {
-        GetNode<Button>("%Send").Pressed += () => SendRequested?.Invoke(_villageId);
+        GetNode<Button>("%Attack").Pressed += () => SendRequested?.Invoke(_villageId, MovementType.Attack);
+        GetNode<Button>("%Raid").Pressed += () => SendRequested?.Invoke(_villageId, MovementType.Raid);
+        GetNode<Button>("%Scout").Pressed += () => SendRequested?.Invoke(_villageId, MovementType.Scout);
         GetNode<Button>("%Reinforce").Pressed += () => ReinforceRequested?.Invoke(_villageId);
         GetNode<Button>("%SendResources").Pressed += () => SendResourcesRequested?.Invoke(_villageId);
         GetNode<Button>("%Enter").Pressed += () => EnterRequested?.Invoke(_villageId);
@@ -48,10 +50,11 @@ public partial class VillagePopup : PanelContainer
             distance.Text = L.T("common.tiles_away", ("distance", Format.OneDecimal(UnitRules.Distance(currentVillage.Position, village.Position))));
 
         var reason = GetNode<Label>("%Reason");
-        reason.Visible = isOwn;
-        reason.Text = isOwn ? L.T("scout.loyalty", ("value", Format.Amount(village.Loyalty))) : "";
+        var known = isOwn ? L.T("scout.loyalty", ("value", Format.Amount(village.Loyalty))) : UiContent.LatestIntel(session, village);
+        reason.Visible = known is not null;
+        reason.Text = known ?? "";
 
-        GetNode<Button>("%Send").Visible = !isOwn && currentVillage is not null;
+        GetNode<Control>("%Missions").Visible = !isOwn && currentVillage is not null;
         GetNode<Button>("%Enter").Visible = isOwn;
         GetNode<Button>("%Reinforce").Visible = isOwn && !isCurrent && currentVillage is not null;
         GetNode<Button>("%SendResources").Visible = isOwn && !isCurrent && currentVillage is not null;
@@ -75,7 +78,7 @@ public partial class VillagePopup : PanelContainer
         reason.Visible = true;
         reason.Text = option.Rejection is { } rejection ? UiContent.RejectionText(rejection) : L.T("popup.settler_arrives", ("time", Format.Time(option.DurationSeconds)));
 
-        GetNode<Button>("%Send").Visible = false;
+        GetNode<Control>("%Missions").Visible = false;
         GetNode<Button>("%Enter").Visible = false;
         GetNode<Button>("%Reinforce").Visible = false;
         GetNode<Button>("%SendResources").Visible = false;

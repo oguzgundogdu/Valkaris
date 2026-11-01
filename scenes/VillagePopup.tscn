@@ -34,11 +34,31 @@ layout_mode = 2
 theme_type_variation = &"MutedLabel"
 autowrap_mode = 2
 
-[node name="Send" type="Button" parent="Box"]
+[node name="Missions" type="HBoxContainer" parent="Box"]
 unique_name_in_owner = true
 layout_mode = 2
+
+[node name="Attack" type="Button" parent="Box/Missions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 focus_mode = 0
-text = "ui.popup.send"
+text = "ui.popup.attack"
+
+[node name="Raid" type="Button" parent="Box/Missions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "ui.popup.raid"
+
+[node name="Scout" type="Button" parent="Box/Missions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_type_variation = &"SecondaryButton"
+text = "ui.popup.scout"
 
 [node name="Enter" type="Button" parent="Box"]
 unique_name_in_owner = true
