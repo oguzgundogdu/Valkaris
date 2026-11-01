@@ -804,6 +804,9 @@ msgstr "Save"
 msgid "rename.cancel"
 msgstr "Cancel"
 
+msgid "lobby.nation_tip"
+msgstr "This seat's nation"
+
 msgid "ui.start.language"
 msgstr "Language"
 

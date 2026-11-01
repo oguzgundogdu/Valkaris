@@ -16,7 +16,8 @@ public partial class LobbyScreen : CenterContainer
     private const int OpenItem = 0;
     private static readonly AiDifficulty[] Difficulties = Enum.GetValues<AiDifficulty>();
 
-    private readonly List<(Label Name, OptionButton Kind)> _rows = new();
+    private readonly List<(Label Name, OptionButton Kind, OptionButton Nation)> _rows = new();
+    private bool _sentNation;
     private GameData _data = null!;
     private LobbyHost? _host;
     private LobbyClient? _client;
@@ -71,10 +72,14 @@ public partial class LobbyScreen : CenterContainer
             kind.AddItem(L.T("lobby.closed"));
             var index = i;
             kind.ItemSelected += item => OnKindChosen(index, (int)item);
+            var nation = new OptionButton { Name = "Nation", CustomMinimumSize = new Vector2(120, 0), TooltipText = L.T("lobby.nation_tip") };
+            StartScreen.FillNations(nation);
+            nation.ItemSelected += _ => OnNationChosen(index, StartScreen.ChosenNation(nation));
             row.AddChild(name);
+            row.AddChild(nation);
             row.AddChild(kind);
             slots.AddChild(row);
-            _rows.Add((name, kind));
+            _rows.Add((name, kind, nation));
         }
 
         _duration.ItemSelected += _ => OnSettingsChosen();
@@ -91,6 +96,7 @@ public partial class LobbyScreen : CenterContainer
             HostStarted?.Invoke(session);
         };
 
+        _host?.SetNation(0, UserSettings.Nation);
         Refresh();
     }
 
@@ -98,6 +104,17 @@ public partial class LobbyScreen : CenterContainer
     {
         _host?.Poll();
         _client?.Poll();
+    }
+
+    private void OnNationChosen(int slot, Nation? nation)
+    {
+        if (_host is not null)
+            _host.SetNation(slot, nation);
+        else
+            _client!.ChooseNation(nation);
+
+        if (slot == (_host is not null ? 0 : _client!.OwnSlot))
+            UserSettings.Nation = nation;
     }
 
     private void OnKindChosen(int slot, int item)
@@ -125,8 +142,16 @@ public partial class LobbyScreen : CenterContainer
         }
 
         for (var i = 0; i < _rows.Count; i++)
-            RefreshRow(_rows[i], slots[i]);
+            RefreshRow(_rows[i], slots[i], i);
         ShowSettings(settings);
+
+        // A guest brings the nation they last chose.
+        if (_client is { OwnSlot: not null } && !_sentNation)
+        {
+            _sentNation = true;
+            if (UserSettings.Nation is { } remembered)
+                _client.ChooseNation(remembered);
+        }
 
         foreach (var option in new[] { _duration, _speed, _mapSize })
             option.Disabled = _host is null;
@@ -149,8 +174,14 @@ public partial class LobbyScreen : CenterContainer
         status.Text = start.Disabled ? shared + "\n" + L.T("lobby.need_players") : shared;
     }
 
-    private void RefreshRow((Label Name, OptionButton Kind) row, LobbySlot slot)
+    private void RefreshRow((Label Name, OptionButton Kind, OptionButton Nation) row, LobbySlot slot, int index)
     {
+        // Everyone can see every nation. The host sets their own and the AIs', and a guest only their own.
+        var plays = slot.Kind == SlotKind.Ai || slot.PlayerName is not null;
+        row.Nation.Visible = plays;
+        row.Nation.Select(StartScreen.NationIndex(slot.Nation));
+        row.Nation.Disabled = _host is not null ? slot.Kind is not (SlotKind.Host or SlotKind.Ai) : _client!.OwnSlot != index;
+
         row.Name.Text = slot.PlayerName is { } name
             ? slot.VillageName is { } village ? L.T("lobby.player_village", ("name", name), ("village", village)) : name
             : slot.Kind switch

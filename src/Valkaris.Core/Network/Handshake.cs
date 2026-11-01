@@ -9,7 +9,7 @@ namespace Valkaris.Core.Network;
 public static class Handshake
 {
     /// <summary>Change this whenever the wire format changes.</summary>
-    public const string Version = "0.7.1";
+    public const string Version = "0.8.0";
 
     public const int DefaultPort = 24565;
     public const string AnyAddress = "*";

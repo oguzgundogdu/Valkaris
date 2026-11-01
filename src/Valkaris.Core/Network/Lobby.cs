@@ -48,10 +48,16 @@ public sealed class LobbyHost
         Announce();
     }
 
+    public void SetNation(int index, Nation? nation)
+    {
+        if (State.SetNation(index, nation))
+            Announce();
+    }
+
     /// <summary>Starts the match, and from here the session handles the connections.</summary>
     public HostGameSession Start(ulong seed, Func<LocalGameSession, int, IMatchAgent> makeAgent)
     {
-        var plan = State.Plan();
+        var plan = State.Plan(seed);
         _network.Received -= OnReceived;
         _network.PeerDisconnected -= OnDisconnected;
 
@@ -75,7 +81,16 @@ public sealed class LobbyHost
 
     private void OnReceived(int peer, byte[] bytes)
     {
-        if (State.SlotOfPeer(peer) is not null || WireCodec.DecodeFromClient(bytes) is not HelloMessage hello)
+        var message = WireCodec.DecodeFromClient(bytes);
+        if (State.SlotOfPeer(peer) is { } seat)
+        {
+            // A guest can only ever change their own seat.
+            if (message is NationChoiceMessage choice)
+                SetNation(seat, choice.Nation);
+            return;
+        }
+
+        if (message is not HelloMessage hello)
             return;
 
         if (hello.Version != Handshake.Version)
@@ -117,6 +132,7 @@ public sealed class LobbyClient
     {
         _network = network;
         _data = data;
+        PlayerName = VillageNameRules.Clean(playerName);
         var hello = WireCodec.Encode(new HelloMessage(version, dataHash, playerName, villageName));
         network.Connected += () => network.Send(hello);
         network.Received += OnReceived;
@@ -132,6 +148,13 @@ public sealed class LobbyClient
     public event Action<ClientGameSession>? MatchStarted;
 
     public void Poll() => _network.Poll();
+
+    public string PlayerName { get; }
+
+    /// <summary>This player's seat in the latest copy of the lobby. Names in a lobby are unique.</summary>
+    public int? OwnSlot => Lobby is { } lobby && lobby.Slots.ToList().FindIndex(s => s.PlayerName is { } name && VillageNameRules.Folded(name) == VillageNameRules.Folded(PlayerName)) is >= 0 and var slot ? slot : null;
+
+    public void ChooseNation(Nation? nation) => _network.Send(WireCodec.Encode(new NationChoiceMessage(nation)));
 
     public void Leave()
     {

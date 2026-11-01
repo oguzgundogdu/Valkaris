@@ -140,6 +140,36 @@ public class LobbyStateTests
 
         Assert.DoesNotContain(_lobby.Plan().Players.Where(p => p.IsAi), p => p.Name == ai);
     }
+
+    [Fact]
+    public void ASeatThatPlaysCanHaveANation()
+    {
+        Assert.True(_lobby.SetNation(0, Nation.Karuk));
+        Assert.Equal(Nation.Karuk, _lobby.Slots[0].Nation);
+        Assert.False(_lobby.SetNation(1, Nation.Karuk));
+
+        _lobby.SetSlot(1, SlotKind.Ai);
+        Assert.True(_lobby.SetNation(1, Nation.Solari));
+        _lobby.SetSlot(1, SlotKind.Ai, AiDifficulty.Hard);
+        Assert.Equal(Nation.Solari, _lobby.Slots[1].Nation);
+        _lobby.SetSlot(1, SlotKind.Open);
+        Assert.Null(_lobby.Slots[1].Nation);
+    }
+
+    [Fact]
+    public void AnImpossibleNationIsRefused() => Assert.False(_lobby.SetNation(0, (Nation)99));
+
+    [Fact]
+    public void ThePlanSettlesRandomFromTheSeed()
+    {
+        _lobby.SetNation(0, Nation.Karuk);
+        _lobby.SetSlot(1, SlotKind.Ai);
+
+        var players = _lobby.Plan(5).Players;
+
+        Assert.Equal(Nation.Karuk, players[0].Nation);
+        Assert.Equal(Valkaris.Core.Systems.NationPicker.Resolve(null, 5, 1), players[1].Nation);
+    }
 }
 
 public class HandshakeTests
@@ -296,5 +326,26 @@ public class NetAddressTests
         var addresses = new[] { "127.0.0.1", "::1", "fe80::1", "169.254.3.4", "192.168.1.20", "100.70.1.2", "192.168.1.20" };
 
         Assert.Equal(new[] { "100.70.1.2", "192.168.1.20" }, NetAddress.Shareable(addresses));
+    }
+
+    [Fact]
+    public void AGuestChangesOnlyTheirOwnSeat()
+    {
+        var hash = Handshake.DataHash(new ShippedDataSource());
+        var network = new MemoryNetwork();
+        var host = new LobbyHost(network.Host, TestData.Shipped, hash, "Oguz", null);
+        host.SetNation(0, Nation.Karuk);
+        var guest = new LobbyClient(network.Connect(), TestData.Shipped, hash, "Ayla", null);
+        host.Poll();
+        guest.Poll();
+
+        guest.ChooseNation(Nation.Solari);
+        host.Poll();
+        guest.Poll();
+
+        Assert.Equal(1, guest.OwnSlot);
+        Assert.Equal(Nation.Solari, host.State.Slots[1].Nation);
+        Assert.Equal(Nation.Karuk, host.State.Slots[0].Nation);
+        Assert.Equal(Nation.Solari, guest.Lobby!.Slots[1].Nation);
     }
 }

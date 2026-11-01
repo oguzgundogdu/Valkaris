@@ -973,6 +973,28 @@ public partial class UiTest : Control
             guest.Poll();
         }
         await Frames();
+
+        // Each seat's nation shows for everyone, and each person sets only what's theirs.
+        OptionButton NationOf(int slot) => lobby.GetNode<OptionButton>($"%Slots/Slot{slot}/Nation");
+        lobby.GetNode<OptionButton>("%Slots/Slot3/Kind").Select(1);
+        lobby.GetNode<OptionButton>("%Slots/Slot3/Kind").EmitSignal(OptionButton.SignalName.ItemSelected, 1);
+        await Frames();
+        Expect(NationOf(0).Selected == StartScreen.NationIndex(UserSettings.Nation) && !NationOf(0).Disabled, "The host's seat starts on the remembered nation");
+        Expect(NationOf(1).Disabled && NationOf(2).Disabled, "The host can't set a guest's nation");
+        Expect(!NationOf(3).Disabled && NationOf(3).Selected == 0, "An AI is Random until the host chooses");
+        NationOf(3).Select(StartScreen.NationIndex(Nation.Karuk));
+        NationOf(3).EmitSignal(OptionButton.SignalName.ItemSelected, NationOf(3).Selected);
+        guests[0].ChooseNation(Nation.Solari);
+        await Frames();
+        foreach (var guest in guests)
+            guest.Poll();
+        await Frames();
+        Expect(NationOf(1).Selected == StartScreen.NationIndex(Nation.Solari), "A guest's choice shows in the host's lobby");
+        Expect(guests[1].Lobby!.Slots[3].Nation == Nation.Karuk && guests[1].Lobby!.Slots[1].Nation == Nation.Solari, "Other guests see every nation");
+        Expect(guests[1].OwnSlot == 2, "A guest knows their own seat");
+        CheckLayout("lobby nations");
+        await Shot("lobby-nations");
+
         Press(lobby.GetNode<Button>("%Start"));
         await Frames();
         foreach (var guest in guests)
@@ -980,6 +1002,7 @@ public partial class UiTest : Control
 
         var game = Find<GameScreen>();
         var host = (HostGameSession)game.Session;
+        Expect(host.State.Players[2].Nation == Nation.Solari && host.State.Players[4].Nation == Nation.Karuk, "The match uses the lobby's nations");
         Expect(sessions.Count == 2 && !host.CanPause, "The match starts for everyone, and can't be paused");
         Expect(host.State.Settings.SpeedMultiplier == data.Game.SpeedMultipliers[0], "Dev settings don't reach a multiplayer match");
         Expect(Find<ResourceBar>().GetNode<Button>("%Pause").Text == L.T("bar.menu"), "The host has the menu as well");

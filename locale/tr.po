@@ -801,6 +801,9 @@ msgstr "Kaydet"
 msgid "rename.cancel"
 msgstr "İptal"
 
+msgid "lobby.nation_tip"
+msgstr "Bu koltuğun ulusu"
+
 msgid "ui.start.language"
 msgstr "Dil"
 

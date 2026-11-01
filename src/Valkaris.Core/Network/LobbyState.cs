@@ -27,7 +27,7 @@ public enum JoinRefusal
 }
 
 /// <summary>One seat. PlayerName is set when a person holds it.</summary>
-public sealed record LobbySlot(SlotKind Kind, AiDifficulty Difficulty = AiDifficulty.Normal, string? PlayerName = null, string? VillageName = null);
+public sealed record LobbySlot(SlotKind Kind, AiDifficulty Difficulty = AiDifficulty.Normal, string? PlayerName = null, string? VillageName = null, Nation? Nation = null);
 
 /// <summary>Who plays which player once the match starts.</summary>
 public sealed record LobbyPlan(IReadOnlyList<PlayerSlot> Players, IReadOnlyDictionary<int, int> PlayerOfPeer, IReadOnlyList<int> AiPlayers);
@@ -111,8 +111,20 @@ public sealed class LobbyState
 
         var removed = _peers[index];
         _peers[index] = null;
-        _slots[index] = new LobbySlot(kind, difficulty);
+        _slots[index] = new LobbySlot(kind, difficulty, Nation: kind == SlotKind.Ai && _slots[index].Kind == SlotKind.Ai ? _slots[index].Nation : null);
         return removed;
+    }
+
+    /// <summary>A seat's nation, or Random with null. Only a seat that plays can have one.</summary>
+    public bool SetNation(int index, Nation? nation)
+    {
+        if (index < 0 || index >= _slots.Length || (nation is { } chosen && !Enum.IsDefined(chosen)))
+            return false;
+        if (_slots[index].Kind == SlotKind.Closed || (_slots[index].Kind == SlotKind.Open && _slots[index].PlayerName is null))
+            return false;
+
+        _slots[index] = _slots[index] with { Nation = nation };
+        return true;
     }
 
     /// <summary>Only the choices the start screen offers are accepted.</summary>
@@ -131,12 +143,11 @@ public sealed class LobbyState
     public void SetSpectatorsSeeAll(bool value) => Settings = Settings with { SpectatorsSeeAll = value };
 
     /// <summary>Turns the seats into players, with the host as player 1 and no gaps.</summary>
-    public LobbyPlan Plan()
+    public LobbyPlan Plan(ulong seed = 0)
     {
         if (!CanStart)
             throw new InvalidOperationException("Not enough players to start.");
 
-        var nations = new[] { Nation.Karuk, Nation.Solari, Nation.Valdren };
         var taken = _slots.Select(s => s.PlayerName).OfType<string>().Select(VillageNameRules.Folded).ToHashSet();
         var aiNames = new Queue<string>(_data.Ai.Names.Where(n => !taken.Contains(VillageNameRules.Folded(n))));
         var players = new List<PlayerSlot>();
@@ -146,7 +157,7 @@ public sealed class LobbyState
         for (var i = 0; i < _slots.Length; i++)
         {
             var slot = _slots[i];
-            var nation = players.Count == 0 ? Nation.Valdren : nations[(players.Count - 1) % nations.Length];
+            var nation = NationPicker.Resolve(slot.Nation, seed, players.Count);
             if (slot.Kind == SlotKind.Ai)
             {
                 players.Add(new PlayerSlot(aiNames.Dequeue(), nation, IsAi: true, slot.Difficulty));

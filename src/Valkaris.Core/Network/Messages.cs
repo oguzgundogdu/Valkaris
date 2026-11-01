@@ -23,6 +23,9 @@ public sealed record UpdateMessage(PlayerViewSnapshot View, IReadOnlyList<GameEv
 public sealed record MatchStartMessage(int PlayerId, UpdateMessage First) : INetMessage;
 
 /// <summary>The first thing a client says. The host checks it before anything else.</summary>
+/// <summary>A joined guest picks a nation for their own seat. Null is Random.</summary>
+public sealed record NationChoiceMessage(Nation? Nation) : INetMessage;
+
 public sealed record HelloMessage(string Version, string DataHash, string PlayerName, string? VillageName) : INetMessage;
 
 /// <summary>The current seats and settings, sent to everyone in the lobby at every change.</summary>

@@ -17,7 +17,7 @@ public static class WireCodec
     public static readonly IReadOnlyList<Type> Messages = new[]
     {
         typeof(CommandMessage), typeof(RejectionMessage), typeof(UpdateMessage), typeof(MatchStartMessage),
-        typeof(HelloMessage), typeof(LobbyMessage), typeof(RefusedMessage),
+        typeof(HelloMessage), typeof(NationChoiceMessage), typeof(LobbyMessage), typeof(RefusedMessage),
     };
 
     public static readonly IReadOnlyList<Type> Commands = new[]
