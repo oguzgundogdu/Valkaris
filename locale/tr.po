@@ -1133,3 +1133,15 @@ msgstr "Yalnızca köylerime yakın"
 
 msgid "ui.reports.mark_read"
 msgstr "Tümünü okundu say"
+
+msgid "ui.lobby.spectators"
+msgstr "İzleyiciler her şeyi görsün"
+
+msgid "ui.lobby.spectators_tip"
+msgstr "Oyundan çıkanlar tüm hareketleri ve savaş raporlarını görür. Oynamaya devam eden bir arkadaşına söyleyebilir."
+
+msgid "report.headline_watched_won"
+msgstr "{attacker}: {target} üzerine {mission} kazandı"
+
+msgid "report.headline_watched_lost"
+msgstr "{attacker}: {target} üzerine {mission} kaybetti"

@@ -3,6 +3,7 @@ using System.Linq;
 using Godot;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
@@ -62,7 +63,8 @@ public partial class MovementLayer : Control
             var to = movement.ToVillageId is { } target
                 ? WorldMapView.VillageWorldPosition(session.State.Villages[target])
                 : WorldMapView.TileWorldPosition(movement.TargetTile!.Value);
-            var colour = movement.OwnerId != session.LocalPlayerId ? Hostile
+            var colour = Visibility.Spectates(session.State, session.LocalPlayerId) ? Neutral
+                : movement.OwnerId != session.LocalPlayerId ? Hostile
                 : movement.Type is MovementType.Return or MovementType.CarrierReturn ? Returning
                 : Own;
             var icon = movement.OwnerId != session.LocalPlayerId ? MissionIcon(movement.Type)

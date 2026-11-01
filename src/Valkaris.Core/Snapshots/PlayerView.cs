@@ -21,13 +21,14 @@ public static class PlayerView
     public static PlayerViewSnapshot Of(GameState state, GameData data, int playerId)
     {
         var full = SnapshotMapper.ToSnapshot(state);
+        var spectating = Visibility.Spectates(state, playerId);
         var filtered = full with
         {
             Settings = state.Settings with { Seed = HashSeed(state.Settings.Seed) },
             Players = full.Players.Select(p => Filter(p, playerId)).ToList(),
             Villages = full.Villages.Select(v => v.OwnerId == playerId ? v : Public(v)).ToList(),
-            Movements = state.Movements.Select(m => Filter(state, m, playerId)).OfType<Movement>().ToList(),
-            Reports = full.Reports.Where(r => r.AttackerId == playerId || r.DefenderId == playerId).ToList(),
+            Movements = spectating ? full.Movements : state.Movements.Select(m => Filter(state, m, playerId)).OfType<Movement>().ToList(),
+            Reports = spectating ? full.Reports : full.Reports.Where(r => r.AttackerId == playerId || r.DefenderId == playerId).ToList(),
             ScoutReports = full.ScoutReports.Where(r => r.SenderId == playerId).ToList(),
             ScoutNotices = full.ScoutNotices.Where(n => n.DefenderId == playerId).ToList(),
             BattleArrivals = Array.Empty<BattleArrival>(),
@@ -57,7 +58,7 @@ public static class PlayerView
             ResourcesDelivered e => Owns(e.VillageId),
             CarriersReturned e => Owns(e.VillageId),
             VillageFounded e => Owns(e.VillageId),
-            BattleResolved e => state.Reports.Any(r => r.Id == e.ReportId && (r.AttackerId == playerId || r.DefenderId == playerId)),
+            BattleResolved e => Visibility.Spectates(state, playerId) || state.Reports.Any(r => r.Id == e.ReportId && (r.AttackerId == playerId || r.DefenderId == playerId)),
             ScoutResolved e => state.ScoutReports.Any(r => r.Id == e.ReportId && r.SenderId == playerId),
             ScoutNoticed e => state.ScoutNotices.Any(n => n.Id == e.NoticeId && n.DefenderId == playerId),
             VillageCaptured e => e.PreviousOwnerId == playerId || e.NewOwnerId == playerId,

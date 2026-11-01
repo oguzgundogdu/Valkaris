@@ -42,7 +42,7 @@ public readonly record struct Resources(double Wood, double Stone, double Food)
 }
 
 /// <param name="MatchDurationSeconds">Null for an Unlimited match, which ends only when one player remains.</param>
-public sealed record GameSettings(double? MatchDurationSeconds, double SpeedMultiplier, MapSize MapSize, ulong Seed = 0);
+public sealed record GameSettings(double? MatchDurationSeconds, double SpeedMultiplier, MapSize MapSize, ulong Seed = 0, bool SpectatorsSeeAll = false);
 
 public sealed record BuildQueueItem(BuildingType Building, int TargetLevel, double StartTime, double FinishTime);
 

@@ -80,6 +80,7 @@ public partial class LobbyScreen : CenterContainer
         _duration.ItemSelected += _ => OnSettingsChosen();
         _speed.ItemSelected += _ => OnSettingsChosen();
         _mapSize.ItemSelected += _ => OnSettingsChosen();
+        GetNode<CheckBox>("%Spectators").Toggled += value => _host?.SetSpectatorsSeeAll(value);
 
         GetNode<Button>("%Leave").Pressed += () => LeaveRequested?.Invoke();
         var start = GetNode<Button>("%Start");
@@ -129,6 +130,9 @@ public partial class LobbyScreen : CenterContainer
 
         foreach (var option in new[] { _duration, _speed, _mapSize })
             option.Disabled = _host is null;
+        var spectators = GetNode<CheckBox>("%Spectators");
+        spectators.Disabled = _host is null;
+        spectators.SetPressedNoSignal(settings.SpectatorsSeeAll);
 
         if (_host is null)
         {

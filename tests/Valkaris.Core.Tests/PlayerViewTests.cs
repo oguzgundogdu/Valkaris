@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Valkaris.Ai;
 using Valkaris.Core.Model;
+using Valkaris.Core.Network;
 using Valkaris.Core.Snapshots;
 using Valkaris.Core.Systems;
 
@@ -129,6 +130,80 @@ public class PlayerViewTests
         }
 
         Assert.True(sawForeignMovement && sawReport, "The match should have exercised movements and reports.");
+    }
+
+    private static GameState Spectating(bool seeAll)
+    {
+        var state = TestMatch.Create(players: 3);
+        var full = SnapshotMapper.ToSnapshot(state);
+        var copy = SnapshotMapper.Restore(full with { Settings = full.Settings with { SpectatorsSeeAll = seeAll } });
+        foreach (var village in copy.Villages.Values.Where(v => v.OwnerId == Me))
+            village.OwnerId = Village.BarbarianOwnerId;
+        copy.Players[Me].IsEliminated = true;
+        return copy;
+    }
+
+    private static void AddThirdPartyBattle(GameState state)
+    {
+        var (from, to) = (state.Villages.Values.First(v => v.OwnerId == Other), state.Villages.Values.First(v => v.OwnerId == 3));
+        var troops = new Dictionary<UnitType, int> { [UnitType.Cavalry] = 3 };
+        state.AddMovement(new Movement(50, Other, from.Id, to.Id, MovementType.Attack, troops, Resources.Zero, 0, 500, null));
+        state.AddReport(new BattleReport(60, 1, MovementType.Raid, Other, 3, from.Id, to.Id, troops, troops, troops, troops, 0, 1, 1, true, Resources.Zero, null));
+    }
+
+    [Fact]
+    public void WithTheOptionOffSomeoneOutKeepsTheLimitedView()
+    {
+        var state = Spectating(seeAll: false);
+        AddThirdPartyBattle(state);
+        var view = View(state);
+
+        Assert.Empty(view.State.Movements);
+        Assert.Empty(view.State.Reports);
+        AssertFollowsTheRules(state, Me);
+    }
+
+    [Fact]
+    public void WithTheOptionOnSomeoneOutSeesMovementsAndBattlesButNoGarrisons()
+    {
+        var state = Spectating(seeAll: true);
+        AddThirdPartyBattle(state);
+        state.Villages.Values.First(v => v.OwnerId == Other).AddTroops(UnitType.Swordsman, 77123);
+        var view = View(state);
+
+        Assert.Equal(50, view.State.Movements.Single().Id);
+        Assert.Equal(3, view.State.Movements.Single().Troops[UnitType.Cavalry]);
+        Assert.Equal(60, view.State.Reports.Single().Id);
+        Assert.DoesNotContain("77123", Json(view));
+        Assert.All(view.State.Villages, v => Assert.Empty(v.Troops));
+    }
+
+    [Fact]
+    public void WithTheOptionOnPlayersStillInKeepTheLimitedView()
+    {
+        var state = Spectating(seeAll: true);
+        AddThirdPartyBattle(state);
+
+        Assert.DoesNotContain(View(state, 3).State.Movements, m => m.Troops.Count > 0);
+        AssertFollowsTheRules(state, Other);
+        AssertFollowsTheRules(state, 3);
+    }
+
+    [Fact]
+    public void ReportsThatAppearForANewSpectatorStillArriveOnceInOrder()
+    {
+        var trimmer = new ViewTrimmer();
+        var merger = new ViewMerger();
+        var state = Spectating(seeAll: false);
+        AddThirdPartyBattle(state);
+        Assert.Empty(merger.Merge(trimmer.Trim(View(state))).State.Reports);
+
+        var open = SnapshotMapper.ToSnapshot(state);
+        var seeing = SnapshotMapper.Restore(open with { Settings = open.Settings with { SpectatorsSeeAll = true } });
+        seeing.AddReport(new BattleReport(61, 2, MovementType.Raid, Other, 3, 1, 2, new Dictionary<UnitType, int>(), new Dictionary<UnitType, int>(), new Dictionary<UnitType, int>(), new Dictionary<UnitType, int>(), 0, 1, 1, true, Resources.Zero, null));
+
+        Assert.Equal(new[] { 60, 61 }, merger.Merge(trimmer.Trim(View(seeing))).State.Reports.Select(r => r.Id));
+        Assert.Equal(new[] { 60, 61 }, merger.Merge(trimmer.Trim(View(seeing))).State.Reports.Select(r => r.Id));
     }
 
     [Fact]

@@ -106,6 +106,16 @@ public class LobbyStateTests
     }
 
     [Fact]
+    public void SpectatorsSeeLittleUnlessTheHostSaysOtherwise()
+    {
+        Assert.False(_lobby.Settings.SpectatorsSeeAll);
+        _lobby.SetSpectatorsSeeAll(true);
+        _lobby.SetSettings(45 * 60, 2, MapSize.Medium);
+
+        Assert.True(_lobby.Settings.SpectatorsSeeAll);
+    }
+
+    [Fact]
     public void ThePlanLeavesNoGapsAndKeepsEachPlayersOwnDifficulty()
     {
         _lobby.SetSlot(1, SlotKind.Ai, AiDifficulty.Hard);

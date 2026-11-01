@@ -726,6 +726,7 @@ public partial class UiTest : Control
         await TestHoverCard();
         await TestBuildingCard();
         await TestDrawer();
+        await TestSpectator(GameData.Load(new GodotDataSource()));
         await TestCamera();
         await TestSelection();
         await TestSendFromMap();
@@ -1217,6 +1218,49 @@ public partial class UiTest : Control
         drawer.Close();
         await Frames();
         await Shot("drawer-closed");
+    }
+
+    /// <summary>After surrender, with the option on: everything that moves, and every battle.</summary>
+    private async Task TestSpectator(GameData data)
+    {
+        foreach (var seeAll in new[] { true, false })
+        {
+            var slots = new[] { new PlayerSlot("You", Nation.Valdren, false), new PlayerSlot("Rival", Nation.Valdren, true), new PlayerSlot("Other", Nation.Valdren, true) };
+            var state = GameFactory.CreateMatch(new GameSettings(3600, 1, MapSize.Small, 11, seeAll), slots, data);
+            var session = new LocalGameSession(state, data, 1);
+            var game = GD.Load<PackedScene>("res://scenes/Game.tscn").Instantiate<GameScreen>();
+            game.Init(session);
+            AddChild(game);
+            await Frames();
+
+            var movements = game.GetNode<WorldMapView>("%WorldMapView").GetNode<MovementLayer>("World/Movements");
+            var from = state.Villages.Values.First(v => v.OwnerId == 2);
+            var to = state.Villages.Values.First(v => v.OwnerId == 3);
+            var sent = session.SendAs(2, new SendTroopsCommand(from.Id, to.Id, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 5 }));
+            Expect(sent.Success, "The rival can send a raid");
+            await Frames();
+            Expect(movements.Entries.All(e => e.ShowRoute == false), "A player still in sees no route for others' movements");
+
+            session.Send(new SurrenderCommand());
+            await Frames();
+            game.GetNode<Overlay>("%EliminatedOverlay").GetNode<Button>("%Action").EmitSignal(BaseButton.SignalName.Pressed);
+            game.ShowView(GameScreen.MainView.World);
+            await Frames();
+            Expect(movements.Entries.Any(e => e.MovementId > 0 && e.ShowRoute) == seeAll, $"Spectators see all routes: {seeAll}");
+            if (seeAll)
+                await Shot("spectator-map");
+
+            session.Tick(state.Movements.Max(m => m.ArrivalTime) - state.ElapsedTime + 1);
+            game.ShowPanel(GameScreen.GamePanel.Reports);
+            await Frames();
+            var reports = game.GetNode<ReportsPanel>("%Reports");
+            Expect(reports.GetNode<VBoxContainer>("%Rows").GetChildCount() > 0 == seeAll, $"Spectators see all battle reports: {seeAll}");
+            if (seeAll)
+                await Shot("spectator-reports");
+
+            game.QueueFree();
+            await Frames();
+        }
     }
 
     private async Task TestPopups()

@@ -6,6 +6,7 @@ using Godot;
 using Valkaris.Core.Commands;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
@@ -79,6 +80,7 @@ public static class UiContent
     /// <summary>The local player sees their own movements and anything heading for their villages.</summary>
     public static bool IsVisibleMovement(IGameSession session, Movement movement) =>
         movement.OwnerId == session.LocalPlayerId
+        || Visibility.Spectates(session.State, session.LocalPlayerId)
         || (movement.Type is not (MovementType.Transfer or MovementType.CarrierReturn or MovementType.Scout) && movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
 
     /// <summary>The local player's villages, in the order they are shown and cycled through.</summary>
@@ -117,6 +119,10 @@ public static class UiContent
 
     public static string ReportHeadline(IGameSession session, BattleReport report)
     {
+        // A spectator is on neither side.
+        if (report.AttackerId != session.LocalPlayerId && report.DefenderId != session.LocalPlayerId)
+            return L.T(report.AttackerWon ? "report.headline_watched_won" : "report.headline_watched_lost", ("mission", MissionName(report.Type)), ("attacker", OwnerName(session, report.AttackerId)), ("target", OwnerName(session, report.DefenderId)));
+
         var result = L.T(LocalWon(session, report) ? "report.won" : "report.lost");
         var mission = MissionName(report.Type);
         return report.AttackerId == session.LocalPlayerId

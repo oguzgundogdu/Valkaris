@@ -6,6 +6,10 @@ namespace Valkaris.Core.Systems;
 /// <summary>What a player may know about others while the match runs. The UI, AiView and client snapshots all ask here.</summary>
 public static class Visibility
 {
+    /// <summary>Someone out of the match, when the match lets them watch everything: all movements and all battle reports.</summary>
+    public static bool Spectates(GameState state, int playerId) =>
+        state.Settings.SpectatorsSeeAll && state.Players[playerId].IsEliminated;
+
     public static double SightRadius(GameData data, Village village) =>
         data.Map.SightRadius + data.Map.SightPerWatchtowerLevel * village.BuildingLevel(BuildingType.Watchtower);
 
@@ -35,6 +39,9 @@ public static class Visibility
     public static IReadOnlyList<SightedMovement> SightedMovements(GameState state, GameData data, int playerId)
     {
         var seen = new List<SightedMovement>();
+        if (Spectates(state, playerId))
+            return seen;
+
         foreach (var movement in state.Movements)
         {
             if (movement.OwnerId == playerId || movement.Type == MovementType.Scout || IsIncoming(state, playerId, movement))
@@ -76,7 +83,7 @@ public static class Visibility
     /// <summary>Would this player see this battle happen: their own, or at a village in their sight.</summary>
     public static bool SeesClash(GameState state, GameData data, int playerId, BattleArrival arrival)
     {
-        if (arrival.AttackerId == playerId || arrival.DefenderId == playerId)
+        if (arrival.AttackerId == playerId || arrival.DefenderId == playerId || Spectates(state, playerId))
             return true;
 
         var position = state.Villages[arrival.TargetVillageId].Position;

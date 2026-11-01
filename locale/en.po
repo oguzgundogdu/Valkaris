@@ -1136,3 +1136,15 @@ msgstr "Near my villages only"
 
 msgid "ui.reports.mark_read"
 msgstr "Mark all read"
+
+msgid "ui.lobby.spectators"
+msgstr "Spectators see everything"
+
+msgid "ui.lobby.spectators_tip"
+msgstr "Players who are out see all movements and battle reports. They could tell a friend still playing."
+
+msgid "report.headline_watched_won"
+msgstr "{attacker}: {mission} on {target} won"
+
+msgid "report.headline_watched_lost"
+msgstr "{attacker}: {mission} on {target} lost"

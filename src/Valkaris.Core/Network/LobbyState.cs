@@ -124,9 +124,11 @@ public sealed class LobbyState
         if (!durationOk || !_data.Game.SpeedMultipliers.Contains(speed) || !_data.Game.MapSizes.ContainsKey(mapSize))
             return false;
 
-        Settings = new GameSettings(durationSeconds, speed, mapSize);
+        Settings = new GameSettings(durationSeconds, speed, mapSize, SpectatorsSeeAll: Settings.SpectatorsSeeAll);
         return true;
     }
+
+    public void SetSpectatorsSeeAll(bool value) => Settings = Settings with { SpectatorsSeeAll = value };
 
     /// <summary>Turns the seats into players, with the host as player 1 and no gaps.</summary>
     public LobbyPlan Plan()

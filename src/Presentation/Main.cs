@@ -193,7 +193,7 @@ public partial class Main : Control
             slots.Add(new PlayerSlot(_data.Ai.Names[i], nations[i % nations.Length], IsAi: true, setup.Difficulty));
 
         var devOptions = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
-        var seeded = devOptions.Apply(setup.Settings) with { Seed = (ulong)Random.Shared.NextInt64() };
+        var seeded = devOptions.Apply(setup.Settings) with { Seed = (ulong)Random.Shared.NextInt64(), SpectatorsSeeAll = true };
         var state = GameFactory.CreateMatch(seeded, slots, _data);
 #if VALKARIS_DEV
         if (devOptions.Scenario is { } scenario && !Valkaris.Core.Dev.DevScenario.Apply(state, _data, scenario))

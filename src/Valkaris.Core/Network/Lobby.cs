@@ -42,6 +42,12 @@ public sealed class LobbyHost
             Announce();
     }
 
+    public void SetSpectatorsSeeAll(bool value)
+    {
+        State.SetSpectatorsSeeAll(value);
+        Announce();
+    }
+
     /// <summary>Starts the match, and from here the session handles the connections.</summary>
     public HostGameSession Start(ulong seed, Func<LocalGameSession, int, IMatchAgent> makeAgent)
     {

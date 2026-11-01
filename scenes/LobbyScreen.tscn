@@ -84,6 +84,13 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
 
+[node name="Spectators" type="CheckBox" parent="Card/Box/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "ui.lobby.spectators"
+tooltip_text = "ui.lobby.spectators_tip"
+
 [node name="Buttons" type="HBoxContainer" parent="Card/Box"]
 layout_mode = 2
 theme_override_constants/separation = 12

@@ -99,7 +99,7 @@ public partial class ReportsPanel : PanelContainer
     private void AddNewRows(IGameSession session)
     {
         var rows = MyReports(session)
-            .Select(r => (r.Id, r.Time, Text: UiContent.ReportHeadline(session, r), Bad: !UiContent.LocalWon(session, r), IsScout: false, Open: (Action)(() => ReportOpened?.Invoke(r))))
+            .Select(r => (r.Id, r.Time, Text: UiContent.ReportHeadline(session, r), Bad: !UiContent.LocalWon(session, r) && (r.AttackerId == session.LocalPlayerId || r.DefenderId == session.LocalPlayerId), IsScout: false, Open: (Action)(() => ReportOpened?.Invoke(r))))
             .Concat(MyScoutReports(session).Select(r => (r.Id, r.Time, Text: UiContent.ScoutHeadline(session, r), Bad: !r.Succeeded, IsScout: true, Open: (Action)(() => ScoutReportOpened?.Invoke(r)))))
             .Concat(MyScoutNotices(session).Select(n => (n.Id, n.Time, Text: UiContent.NoticeHeadline(session, n), Bad: false, IsScout: true, Open: (Action)(() => ScoutNoticeOpened?.Invoke(n)))))
             .Where(row => !_rows.ContainsKey(row.Id));
@@ -205,6 +205,6 @@ public partial class ReportsPanel : PanelContainer
         .ToList();
 
     private static List<BattleReport> MyReports(IGameSession session) => session.State.Reports
-        .Where(r => r.AttackerId == session.LocalPlayerId || r.DefenderId == session.LocalPlayerId)
+        .Where(r => r.AttackerId == session.LocalPlayerId || r.DefenderId == session.LocalPlayerId || Visibility.Spectates(session.State, session.LocalPlayerId))
         .ToList();
 }

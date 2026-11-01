@@ -73,14 +73,16 @@ public class FullMatchTests
     }
 
     [Theory]
-    [InlineData(21, 0.15)]
-    [InlineData(22, 0.6)]
-    public void EveryClientMatchesItsViewOfTheHostThroughAWholeMatch(int seed, double delay)
+    [InlineData(21, 0.15, false)]
+    [InlineData(22, 0.6, false)]
+    [InlineData(23, 0.3, true)]
+    public void EveryClientMatchesItsViewOfTheHostThroughAWholeMatch(int seed, double delay, bool spectators)
     {
         var network = new MemoryNetwork(seed, delay);
         var hash = Handshake.DataHash(new ShippedDataSource());
         var lobby = new LobbyHost(network.Host, TestData.Shipped, hash, "Oguz", null);
         lobby.SetSettings(30 * 60, 3, MapSize.Medium);
+        lobby.SetSpectatorsSeeAll(spectators);
 
         var joining = new[] { "Ayla", "Deniz", "Mert" }.Select(name => new LobbyClient(network.Connect(), TestData.Shipped, hash, name, null)).ToList();
         var clients = new List<ClientGameSession>();
@@ -137,6 +139,7 @@ public class FullMatchTests
         var bots = clients.Select((c, i) => new ClientBot(c, seed * 10 + i)).ToList();
         var leaver = clients[2];
         var left = false;
+        var surrendered = false;
         const double step = 0.25;
         var hostLocal = new ClientlessHost(host, seed);
 
@@ -156,6 +159,13 @@ public class FullMatchTests
             {
                 if (!(ReferenceEquals(client, leaver) && left))
                     bot.Act();
+            }
+
+            // Someone giving up mid-match becomes a spectator, and older reports then appear for them.
+            if (spectators && !surrendered && host.State.ElapsedTime > 10 * 60)
+            {
+                surrendered = true;
+                clients[0].Send(new SurrenderCommand());
             }
 
             if (!left && host.State.ElapsedTime > 15 * 60)
