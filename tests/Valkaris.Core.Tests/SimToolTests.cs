@@ -312,6 +312,9 @@ public class SimToolTests
         home.AddTroops(UnitType.Scout, scouts * tries);
         for (var i = 0; i < tries; i++)
         {
+            // Each try faces the same odds, however many defenders the last one killed.
+            target.RemoveTroops(UnitType.Scout, target.TroopCount(UnitType.Scout));
+            target.AddTroops(UnitType.Scout, defendingScouts);
             match.Send(1, new SendTroopsCommand(1, 2, MovementType.Scout, Force(UnitType.Scout, scouts)));
             while (match.State.Movements.Any())
                 match.Session.Tick(match.State.Movements.Min(m => m.ArrivalTime) - match.State.ElapsedTime + 0.001);

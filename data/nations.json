@@ -1,16 +1,16 @@
 {
   "nations": {
     "Valdren": {
-      "wallBonus": 1.4, "warehouseCapacity": 1.25, "unitSpeed": 0.9, "unitCost": 1, "trainingTime": 1, "lootCapacity": 1, "buildTime": 1, "scoutStrength": 1,
+      "wallBonus": 1.5, "warehouseCapacity": 1.25, "unitSpeed": 0.93, "unitCost": 1, "trainingTime": 1, "lootCapacity": 1, "buildTime": 1, "scoutStrength": 1,
       "ai": { "maxWallLevelBonus": 2, "raidCooldownFactor": 1, "maxRaidsBonus": 0, "cavalryFactor": 1, "maxWatchtowerBonus": 0, "scoutMaxAgeFactor": 1, "massSecondsFactor": 1 }
     },
     "Karuk": {
-      "wallBonus": 0.6, "warehouseCapacity": 1, "unitSpeed": 1, "unitCost": 0.9, "trainingTime": 0.85, "lootCapacity": 1.3, "buildTime": 1, "scoutStrength": 1,
+      "wallBonus": 0.5, "warehouseCapacity": 1, "unitSpeed": 1, "unitCost": 0.97, "trainingTime": 0.95, "lootCapacity": 1.2, "buildTime": 1, "scoutStrength": 1,
       "ai": { "maxWallLevelBonus": 0, "raidCooldownFactor": 0.7, "maxRaidsBonus": 1, "cavalryFactor": 1.3, "maxWatchtowerBonus": 0, "scoutMaxAgeFactor": 1, "massSecondsFactor": 1 }
     },
     "Solari": {
-      "wallBonus": 1, "warehouseCapacity": 1, "unitSpeed": 1.15, "unitCost": 1.1, "trainingTime": 1, "lootCapacity": 1, "buildTime": 0.85, "scoutStrength": 1.3,
-      "ai": { "maxWallLevelBonus": 0, "raidCooldownFactor": 1, "maxRaidsBonus": 0, "cavalryFactor": 1, "maxWatchtowerBonus": 1, "scoutMaxAgeFactor": 0.7, "massSecondsFactor": 0.8 }
+      "wallBonus": 1, "warehouseCapacity": 1, "unitSpeed": 1.18, "unitCost": 1.01, "trainingTime": 1, "lootCapacity": 1, "buildTime": 0.87, "scoutStrength": 1.15,
+      "ai": { "maxWallLevelBonus": 0, "raidCooldownFactor": 1, "maxRaidsBonus": 0, "cavalryFactor": 1, "maxWatchtowerBonus": 1, "scoutMaxAgeFactor": 0.7, "massSecondsFactor": 1 }
     }
   }
 }
