@@ -43,6 +43,7 @@ public partial class Main : Control
         Language.Apply(options.Language ?? Language.Load());
 
         DisplayServer.WindowSetMinSize(MinWindowSize);
+        ApplyWindowMode();
         GetTree().AutoAcceptQuit = false;
 
         try
@@ -58,6 +59,24 @@ public partial class Main : Control
 
         ShowStartScreen();
     }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.F11 })
+        {
+            ToggleFullscreen();
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    public void ToggleFullscreen()
+    {
+        UserSettings.Fullscreen = !UserSettings.Fullscreen;
+        ApplyWindowMode();
+    }
+
+    private static void ApplyWindowMode() =>
+        DisplayServer.WindowSetMode(UserSettings.Fullscreen ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
 
     public override async void _Notification(int what)
     {

@@ -39,7 +39,7 @@ public partial class ConnectScreen : CenterContainer
         var village = GetNode<LineEdit>("%VillageName");
         var address = GetNode<LineEdit>("%Address");
         player.MaxLength = village.MaxLength = _data.Game.VillageNames.MaxLength;
-        player.Text = PlayerSettings.LoadName();
+        player.Text = UserSettings.PlayerName;
         village.Text = _village;
         address.Text = _address;
         player.TextChanged += _ => Edited();
@@ -50,7 +50,7 @@ public partial class ConnectScreen : CenterContainer
         GetNode<Button>("%Continue").Pressed += () =>
         {
             var name = VillageNameRules.Clean(player.Text);
-            PlayerSettings.SaveName(name);
+            UserSettings.PlayerName = name;
             ContinueRequested?.Invoke(name, VillageNameRules.Clean(village.Text) is { Length: > 0 } clean ? clean : null, address.Text);
         };
         Check();

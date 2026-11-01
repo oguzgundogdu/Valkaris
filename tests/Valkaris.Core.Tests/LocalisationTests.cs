@@ -122,8 +122,10 @@ public class LocalisationTests
     {
         ("Main.cs", "You"), // The stored name of the local player. The UI always shows the translated word instead.
         ("MatchEndScreen.cs", "StrongLabel"), // A theme style held in a variable.
-        ("PlayerSettings.cs", "player"), // Settings file section.
-        ("PlayerSettings.cs", "name"), // Settings file key.
+        ("UserSettings.cs", "player"), // Settings file sections and keys.
+        ("UserSettings.cs", "name"),
+        ("UserSettings.cs", "display"),
+        ("UserSettings.cs", "fullscreen"),
         ("Language.cs", "language"), // Settings file section.
         ("Language.cs", "code"), // Settings file key.
         ("Language.cs", "en"),

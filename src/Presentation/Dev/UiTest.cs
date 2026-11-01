@@ -62,6 +62,33 @@ public partial class UiTest : Control
         GetTree().Quit(_failures.Count == 0 ? 0 : 1);
     }
 
+    /// <summary>Tests keep to the window they were given, whatever a first launch would do.</summary>
+    private static void UseSettings(string path)
+    {
+        Language.SettingsPath = path;
+        UserSettings.Fullscreen = false;
+    }
+
+    private void TestFullscreenDefault()
+    {
+        Expect(UserSettings.Fullscreen, "A first launch is fullscreen");
+        UserSettings.Fullscreen = false;
+    }
+
+    /// <summary>Only headless, where changing the window mode can't disturb the sizes later steps rely on.</summary>
+    private async Task TestFullscreenKey()
+    {
+        if (DisplayServer.GetName() != "headless")
+            return;
+
+        Input.ParseInputEvent(new InputEventKey { Pressed = true, Keycode = Key.F11, PhysicalKeycode = Key.F11 });
+        Input.FlushBufferedEvents();
+        await Frames();
+        Expect(UserSettings.Fullscreen, "F11 turns fullscreen on and remembers it");
+        _main.ToggleFullscreen();
+        Expect(!UserSettings.Fullscreen, "It toggles back");
+    }
+
     /// <summary>A run under tr-TR proves nothing unless that culture is really in force.</summary>
     private void TestCulture()
     {
@@ -279,7 +306,7 @@ public partial class UiTest : Control
     /// <summary>What the village view costs per frame, in a window: "-- --frame-report". No pass or fail, since it depends on the machine.</summary>
     private async Task FrameReport()
     {
-        Language.SettingsPath = "user://uitest_settings.cfg";
+        UseSettings("user://uitest_settings.cfg");
         _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
         _main.IdleOpponents = true;
         AddChild(_main);
@@ -307,7 +334,7 @@ public partial class UiTest : Control
     /// </summary>
     private async Task NetReport()
     {
-        Language.SettingsPath = "user://uitest_settings.cfg";
+        UseSettings("user://uitest_settings.cfg");
         _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
         AddChild(_main);
         await Frames();
@@ -413,7 +440,7 @@ public partial class UiTest : Control
     /// </summary>
     private async Task NetWindow(string role)
     {
-        Language.SettingsPath = $"user://uitest_{role}.cfg";
+        UseSettings($"user://uitest_{role}.cfg");
         _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
         AddChild(_main);
         await Frames();
@@ -516,8 +543,9 @@ public partial class UiTest : Control
     private async Task Run()
     {
         // Never touches the language saved for real play.
-        Language.SettingsPath = "user://uitest_settings.cfg";
+        UseSettings("user://uitest_settings.cfg");
         DirAccess.RemoveAbsolute(Language.SettingsPath);
+        TestFullscreenDefault();
 
         _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
         _main.IdleOpponents = true;
@@ -526,6 +554,7 @@ public partial class UiTest : Control
         TestCulture();
         await TestLanguage();
 
+        await TestFullscreenKey();
         await TestStartVillageName();
         await TestLobbyScreens();
         await TestGuestMatch();
