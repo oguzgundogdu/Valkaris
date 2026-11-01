@@ -178,6 +178,8 @@ public sealed record MapConfig
     public required double SightPerWatchtowerLevel { get; init; }
 
     /// <summary>How far, in tiles, a player's start may shift from its quadrant position.</summary>
+    /// <summary>Where each seat starts for each number of players, as shares of the map's width and height.</summary>
+    public required IReadOnlyDictionary<int, IReadOnlyList<StartSpot>> StartLayouts { get; init; }
     public required int StartJitter { get; init; }
 
     /// <summary>Tiles this close to a player's start are forced to land.</summary>
@@ -499,4 +501,10 @@ public sealed class NationAiConfig
     public required int MaxWatchtowerBonus { get; init; }
     public required double ScoutMaxAgeFactor { get; init; }
     public required double MassSecondsFactor { get; init; }
+}
+
+public sealed record StartSpot
+{
+    public required double X { get; init; }
+    public required double Y { get; init; }
 }

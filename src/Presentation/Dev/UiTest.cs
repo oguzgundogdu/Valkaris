@@ -2649,17 +2649,25 @@ public partial class UiTest : Control
         }
     }
 
+    /// <summary>The Villages scenario's other two villages. Their ids depend on the map, so this goes by what they hold.</summary>
+    private static (Village Army, Village Reserve) ScenarioVillages(IGameSession session)
+    {
+        var own = UiContent.OwnVillages(session);
+        var army = own.First(v => v.TroopCount(UnitType.Swordsman) > 0);
+        return (army, own.First(v => v != army && v.TroopCount(UnitType.Spearman) == 30));
+    }
+
     private async Task TestReinforce(GameData data)
     {
         var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
-        var own = UiContent.OwnVillages(session);
-        game.SwitchVillage(own[1].Id);
+        var (army, reserve) = ScenarioVillages(session);
+        game.SwitchVillage(army.Id);
         game.ShowView(GameScreen.MainView.World);
         await Frames();
 
         var world = game.GetNode<WorldMapView>("%WorldMapView");
         var popup = world.GetNode<VillagePopup>("Popup");
-        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(own[2])));
+        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(reserve)));
         await Frames();
         Expect(popup.GetNode<Button>("%Reinforce").Visible, "Your other village offers Reinforce");
         Expect(popup.GetNode<Button>("%Enter").Visible, "Your other village offers Enter");
@@ -2674,14 +2682,14 @@ public partial class UiTest : Control
 
         send.GetNode<SpinBox>("%Units/Swordsman/Amount").Value = 40;
         await Frames();
-        var before = own[2].TroopCount(UnitType.Swordsman);
+        var before = reserve.TroopCount(UnitType.Swordsman);
         Press(send.GetNode<Button>("%Send"));
         await Frames();
         Expect(session.State.Movements.Any(m => m.Type == MovementType.Reinforce), "Reinforcements leave");
         await RunUntilArrived(session);
-        Expect(own[2].TroopCount(UnitType.Swordsman) == before + 40, "Reinforcements join the garrison");
+        Expect(reserve.TroopCount(UnitType.Swordsman) == before + 40, "Reinforcements join the garrison");
 
-        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(own[1])));
+        Click(world, world.WorldToView(WorldMapView.VillageWorldPosition(army)));
         await Frames();
         Expect(!popup.GetNode<Button>("%Reinforce").Visible, "The current village can't reinforce itself");
     }
@@ -2696,9 +2704,7 @@ public partial class UiTest : Control
     private async Task TestTransfers(GameData data)
     {
         var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
-        var own = UiContent.OwnVillages(session);
-        var from = own[1];
-        var to = own[2];
+        var (from, to) = ScenarioVillages(session);
         game.SwitchVillage(from.Id);
 
         // From the Marketplace, with no target yet.
@@ -3150,8 +3156,7 @@ public partial class UiTest : Control
     private async Task TestReportsOfLoyalty(GameData data)
     {
         var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
-        var own = UiContent.OwnVillages(session);
-        var army = own[1];
+        var (army, _) = ScenarioVillages(session);
         var dialog = game.GetNode<ReportDialog>("%ReportDialog");
         var label = dialog.GetNode<Label>("%Loyalty");
 

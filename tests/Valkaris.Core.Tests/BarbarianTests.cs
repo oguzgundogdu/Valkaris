@@ -234,8 +234,10 @@ public class BarbarianTests
     private (GameState State, List<GameEvent> Events) PlayRecovery(double step)
     {
         var state = GameFactory.CreateMatch(new GameSettings(TestMatch.OneHour, 1, MapSize.Small, 7), TestMatch.Slots(2), Data);
-        var camp = FirstOfTier(state, 1);
         var home = state.Villages[Home];
+
+        // Far enough that the slower infantry arrive well after the cavalry.
+        var camp = state.Villages.Values.Where(v => v.IsBarbarian).OrderByDescending(v => UnitRules.Distance(v.Position, home.Position)).First();
         home.AddTroops(UnitType.Cavalry, 200);
         home.AddTroops(UnitType.Swordsman, 200);
 

@@ -122,10 +122,10 @@ public class MovementTests
     [Fact]
     public void ReinforcementsJoinTheGarrison()
     {
-        var second = new Village(9, Owner, new TileCoord(0, 0));
+        var second = new Village(99, Owner, new TileCoord(0, 0));
         _state.AddVillage(second);
 
-        Assert.True(_handler.Handle(Owner, new SendTroopsCommand(Home, 9, MovementType.Reinforce, Troops(UnitType.Spearman, 4))).Success);
+        Assert.True(_handler.Handle(Owner, new SendTroopsCommand(Home, 99, MovementType.Reinforce, Troops(UnitType.Spearman, 4))).Success);
         var events = _simulation.Advance(TestMatch.OneHour);
 
         Assert.Equal(4, second.TroopCount(UnitType.Spearman));

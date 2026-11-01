@@ -32,7 +32,7 @@ public static class GameFactory
             var player = new Player(id, slot.Name, slot.Nation, slot.IsAi) { CapitalVillageId = id, Difficulty = slot.Difficulty };
             state.AddPlayer(player);
 
-            var village = CreateStartingVillage(state, id, player.Id, MapGenerator.PlayerStart(state, data, i), data);
+            var village = CreateStartingVillage(state, id, player.Id, MapGenerator.PlayerStart(state, data, i, slots.Count), data);
             village.Name = names[i];
             if (slot.VillageName is { Length: > 0 } name)
             {

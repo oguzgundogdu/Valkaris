@@ -76,7 +76,7 @@ public class MapGeneratorTests
     [MemberData(nameof(Sizes))]
     public void PlayerDistancesStayFair(MapSize size)
     {
-        // Each start shifts at most this far from its fixed quadrant position.
+        // Each start shifts at most this far from its place in the layout.
         var jitter = Data.Map.StartJitter * Math.Sqrt(2);
 
         ForEachSeed(size, state =>
@@ -84,9 +84,9 @@ public class MapGeneratorTests
             var map = state.Map;
             var first = state.Villages[1].Position;
             var second = state.Villages[2].Position;
-            var nominal = UnitRules.Distance(
-                new TileCoord(map.Width / 4, map.Height / 4),
-                new TileCoord(map.Width * 3 / 4, map.Height * 3 / 4));
+            var layout = Data.Map.StartLayouts[state.Players.Count];
+            TileCoord Spot(int seat) => new((int)Math.Round(layout[seat].X * (map.Width - 1)), (int)Math.Round(layout[seat].Y * (map.Height - 1)));
+            var nominal = UnitRules.Distance(Spot(0), Spot(1));
 
             Assert.InRange(UnitRules.Distance(first, second), nominal - 2 * jitter - 1e-9, nominal + 2 * jitter + 1e-9);
         });

@@ -27,21 +27,13 @@ internal static class MapGenerator
         }
     }
 
-    /// <summary>One player per quadrant, shifted slightly by the seed. The tiles around it become land.</summary>
-    public static TileCoord PlayerStart(GameState state, GameData data, int index)
+    /// <summary>From the layout for this many players, shifted slightly by the seed. The tiles around it become land.</summary>
+    public static TileCoord PlayerStart(GameState state, GameData data, int index, int players)
     {
         var map = state.Map;
-        var left = map.Width / 4;
-        var right = map.Width * 3 / 4;
-        var top = map.Height / 4;
-        var bottom = map.Height * 3 / 4;
-        var (x, y) = index switch
-        {
-            0 => (left, top),
-            1 => (right, bottom),
-            2 => (right, top),
-            _ => (left, bottom),
-        };
+        var spot = data.Map.StartLayouts[players][index];
+        var x = (int)Math.Round(spot.X * (map.Width - 1));
+        var y = (int)Math.Round(spot.Y * (map.Height - 1));
 
         var jitter = data.Map.StartJitter;
         var start = new TileCoord(

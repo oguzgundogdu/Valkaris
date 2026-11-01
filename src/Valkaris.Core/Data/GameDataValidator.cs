@@ -314,6 +314,14 @@ internal static class GameDataValidator
     {
         void Error(string field, string problem) => errors.Add($"{GameData.MapFile}: {field} {problem}");
 
+        for (var players = game.MinPlayers; players <= game.MaxPlayers; players++)
+        {
+            if (!config.StartLayouts.TryGetValue(players, out var layout) || layout.Count != players)
+                Error($"startLayouts.{players}", "must list one spot per player.");
+            else if (layout.Any(spot => spot.X is < 0 or > 1 || spot.Y is < 0 or > 1))
+                Error($"startLayouts.{players}", "must stay between 0 and 1.");
+        }
+
         foreach (var size in Enum.GetValues<MapSize>())
         {
             if (!config.BarbarianCounts.TryGetValue(size, out var count))

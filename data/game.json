@@ -37,7 +37,7 @@
   "unlimitedMatches": true,
   "speedMultipliers": [1, 2, 3],
   "mapSizes": {
-    "Small": { "width": 16, "height": 16 },
-    "Medium": { "width": 24, "height": 24 }
+    "Small": { "width": 24, "height": 14 },
+    "Medium": { "width": 32, "height": 18 }
   }
 }
