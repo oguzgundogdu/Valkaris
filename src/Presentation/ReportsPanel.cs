@@ -4,20 +4,31 @@ using System.Linq;
 using Godot;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
-/// <summary>The local player's battle and scout reports, newest first. Read state is display-only, not game state.</summary>
+/// <summary>The local player's reports and the public news. Read state is display-only, not game state. Own battles stay pinned until read.</summary>
 public partial class ReportsPanel : PanelContainer
 {
+    private const float TimeWidth = 62;
+    private const float FadedAlpha = 0.45f;
+    private const string PinnedIcon = "res://assets/icons/mission_swords.svg";
+
+    private sealed record Row(int Id, Button Button, double Time, bool IsScout);
+
     private readonly HashSet<int> _read = new();
-    private readonly Dictionary<int, Button> _rows = new();
+    private readonly Dictionary<int, Row> _rows = new();
     private VBoxContainer _list = null!;
     private VBoxContainer _newsList = null!;
     private Button _mine = null!;
+    private Button _scouting = null!;
     private Button _news = null!;
+    private CheckBox _near = null!;
     private Label _none = null!;
-    private int _newsShown;
+    private string _newsKey = "";
+    private string _orderKey = "";
+    private IGameSession? _session;
 
     public event Action<BattleReport>? ReportOpened;
     public event Action<ScoutReport>? ScoutReportOpened;
@@ -25,15 +36,24 @@ public partial class ReportsPanel : PanelContainer
 
     public override void _Ready()
     {
+        AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
         _list = GetNode<VBoxContainer>("%Rows");
         _none = GetNode<Label>("%None");
         _newsList = GetNode<VBoxContainer>("%NewsRows");
         _mine = GetNode<Button>("%Mine");
+        _scouting = GetNode<Button>("%Scouting");
         _news = GetNode<Button>("%News");
+        _near = GetNode<CheckBox>("%Near");
 
         var group = new ButtonGroup();
         _mine.ButtonGroup = group;
+        _scouting.ButtonGroup = group;
         _news.ButtonGroup = group;
+        GetNode<Button>("%MarkRead").Pressed += () =>
+        {
+            if (_session is not null)
+                MarkAllRead(_session);
+        };
     }
 
     public int UnreadCount(IGameSession session) => MyReportIds(session).Count(id => !_read.Contains(id));
@@ -44,48 +64,132 @@ public partial class ReportsPanel : PanelContainer
             _read.Add(id);
     }
 
+    public bool IsPinned(int id) => _rows.TryGetValue(id, out var row) && !row.IsScout && !_read.Contains(id);
+
     public void Refresh(IGameSession session)
     {
-        var battles = MyReports(session);
-        var scouts = MyScoutReports(session);
-        var notices = MyScoutNotices(session);
-        _list.Visible = _mine.ButtonPressed;
-        _newsList.Visible = _news.ButtonPressed;
-        _none.Text = _news.ButtonPressed ? L.T("ui.reports.no_news") : L.T("ui.reports.none");
-        _none.Visible = _news.ButtonPressed ? session.PublicNotices.Count == 0 : battles.Count + scouts.Count + notices.Count == 0;
+        AddNewRows(session);
+        _session = session;
 
-        for (; _newsShown < session.PublicNotices.Count; _newsShown++)
+        // Looking at the scouting list counts as reading it. Battles stay pinned until opened.
+        if (_scouting.ButtonPressed)
         {
-            var notice = session.PublicNotices[_newsShown];
-            var text = L.T("notice.attacked", ("attacker", notice.FromVillageName), ("target", notice.TargetVillageName));
-            var row = new Label { Text = Format.Dotted(text, Format.Time(notice.Time)), AutowrapMode = TextServer.AutowrapMode.WordSmart };
-            _newsList.AddChild(row);
-            _newsList.MoveChild(row, 0);
+            foreach (var row in _rows.Values.Where(r => r.IsScout))
+                _read.Add(row.Id);
         }
 
-        // Ids run in time order across both kinds, so each new row goes on top of the older ones.
-        var rows = battles
-            .Select(r => (r.Id, r.Time, Text: UiContent.ReportHeadline(session, r), Bad: !UiContent.LocalWon(session, r), Open: (Action)(() => ReportOpened?.Invoke(r))))
-            .Concat(scouts.Select(r => (r.Id, r.Time, Text: UiContent.ScoutHeadline(session, r), Bad: !r.Succeeded, Open: (Action)(() => ScoutReportOpened?.Invoke(r)))))
-            .Concat(notices.Select(n => (n.Id, n.Time, Text: UiContent.NoticeHeadline(session, n), Bad: false, Open: (Action)(() => ScoutNoticeOpened?.Invoke(n)))))
-            .Where(row => !_rows.ContainsKey(row.Id))
-            .OrderBy(row => row.Id);
+        foreach (var row in _rows.Values)
+        {
+            var pinned = IsPinned(row.Id);
+            row.Button.Icon = pinned ? GD.Load<Texture2D>(PinnedIcon) : null;
+            row.Button.Visible = pinned || (row.IsScout ? _scouting.ButtonPressed : _mine.ButtonPressed);
+        }
+        SortRows();
+
+        _newsList.Visible = _news.ButtonPressed;
+        _near.Visible = _news.ButtonPressed;
+        if (_news.ButtonPressed)
+            RefreshNews(session);
+
+        var anyRow = _rows.Values.Any(r => r.Button.Visible);
+        _none.Text = _news.ButtonPressed ? L.T("ui.reports.no_news") : L.T("ui.reports.none");
+        _none.Visible = !anyRow && (!_news.ButtonPressed || _newsList.GetChildCount() == 0);
+    }
+
+    private void AddNewRows(IGameSession session)
+    {
+        var rows = MyReports(session)
+            .Select(r => (r.Id, r.Time, Text: UiContent.ReportHeadline(session, r), Bad: !UiContent.LocalWon(session, r), IsScout: false, Open: (Action)(() => ReportOpened?.Invoke(r))))
+            .Concat(MyScoutReports(session).Select(r => (r.Id, r.Time, Text: UiContent.ScoutHeadline(session, r), Bad: !r.Succeeded, IsScout: true, Open: (Action)(() => ScoutReportOpened?.Invoke(r)))))
+            .Concat(MyScoutNotices(session).Select(n => (n.Id, n.Time, Text: UiContent.NoticeHeadline(session, n), Bad: false, IsScout: true, Open: (Action)(() => ScoutNoticeOpened?.Invoke(n)))))
+            .Where(row => !_rows.ContainsKey(row.Id));
 
         foreach (var row in rows)
         {
+            var id = row.Id;
             var button = new Button
             {
-                Name = $"Report{row.Id}",
-                Text = Format.Dotted(row.Text, Format.Time(row.Time)),
+                Name = $"Report{id}",
+                Text = row.Text,
                 ThemeTypeVariation = "SecondaryButton",
                 Alignment = HorizontalAlignment.Left,
                 FocusMode = FocusModeEnum.None,
+                ExpandIcon = true,
+                ClipText = true,
+                TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
             };
             button.AddThemeColorOverride("font_color", row.Bad ? UiContent.Danger : UiContent.Text);
-            button.Pressed += row.Open;
+            button.AddThemeConstantOverride("icon_max_width", 18);
+            button.Pressed += () =>
+            {
+                _read.Add(id);
+                row.Open();
+            };
+
+            var time = TimeLabel(row.Time);
+            time.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.RightWide);
+            time.OffsetLeft = -TimeWidth - 8;
+            time.OffsetRight = -8;
+            button.AddChild(time);
+
             _list.AddChild(button);
-            _list.MoveChild(button, 0);
-            _rows[row.Id] = button;
+            _rows[id] = new Row(id, button, row.Time, row.IsScout);
+        }
+    }
+
+    private static Label TimeLabel(double time) => new()
+    {
+        Name = "Time",
+        Text = Format.Time(time),
+        ThemeTypeVariation = "MutedLabel",
+        CustomMinimumSize = new Vector2(TimeWidth, 0),
+        HorizontalAlignment = HorizontalAlignment.Right,
+        VerticalAlignment = VerticalAlignment.Center,
+        MouseFilter = MouseFilterEnum.Ignore,
+    };
+
+    /// <summary>Pinned rows first, then newest first. Only moves anything when the order changes.</summary>
+    private void SortRows()
+    {
+        var order = _rows.Values.OrderByDescending(r => IsPinned(r.Id)).ThenByDescending(r => r.Id).ToList();
+        var key = string.Join(',', order.Select(r => r.Id));
+        if (key == _orderKey)
+            return;
+
+        _orderKey = key;
+        for (var i = 0; i < order.Count; i++)
+            _list.MoveChild(order[i].Button, i);
+    }
+
+    private void RefreshNews(IGameSession session)
+    {
+        var state = session.State;
+        Func<int, bool>? near = _near.ButtonPressed
+            ? id => Visibility.InSight(state, session.Data, session.LocalPlayerId, state.Villages[id].Position.X, state.Villages[id].Position.Y)
+            : null;
+        var lines = NewsFeed.Build(session.PublicNotices, state.ElapsedTime, near);
+
+        var key = string.Join('|', lines.Select(l => (l.FromVillageName, l.TargetVillageId, l.AttackerWon, l.Count, l.Faded)));
+        if (key == _newsKey)
+            return;
+
+        _newsKey = key;
+        foreach (var child in _newsList.GetChildren())
+        {
+            _newsList.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            var row = new HBoxContainer { Name = $"News{i}", Modulate = new Color(1, 1, 1, line.Faded ? FadedAlpha : 1) };
+            var text = L.T(line.AttackerWon ? "notice.attacked_won" : "notice.attacked_lost", ("attacker", line.FromVillageName), ("target", line.TargetVillageName));
+            if (line.Count > 1)
+                text = L.T("notice.repeat", ("text", text), ("count", Format.Whole(line.Count)));
+            row.AddChild(new Label { Name = "Text", Text = text, SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true });
+            row.AddChild(TimeLabel(line.LatestTime));
+            _newsList.AddChild(row);
         }
     }
 

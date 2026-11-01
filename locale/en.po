@@ -849,9 +849,6 @@ msgstr "Train troops"
 msgid "ui.send_resources"
 msgstr "Send resources"
 
-msgid "ui.reports.title"
-msgstr "Reports"
-
 msgid "ui.reports.none"
 msgstr "No battles yet."
 
@@ -923,9 +920,6 @@ msgstr "News"
 
 msgid "ui.reports.no_news"
 msgstr "No news yet."
-
-msgid "notice.attacked"
-msgstr "{attacker} attacked {target}"
 
 msgid "ui.start.host"
 msgstr "Host a LAN game"
@@ -1124,3 +1118,21 @@ msgstr "Training"
 
 msgid "overview.idle"
 msgstr "Idle"
+
+msgid "notice.attacked_won"
+msgstr "{attacker} attacked {target} · won"
+
+msgid "notice.attacked_lost"
+msgstr "{attacker} attacked {target} · lost"
+
+msgid "notice.repeat"
+msgstr "{text} ×{count}"
+
+msgid "ui.reports.scouting"
+msgstr "Scouting"
+
+msgid "ui.reports.near"
+msgstr "Near my villages only"
+
+msgid "ui.reports.mark_read"
+msgstr "Mark all read"

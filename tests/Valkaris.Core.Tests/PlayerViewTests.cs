@@ -170,7 +170,7 @@ public class PlayerViewTests
     [InlineData(typeof(VillageSnapshot), "Id,OwnerId,Position,Resources,Buildings,BuildQueue,Troops,TrainingQueue,Name,BarbarianTier,NextTroopRegenTime,Loyalty")]
     [InlineData(typeof(Movement), "Id,OwnerId,FromVillageId,ToVillageId,Type,Troops,Loot,DepartureTime,ArrivalTime,CatapultTarget,TargetTile,FromTile,Carriers")]
     [InlineData(typeof(SightedMovement), "Id,Type,X,Y,VelocityX,VelocityY,Time")]
-    [InlineData(typeof(PublicNotice), "Time,FromVillageName,TargetVillageId,TargetVillageName")]
+    [InlineData(typeof(PublicNotice), "Time,FromVillageName,TargetVillageId,TargetVillageName,AttackerWon")]
     [InlineData(typeof(Clash), "Time,VillageId")]
     public void EveryFieldSentToAPlayerHasBeenJudged(Type type, string known)
     {

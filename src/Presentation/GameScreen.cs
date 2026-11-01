@@ -420,7 +420,6 @@ public partial class GameScreen : Control
         if (_drawer.IsOpen && _drawer.ActiveTab == Drawer.Tab.Reports)
         {
             _reportsPanel.Refresh(Session);
-            _reportsPanel.MarkAllRead(Session);
         }
         if (_drawer.IsOpen && _drawer.ActiveTab == Drawer.Tab.Overview)
             _overview.Refresh(Session);

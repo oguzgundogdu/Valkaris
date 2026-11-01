@@ -53,11 +53,11 @@ public static class Visibility
         return seen;
     }
 
-    /// <summary>Battles between two other players, oldest first. Attacks on barbarian or abandoned villages aren't news.</summary>
+    /// <summary>Battles between two other players, oldest first, with who won. Attacks on barbarian or abandoned villages aren't news.</summary>
     public static IEnumerable<PublicNotice> PublicNotices(GameState state, int playerId) =>
         state.BattleArrivals
             .Where(a => a.DefenderId != Village.BarbarianOwnerId && a.AttackerId != playerId && a.DefenderId != playerId)
-            .Select(a => new PublicNotice(a.Time, a.FromVillageName, a.TargetVillageId, a.TargetVillageName));
+            .Select(a => new PublicNotice(a.Time, a.FromVillageName, a.TargetVillageId, a.TargetVillageName, a.AttackerWon));
 
     /// <summary>Battles this player saw happen after a given time, oldest first.</summary>
     public static IReadOnlyList<Clash> Clashes(GameState state, GameData data, int playerId, double after)

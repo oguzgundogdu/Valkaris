@@ -24,7 +24,7 @@ public static class DevScenario
             state.ElapsedTime, state.ElapsedTime + 600, null, passing, passing));
         state.AddMovement(new Movement(state.NextMovementId++, other.OwnerId, other.Id, near.Id, MovementType.Raid, troops, Resources.Zero,
             state.ElapsedTime, state.ElapsedTime + 600, null));
-        state.AddBattleArrival(new BattleArrival(state.ElapsedTime, other.OwnerId, 99, other.Name, other.Id, other.Name));
+        state.AddBattleArrival(new BattleArrival(state.ElapsedTime, other.OwnerId, 99, other.Name, other.Id, other.Name, AttackerWon: true));
         state.AddBattleArrival(new BattleArrival(state.ElapsedTime, other.OwnerId, playerId, other.Name, near.Id, near.Name));
     }
 

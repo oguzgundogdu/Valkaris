@@ -128,10 +128,11 @@ public sealed record BattleArrival(
     int DefenderId,
     string FromVillageName,
     int TargetVillageId,
-    string TargetVillageName);
+    string TargetVillageName,
+    bool AttackerWon = false);
 
-/// <summary>What everyone hears about a battle between other players: village names and nothing else.</summary>
-public sealed record PublicNotice(double Time, string FromVillageName, int TargetVillageId, string TargetVillageName);
+/// <summary>What everyone hears about a battle between other players: village names and who won, and nothing else.</summary>
+public sealed record PublicNotice(double Time, string FromVillageName, int TargetVillageId, string TargetVillageName, bool AttackerWon = false);
 
 /// <summary>A battle a player can see happen at a village.</summary>
 public sealed record Clash(double Time, int VillageId);

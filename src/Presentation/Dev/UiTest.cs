@@ -1347,7 +1347,16 @@ public partial class UiTest : Control
         panel.GetNode<Button>("%News").ButtonPressed = true;
         await Frames();
         var rows = panel.GetNode<VBoxContainer>("%NewsRows");
-        Expect(rows.Visible && rows.GetChildCount() == game.Session.PublicNotices.Count && game.Session.PublicNotices.Count > 0, "Reports has a news filter");
+        var near = panel.GetNode<CheckBox>("%Near");
+        Expect(near.Visible, "News can be limited to nearby villages");
+        near.ButtonPressed = true;
+        await Frames();
+        var nearCount = rows.GetChildCount();
+        near.ButtonPressed = false;
+        await Frames();
+        Expect(nearCount < rows.GetChildCount() || rows.GetChildCount() == 0, "The near filter leaves out far news");
+        Expect(rows.GetChildCount() > 0 && rows.GetChild(0).GetNode<Label>("Text").Text.Contains(L.T("notice.attacked_won", ("attacker", ""), ("target", "")).Split(' ')[^1]), "News names the winner");
+        Expect(rows.Visible && rows.GetChildCount() == NewsFeed.Build(game.Session.PublicNotices, game.Session.State.ElapsedTime).Count && rows.GetChildCount() > 0, "Reports has a news filter");
         await Shot("news");
         panel.GetNode<Button>("%Mine").ButtonPressed = true;
         await Frames();
@@ -1872,8 +1881,18 @@ public partial class UiTest : Control
 
         game.ShowPanel(GameScreen.GamePanel.Reports);
         await Frames();
-        Expect(drawer.ReportsTabText == L.T("tab.reports"), "Opening the tab clears the unread count");
+        Expect(drawer.ReportsTabText == L.T("tab.reports_unread", ("count", "1")), "Opening the tab doesn't mark anything read");
+        Expect(reports.IsPinned(1), "An unread battle of mine is pinned");
         var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
+        Expect(row.Icon is not null && row.GetNode<Label>("Time").Text == Format.Time(game.Session.State.Reports[0].Time), "A pinned row is marked, and its time has its own column");
+        reports.GetNode<Button>("%News").ButtonPressed = true;
+        await Frames();
+        Expect(row.Visible, "A pinned report stays on top in every filter");
+        reports.GetNode<Button>("%Scouting").ButtonPressed = true;
+        await Frames();
+        Expect(row.Visible, "It stays on the scouting filter too");
+        reports.GetNode<Button>("%Mine").ButtonPressed = true;
+        await Frames();
         Expect(row.Text.StartsWith(L.T("report.headline_attacker", ("result", L.T("report.lost")), ("mission", UiContent.MissionName(MovementType.Raid)), ("target", "Vargas"))), $"The lost raid is listed, got '{row.Text}'");
         await Shot("reports");
 

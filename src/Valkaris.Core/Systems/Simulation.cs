@@ -418,7 +418,7 @@ public sealed class Simulation
             capitalProtected);
         _state.AddReport(report);
         _state.AddBattleArrival(new BattleArrival(
-            movement.ArrivalTime, movement.OwnerId, target.OwnerId, _state.Villages[movement.FromVillageId].Name, target.Id, target.Name));
+            movement.ArrivalTime, movement.OwnerId, target.OwnerId, _state.Villages[movement.FromVillageId].Name, target.Id, target.Name, result.AttackerWon));
 
         if (target.IsBarbarian)
             ScheduleTroopRegen(target, movement.ArrivalTime);

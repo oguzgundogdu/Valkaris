@@ -846,9 +846,6 @@ msgstr "Asker eğit"
 msgid "ui.send_resources"
 msgstr "Kaynak gönder"
 
-msgid "ui.reports.title"
-msgstr "Raporlar"
-
 msgid "ui.reports.none"
 msgstr "Henüz savaş yok."
 
@@ -920,9 +917,6 @@ msgstr "Haberler"
 
 msgid "ui.reports.no_news"
 msgstr "Henüz haber yok."
-
-msgid "notice.attacked"
-msgstr "{attacker} köyü {target} köyüne saldırdı"
 
 msgid "ui.start.host"
 msgstr "LAN oyunu kur"
@@ -1121,3 +1115,21 @@ msgstr "Eğitim"
 
 msgid "overview.idle"
 msgstr "Boşta"
+
+msgid "notice.attacked_won"
+msgstr "{attacker} köyü {target} köyüne saldırdı · kazandı"
+
+msgid "notice.attacked_lost"
+msgstr "{attacker} köyü {target} köyüne saldırdı · kaybetti"
+
+msgid "notice.repeat"
+msgstr "{text} ×{count}"
+
+msgid "ui.reports.scouting"
+msgstr "Keşif"
+
+msgid "ui.reports.near"
+msgstr "Yalnızca köylerime yakın"
+
+msgid "ui.reports.mark_read"
+msgstr "Tümünü okundu say"

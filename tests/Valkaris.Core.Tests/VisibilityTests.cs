@@ -101,7 +101,7 @@ public class VisibilityTests
         var notice = Visibility.PublicNotices(_state, Me).Single();
         Assert.Equal(_state.Villages[Other].Name, notice.FromVillageName);
         Assert.Equal(_state.Villages[Third].Name, notice.TargetVillageName);
-        Assert.Equal(new[] { "Time", "FromVillageName", "TargetVillageId", "TargetVillageName" }, typeof(PublicNotice).GetProperties().Select(p => p.Name).Where(n => n != "EqualityContract"));
+        Assert.Equal(new[] { "Time", "FromVillageName", "TargetVillageId", "TargetVillageName", "AttackerWon" }, typeof(PublicNotice).GetProperties().Select(p => p.Name).Where(n => n != "EqualityContract"));
     }
 
     [Fact]

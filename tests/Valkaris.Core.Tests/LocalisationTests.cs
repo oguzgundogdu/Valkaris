@@ -368,7 +368,7 @@ public class LocalisationTests
         // Only text made up entirely of names and placeholders may match.
         Assert.Equal(new[]
         {
-            "bar.incoming_short", "difficulty.normal", "end.difficulty", "language.en", "language.tr", "lobby.player_village", "movement.to", "queue.train_item", "report.unit_count", "scout.building_level", "start.map_size",
+            "bar.incoming_short", "difficulty.normal", "end.difficulty", "language.en", "language.tr", "lobby.player_village", "movement.to", "notice.repeat", "queue.train_item", "report.unit_count", "scout.building_level", "start.map_size",
         }, same);
     }
 }
