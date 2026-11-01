@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Valkaris.Core.Commands;
@@ -48,6 +49,7 @@ public partial class GameScreen : Control
     private RenamePanel _renamePanel = null!;
     private Tween? _viewTween;
     private bool _menuOpen;
+    private readonly HashSet<int> _heardAttacks = new();
     private bool _hostLost;
 
 #if VALKARIS_DEV
@@ -200,9 +202,19 @@ public partial class GameScreen : Control
         _leaveOverlay.Visible = _confirmingLeave || _hostLost;
         _surrenderOverlay.Visible = _confirmingSurrender && !_hostLost;
         RefreshDialogs();
+        WarnOfNewAttacks();
 #if VALKARIS_DEV
         LastFrameSeconds = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds;
 #endif
+    }
+
+    private void WarnOfNewAttacks()
+    {
+        foreach (var attack in UiContent.IncomingAttacks(Session))
+        {
+            if (_heardAttacks.Add(attack.Id))
+                Sound.Play(SoundEffect.AttackWarning);
+        }
     }
 
     private void RefreshDialogs()
@@ -602,12 +614,16 @@ public partial class GameScreen : Control
         {
             case BuildingCompleted completed when IsLocalVillage(completed.VillageId):
                 _villageView.Pulse(completed.Building);
+                Sound.Play(SoundEffect.BuildingComplete);
                 _toast.ShowMessage(L.T("toast.building_done", ("building", UiContent.Buildings[completed.Building].Name), ("level", Format.Whole(completed.NewLevel))));
                 break;
             case BattleResolved resolved:
                 var report = Session.State.Reports.First(r => r.Id == resolved.ReportId);
                 if (report.AttackerId == Session.LocalPlayerId || report.DefenderId == Session.LocalPlayerId)
+                {
+                    Sound.Play(SoundEffect.BattleClash);
                     _toast.ShowMessage(L.T("toast.see_reports", ("headline", UiContent.ReportHeadline(Session, report))));
+                }
                 break;
             case ScoutResolved scouted:
                 var scoutReport = Session.State.ScoutReports.First(r => r.Id == scouted.ReportId);
@@ -624,6 +640,7 @@ public partial class GameScreen : Control
                 _toast.ShowMessage(loot > 0 ? L.T("toast.troops_returned_loot", ("amount", Format.Amount(loot))) : L.T("toast.troops_returned"));
                 break;
             case TroopsTrained trained when IsLocalVillage(trained.VillageId):
+                Sound.Play(SoundEffect.TrainingComplete);
                 _toast.ShowMessage(L.T("toast.trained", ("unit", UiContent.Units[trained.Unit].Name), ("count", Format.Whole(trained.Count))));
                 break;
             case ReinforcementsArrived arrived when IsLocalVillage(arrived.VillageId):
@@ -642,9 +659,11 @@ public partial class GameScreen : Control
                 _toast.ShowMessage(L.T("toast.settler_back", ("reason", UiContent.RejectionText(failed.Reason))));
                 break;
             case VillageCaptured captured when captured.NewOwnerId == Session.LocalPlayerId:
+                Sound.Play(SoundEffect.VillageCaptured);
                 _toast.ShowMessage(L.T("toast.you_captured", ("village", Session.State.Villages[captured.VillageId].Name)));
                 break;
             case VillageCaptured captured when captured.PreviousOwnerId == Session.LocalPlayerId:
+                Sound.Play(SoundEffect.VillageCaptured);
                 _toast.ShowMessage(L.T("toast.captured_by", ("village", Session.State.Villages[captured.VillageId].Name), ("owner", UiContent.OwnerName(Session, captured.NewOwnerId))));
                 break;
             case PlayerSurrendered surrendered when surrendered.PlayerId != Session.LocalPlayerId:

@@ -45,6 +45,7 @@ public partial class Main : Control
         DisplayServer.WindowSetMinSize(MinWindowSize);
         ApplyWindowMode();
         GetTree().AutoAcceptQuit = false;
+        AddChild(new Sound { Name = "Sound" });
 
         try
         {

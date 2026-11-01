@@ -2285,6 +2285,7 @@ public partial class UiTest : Control
         await TestWatchingAfterElimination(data);
         await TestMatchResults(data);
         await TestRealInput(data);
+        await TestSounds(data);
         await TestGodMode(data);
         await TestLiveAi();
     }
@@ -3376,6 +3377,74 @@ public partial class UiTest : Control
     private void SelectTile(BuildingType building) =>
         Find<VillageView>().GetNode<BuildingTile>(building.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
 
+    /// <summary>The right effect at the right moment. How they sound is for a person to judge.</summary>
+    private async Task TestSounds(GameData data)
+    {
+        // Earlier steps may have freed the Main that owns it.
+        if (!FindAll<Sound>(this).Any())
+            AddChild(new Sound { Name = "Sound" });
+        var heard = new List<SoundEffect>();
+        Sound.Recorded = heard;
+        async Task Expects(SoundEffect effect, string when)
+        {
+            await Frames();
+            Expect(heard.Contains(effect), $"{effect} plays when {when}, heard {string.Join(',', heard)}");
+            heard.Clear();
+            await Settle(0.1);
+        }
+
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
+        var tab = game.GetNode<Button>("%Drawer/Tabs/OverviewTab");
+        await MoveMouse(tab.GetGlobalRect().GetCenter());
+        await Expects(SoundEffect.Hover, "the mouse enters a button");
+        await ClickAndSettle(tab);
+        await Expects(SoundEffect.Click, "a button is clicked");
+
+        tab.EmitSignal(BaseButton.SignalName.Pressed);
+        tab.EmitSignal(BaseButton.SignalName.Pressed);
+        Expect(heard.Count(e => e == SoundEffect.Click) == 1, "Rapid repeats play once");
+        await Settle(0.1);
+        heard.Clear();
+
+        var village = session.State.Villages[1];
+        session.Send(new BuildCommand(1, BuildingType.Farm));
+        session.Tick(village.BuildQueue[0].FinishTime - session.State.ElapsedTime);
+        await Expects(SoundEffect.BuildingComplete, "a building finishes");
+
+        await TrainAndWait(session, 1, 1);
+        await Expects(SoundEffect.TrainingComplete, "training finishes");
+
+        RivalAttacks(session);
+        await Expects(SoundEffect.AttackWarning, "an attack starts on my village");
+        await Frames();
+        Expect(!heard.Contains(SoundEffect.AttackWarning), "The warning plays once per attack");
+
+        await RunUntilCapitalLost(session);
+        await Frames();
+        Expect(heard.Contains(SoundEffect.BattleClash), $"The clash plays at my battle, heard {string.Join(',', heard)}");
+        Expect(heard.Contains(SoundEffect.VillageCaptured), "The capture plays when I lose a village");
+        heard.Clear();
+
+        (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Endgame);
+        session.Send(new SendTroopsCommand(1, 2, MovementType.Attack, new Dictionary<UnitType, int> { [UnitType.Swordsman] = 100, [UnitType.Lord] = 1 }));
+        session.Tick(session.State.Movements[0].ArrivalTime);
+        await Expects(SoundEffect.Victory, "I win");
+
+        (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, rivalAttacks: true);
+        await RunUntilArrived(session);
+        await Expects(SoundEffect.Defeat, "I lose");
+
+        Sound.Recorded = null;
+
+        UserSettings.MusicVolume = 0.5f;
+        UserSettings.Muted = true;
+        Sound.ApplySettings();
+        Expect(Mathf.IsEqualApprox(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Music")), Mathf.LinearToDb(0.5f)), "The music volume reaches its bus");
+        Expect(AudioServer.IsBusMute(AudioServer.GetBusIndex("Master")), "Mute reaches the master bus");
+        UserSettings.Muted = false;
+        Sound.ApplySettings();
+    }
+
     private async Task RealInputOnly()
     {
         UseSettings("user://uitest_settings.cfg");
@@ -3384,6 +3453,7 @@ public partial class UiTest : Control
         AddChild(_main);
         await Frames();
         await TestRealInput(GameData.Load(new GodotDataSource()));
+        await TestSounds(GameData.Load(new GodotDataSource()));
     }
 
     /// <summary>

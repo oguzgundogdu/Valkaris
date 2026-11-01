@@ -1,0 +1,3 @@
+music.ogg: "Medieval: The Old Tower Inn" by RandomMind
+https://opengameart.org/content/medieval-the-old-tower-inn
+License: CC0 1.0 Universal (public domain). Re-encoded to OGG for the game.

@@ -143,12 +143,7 @@ public partial class ResourceBar : PanelContainer
             _pause.TooltipText = L.T("bar.menu_tip");
         }
 
-        var hostile = session.State.Movements
-            .Where(m => m.OwnerId != session.LocalPlayerId
-                && m.Type is MovementType.Attack or MovementType.Raid
-                && session.State.Villages[m.ToVillageId!.Value].OwnerId == session.LocalPlayerId)
-            .OrderBy(m => m.ArrivalTime)
-            .FirstOrDefault();
+        var hostile = UiContent.IncomingAttacks(session).OrderBy(m => m.ArrivalTime).FirstOrDefault();
         _incoming.Visible = hostile is not null;
         if (hostile is not null)
         {

@@ -84,6 +84,12 @@ public static class UiContent
         || (movement.Type is not (MovementType.Transfer or MovementType.CarrierReturn or MovementType.Scout) && movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
 
     /// <summary>The local player's villages, in the order they are shown and cycled through.</summary>
+    /// <summary>Attacks and raids on the way to the local player's villages.</summary>
+    public static IEnumerable<Movement> IncomingAttacks(IGameSession session) => session.State.Movements
+        .Where(m => m.OwnerId != session.LocalPlayerId
+            && m.Type is MovementType.Attack or MovementType.Raid
+            && session.State.Villages[m.ToVillageId!.Value].OwnerId == session.LocalPlayerId);
+
     public static IReadOnlyList<Village> OwnVillages(IGameSession session) =>
         session.State.Villages.Values.Where(v => v.OwnerId == session.LocalPlayerId).OrderBy(v => v.Id).ToList();
 

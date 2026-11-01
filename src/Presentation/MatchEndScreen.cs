@@ -18,6 +18,7 @@ public partial class MatchEndScreen : ColorRect
     public void ShowOutcome(IGameSession session, MatchOutcome outcome)
     {
         var localWon = outcome.WinnerIds.Contains(session.LocalPlayerId);
+        Sound.Play(localWon ? SoundEffect.Victory : SoundEffect.Defeat);
         GetNode<Label>("%Title").Text = L.T(!localWon ? "report.defeat" : outcome.WinnerIds.Count > 1 ? "end.draw" : "report.victory");
 
         var names = outcome.WinnerIds.Select(id => UiContent.OwnerName(session, id)).Aggregate((first, second) => L.T("common.and", ("first", first), ("second", second)));

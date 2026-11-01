@@ -127,6 +127,14 @@ public class LocalisationTests
         ("UserSettings.cs", "display"),
         ("UserSettings.cs", "fullscreen"),
         ("UserSettings.cs", "drawer_height"),
+        ("UserSettings.cs", "audio"),
+        ("UserSettings.cs", "master"),
+        ("UserSettings.cs", "music"),
+        ("UserSettings.cs", "effects"),
+        ("UserSettings.cs", "muted"),
+        ("Sound.cs", "Master"), // Audio bus names.
+        ("Sound.cs", "Music"),
+        ("Sound.cs", "Effects"),
         ("Language.cs", "language"), // Settings file section.
         ("Language.cs", "code"), // Settings file key.
         ("Language.cs", "en"),
