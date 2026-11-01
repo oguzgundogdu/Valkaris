@@ -35,6 +35,10 @@ public partial class SendPanel : VBoxContainer
     private int? _targetId;
     private Village? _village;
     private MovementType? _wantedMission;
+    private OptionButton _from = null!;
+    private readonly List<int> _fromIds = new();
+    private readonly List<string> _fromNames = new();
+    private int? _fromId;
     private bool _sendingResources;
 
     public event Action? MapRequested;
@@ -56,12 +60,20 @@ public partial class SendPanel : VBoxContainer
     /// <summary>The amounts belonged to the village being left. The target stays.</summary>
     public void ClearAmounts()
     {
+        _fromId = null;
         foreach (var row in _units.Values.Concat(_resources.Values))
             row.Amount.Value = 0;
     }
 
     public override void _Ready()
     {
+        _from = GetNode<OptionButton>("%From");
+        _from.ItemSelected += index =>
+        {
+            _fromId = _fromIds[(int)index];
+            foreach (var row in _units.Values.Concat(_resources.Values))
+                row.Amount.Value = 0;
+        };
         _targetLine = GetNode<Label>("%TargetLine");
         _pickTarget = GetNode<Button>("%PickTarget");
         _pickTarget.Pressed += () => MapRequested?.Invoke();
@@ -156,7 +168,8 @@ public partial class SendPanel : VBoxContainer
         _session = session;
         _village = village;
 
-        GetNode<Label>("%FromLine").Text = L.T("send.from", ("village", village.Name));
+        village = RefreshFrom(session, village);
+        _village = village;
 
         var target = _targetId is { } id ? session.State.Villages[id] : null;
         if (_sendingResources && target is not null && target.OwnerId != village.OwnerId)
@@ -185,6 +198,26 @@ public partial class SendPanel : VBoxContainer
             RefreshTroopForm(session, village, target, type);
 
         RefreshMoving(session);
+    }
+
+    /// <summary>The village picked in the list while it is still the player's, otherwise the one on screen.</summary>
+    private Village RefreshFrom(IGameSession session, Village current)
+    {
+        var own = session.State.Villages.Values.Where(v => v.OwnerId == session.LocalPlayerId).OrderBy(v => v.Id).ToList();
+        if (!own.Select(v => v.Id).SequenceEqual(_fromIds) || !own.Select(v => v.Name).SequenceEqual(_fromNames))
+        {
+            _fromIds.Clear();
+            _fromIds.AddRange(own.Select(v => v.Id));
+            _fromNames.Clear();
+            _fromNames.AddRange(own.Select(v => v.Name));
+            _from.Clear();
+            foreach (var name in _fromNames)
+                _from.AddItem(name);
+        }
+
+        var from = _fromId is { } id && _fromIds.Contains(id) ? session.State.Villages[id] : current;
+        _from.Select(_fromIds.IndexOf(from.Id));
+        return from;
     }
 
     private void RefreshResourceForm(IGameSession session, Village village, Village? target)

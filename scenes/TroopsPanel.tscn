@@ -12,9 +12,8 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_type_variation = &"CardPanel"
 
-[node name="Scroll" type="ScrollContainer" parent="Card"]
+[node name="Scroll" type="VBoxContainer" parent="Card"]
 layout_mode = 2
-horizontal_scroll_mode = 0
 
 [node name="Margin" type="MarginContainer" parent="Card/Scroll"]
 layout_mode = 2

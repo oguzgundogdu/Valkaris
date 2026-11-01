@@ -16,6 +16,8 @@
 [ext_resource type="PackedScene" path="res://scenes/CapitalDialog.tscn" id="14"]
 [ext_resource type="PackedScene" path="res://scenes/MatchEndScreen.tscn" id="15"]
 
+[ext_resource type="Script" path="res://src/Presentation/PopupFrame.cs" id="popup"]
+
 [node name="Game" type="Control"]
 layout_mode = 3
 anchors_preset = 15
@@ -90,43 +92,140 @@ custom_minimum_size = Vector2(400, 0)
 layout_mode = 2
 current_tab = 0
 
-[node name="Village" type="ScrollContainer" parent="Layout/Margin/Columns/Side"]
+[node name="Reports" parent="Layout/Margin/Columns/Side" instance=ExtResource("10")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="PopupLayer" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 54.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BuildingPopup" type="PanelContainer" parent="PopupLayer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+theme_type_variation = &"CardPanel"
+script = ExtResource("popup")
+
+[node name="Frame" type="VBoxContainer" parent="PopupLayer/BuildingPopup"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="PopupLayer/BuildingPopup/Frame"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="PopupLayer/BuildingPopup/Frame/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"HeadingLabel"
+
+[node name="Close" type="Button" parent="PopupLayer/BuildingPopup/Frame/Header"]
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"SecondaryButton"
+text = "ui.common.close"
+
+[node name="Scroll" type="ScrollContainer" parent="PopupLayer/BuildingPopup/Frame"]
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="Box" type="VBoxContainer" parent="Layout/Margin/Columns/Side/Village"]
+[node name="Box" type="VBoxContainer" parent="PopupLayer/BuildingPopup/Frame/Scroll"]
+custom_minimum_size = Vector2(440, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
-[node name="VillageInfo" type="Label" parent="Layout/Margin/Columns/Side/Village/Box"]
+[node name="VillageInfo" type="Label" parent="PopupLayer/BuildingPopup/Frame/Scroll/Box"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 autowrap_mode = 2
 
-[node name="BuildingPanel" parent="Layout/Margin/Columns/Side/Village/Box" instance=ExtResource("3")]
+[node name="BuildingPanel" parent="PopupLayer/BuildingPopup/Frame/Scroll/Box" instance=ExtResource("3")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="QueuePanel" parent="Layout/Margin/Columns/Side/Village/Box" instance=ExtResource("4")]
+[node name="QueuePanel" parent="PopupLayer/BuildingPopup/Frame/Scroll/Box" instance=ExtResource("4")]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="Troops" parent="Layout/Margin/Columns/Side" instance=ExtResource("8")]
+[node name="TroopsPopup" type="PanelContainer" parent="PopupLayer"]
 unique_name_in_owner = true
 visible = false
+layout_mode = 0
+theme_type_variation = &"CardPanel"
+script = ExtResource("popup")
+
+[node name="Frame" type="VBoxContainer" parent="PopupLayer/TroopsPopup"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="PopupLayer/TroopsPopup/Frame"]
 layout_mode = 2
 
-[node name="Send" parent="Layout/Margin/Columns/Side" instance=ExtResource("9")]
+[node name="Title" type="Label" parent="PopupLayer/TroopsPopup/Frame/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"HeadingLabel"
+
+[node name="Close" type="Button" parent="PopupLayer/TroopsPopup/Frame/Header"]
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"SecondaryButton"
+text = "ui.common.close"
+
+[node name="Scroll" type="ScrollContainer" parent="PopupLayer/TroopsPopup/Frame"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Troops" parent="PopupLayer/TroopsPopup/Frame/Scroll" instance=ExtResource("8")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SendPopup" type="PanelContainer" parent="PopupLayer"]
 unique_name_in_owner = true
 visible = false
+layout_mode = 0
+theme_type_variation = &"CardPanel"
+script = ExtResource("popup")
+
+[node name="Frame" type="VBoxContainer" parent="PopupLayer/SendPopup"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="PopupLayer/SendPopup/Frame"]
 layout_mode = 2
 
-[node name="Reports" parent="Layout/Margin/Columns/Side" instance=ExtResource("10")]
-unique_name_in_owner = true
-visible = false
+[node name="Title" type="Label" parent="PopupLayer/SendPopup/Frame/Header"]
 layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"HeadingLabel"
+
+[node name="Close" type="Button" parent="PopupLayer/SendPopup/Frame/Header"]
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"SecondaryButton"
+text = "ui.common.close"
+
+[node name="Scroll" type="ScrollContainer" parent="PopupLayer/SendPopup/Frame"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Send" parent="PopupLayer/SendPopup/Frame/Scroll" instance=ExtResource("9")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="Toast" type="PanelContainer" parent="."]
 unique_name_in_owner = true

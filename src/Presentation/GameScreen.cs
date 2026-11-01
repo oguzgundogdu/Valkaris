@@ -13,6 +13,9 @@ namespace Valkaris.Presentation;
 public partial class GameScreen : Control
 {
     private const double ViewFadeSeconds = 0.12;
+    private const int ReportsTabIndex = 0;
+    private const int PopupsAbove = 10;
+    private const int OverlaysAbove = 20;
 
     private ResourceBar _resourceBar = null!;
     private VillageView _villageView = null!;
@@ -20,6 +23,9 @@ public partial class GameScreen : Control
     private BuildingPanel _buildingPanel = null!;
     private QueuePanel _queuePanel = null!;
     private TabContainer _tabs = null!;
+    private PopupFrame _buildingPopup = null!;
+    private PopupFrame _troopsPopup = null!;
+    private PopupFrame _sendPopup = null!;
     private TroopsPanel _troopsPanel = null!;
     private SendPanel _sendPanel = null!;
     private ReportsPanel _reportsPanel = null!;
@@ -93,6 +99,17 @@ public partial class GameScreen : Control
         _capitalDialog = GetNode<CapitalDialog>("%CapitalDialog");
         _matchEndScreen = GetNode<MatchEndScreen>("%MatchEndScreen");
 
+        _buildingPopup = GetNode<PopupFrame>("%BuildingPopup");
+        _troopsPopup = GetNode<PopupFrame>("%TroopsPopup");
+        _sendPopup = GetNode<PopupFrame>("%SendPopup");
+        _troopsPopup.SetTitle(L.T("tab.troops"));
+        _sendPopup.SetTitle(L.T("tab.send"));
+
+        // Building labels draw above the village, so these need to be higher still.
+        GetNode<Control>("%PopupLayer").ZIndex = PopupsAbove;
+        foreach (var top in new Control[] { _toast, _reportDialog, _capitalDialog, _eliminatedOverlay, _pauseOverlay, _leaveOverlay, _surrenderOverlay, _matchEndScreen })
+            top.ZIndex = OverlaysAbove;
+
         _villageView.BuildingSelected += building =>
         {
             _selected = building;
@@ -164,9 +181,6 @@ public partial class GameScreen : Control
         _capitalDialog.Dismissed += () => _capitalSetAside = true;
         _resourceBar.CapitalWarningPressed += () => _capitalSetAside = false;
 
-        _tabs.SetTabTitle((int)SideTab.Village, L.T("tab.village"));
-        _tabs.SetTabTitle((int)SideTab.Troops, L.T("tab.troops"));
-        _tabs.SetTabTitle((int)SideTab.Send, L.T("tab.send"));
 
         Session.EventRaised += OnGameEvent;
         if (Session is ClientGameSession client)
@@ -234,6 +248,9 @@ public partial class GameScreen : Control
         if (@event is not InputEventKey { Pressed: true, Echo: false } key)
             return;
 
+        if (key.Keycode == Key.Escape && CloseTopPopup())
+            return;
+
         if (key.Keycode == Key.P)
             TogglePause();
         else if (Session.IsPaused || Session.State.IsMatchOver || _currentVillageId is null || _capitalDialog.Visible)
@@ -291,9 +308,6 @@ public partial class GameScreen : Control
     {
         ShowView(MainView.World);
         ShowTab(SideTab.Reports);
-        _tabs.SetTabHidden((int)SideTab.Village, true);
-        _tabs.SetTabHidden((int)SideTab.Troops, true);
-        _tabs.SetTabHidden((int)SideTab.Send, true);
     }
 
     private void EnterVillage(int villageId)
@@ -301,7 +315,7 @@ public partial class GameScreen : Control
         _currentVillageId = villageId;
         _sendPanel.ClearAmounts();
         _worldMap.ClearSelection();
-        ShowTab(SideTab.Village);
+        CloseAllPopups();
         ShowView(MainView.Village);
     }
 
@@ -343,7 +357,33 @@ public partial class GameScreen : Control
         Reports,
     }
 
-    public void ShowTab(SideTab tab) => _tabs.CurrentTab = (int)tab;
+    /// <summary>One popup at a time. Reports still has a tab.</summary>
+    public void ShowTab(SideTab tab)
+    {
+        CloseAllPopups();
+        _tabs.Visible = tab == SideTab.Reports;
+        if (tab == SideTab.Village)
+            _buildingPopup.Open();
+        else if (tab == SideTab.Troops)
+            _troopsPopup.Open();
+        else if (tab == SideTab.Send)
+            _sendPopup.Open();
+    }
+
+    private void CloseAllPopups()
+    {
+        _buildingPopup.Close();
+        _troopsPopup.Close();
+        _sendPopup.Close();
+    }
+
+    public bool IsShowing(SideTab tab) => tab switch
+    {
+        SideTab.Village => _buildingPopup.Visible,
+        SideTab.Troops => _troopsPopup.Visible,
+        SideTab.Send => _sendPopup.Visible,
+        _ => _tabs.Visible,
+    };
 
     private void RefreshVillageInfo(Village village)
     {
@@ -359,40 +399,38 @@ public partial class GameScreen : Control
     private void RefreshActiveTab(Village? village)
     {
         var unread = _reportsPanel.UnreadCount(Session);
-        _tabs.SetTabTitle((int)SideTab.Reports, unread > 0 ? L.T("tab.reports_unread", ("count", Format.Whole(unread))) : L.T("tab.reports"));
+        _tabs.SetTabTitle(ReportsTabIndex, unread > 0 ? L.T("tab.reports_unread", ("count", Format.Whole(unread))) : L.T("tab.reports"));
 
-        if (village is null)
+        if (village is null || _tabs.Visible)
         {
+            _tabs.Visible = true;
             _reportsPanel.Refresh(Session);
             _reportsPanel.MarkAllRead(Session);
+        }
+        if (village is null)
+        {
+            CloseTopPopup();
             return;
         }
 
-        switch ((SideTab)_tabs.CurrentTab)
+        if (_buildingPopup.Visible)
         {
-            case SideTab.Village:
-                RefreshVillageInfo(village);
-                _renamePanel.Refresh(Session, village);
-                _buildingPanel.Refresh(Session, village, _selected);
-                _queuePanel.Refresh(L.T("queue.build"), Session.Data.Game.MaxBuildQueueLength, Session.State.ElapsedTime, village.BuildQueue
+            _buildingPopup.SetTitle(UiContent.Buildings[_selected].Name);
+            RefreshVillageInfo(village);
+            _renamePanel.Refresh(Session, village);
+            _buildingPanel.Refresh(Session, village, _selected);
+            _queuePanel.Refresh(L.T("queue.build"), Session.Data.Game.MaxBuildQueueLength, Session.State.ElapsedTime, village.BuildQueue
                     .Select(item => new QueueRow(
                         UiContent.Buildings[item.Building].IconPath,
                         L.T("queue.build_item", ("building", UiContent.Buildings[item.Building].Name), ("level", Format.Whole(item.TargetLevel))),
                         item.StartTime,
                         item.FinishTime))
-                    .ToList());
-                break;
-            case SideTab.Troops:
-                _troopsPanel.Refresh(Session, village);
-                break;
-            case SideTab.Send:
-                _sendPanel.Refresh(Session, village, CurrentView == MainView.World);
-                break;
-            case SideTab.Reports:
-                _reportsPanel.Refresh(Session);
-                _reportsPanel.MarkAllRead(Session);
-                break;
+                .ToList());
         }
+        if (_troopsPopup.Visible)
+            _troopsPanel.Refresh(Session, village);
+        if (_sendPopup.Visible)
+            _sendPanel.Refresh(Session, village, CurrentView == MainView.World);
     }
 
     /// <summary>Commands don't run while paused, and the match resumes for whoever is left.</summary>
@@ -420,6 +458,19 @@ public partial class GameScreen : Control
 
         _hostLost = true;
         _leaveOverlay.Configure(L.T("overlay.host_left.title"), L.T("overlay.host_left.message"), L.T("overlay.host_left.back"));
+    }
+
+    private bool CloseTopPopup()
+    {
+        foreach (var popup in new[] { _sendPopup, _troopsPopup, _buildingPopup })
+        {
+            if (popup.Visible)
+            {
+                popup.Close();
+                return true;
+            }
+        }
+        return false;
     }
 
     private void TogglePause()

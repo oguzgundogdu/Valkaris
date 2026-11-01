@@ -532,9 +532,6 @@ msgstr "{amount} delivered to {village}"
 msgid "toast.delivered_lost"
 msgstr "{amount} delivered to {village}, {lost} lost: warehouse full"
 
-msgid "tab.village"
-msgstr "Village"
-
 msgid "tab.troops"
 msgstr "Troops"
 
@@ -734,9 +731,6 @@ msgstr "Capital"
 
 msgid "popup.settler_arrives"
 msgstr "A Settler arrives in {time}"
-
-msgid "send.from"
-msgstr "From {village}"
 
 msgid "send.scout_rule"
 msgstr "Scouts face the Scouts at home there. Equal numbers rarely get through, and those caught all die. A large majority nearly always succeeds, and the bigger the margin, the more you see."
@@ -1088,3 +1082,9 @@ msgstr "Capital {time}"
 
 msgid "bar.incoming_short"
 msgstr "{mission} {time}"
+
+msgid "ui.common.close"
+msgstr "Close"
+
+msgid "ui.send.from"
+msgstr "From"

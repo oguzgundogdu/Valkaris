@@ -530,9 +530,6 @@ msgstr "{amount} kaynak ulaştı: {village}"
 msgid "toast.delivered_lost"
 msgstr "{amount} kaynak ulaştı: {village}, {lost} kayıp: Depo dolu"
 
-msgid "tab.village"
-msgstr "Köy"
-
 msgid "tab.troops"
 msgstr "Askerler"
 
@@ -731,9 +728,6 @@ msgstr "Başkent"
 
 msgid "popup.settler_arrives"
 msgstr "Öncü {time} sonra ulaşır"
-
-msgid "send.from"
-msgstr "Çıkış: {village}"
 
 msgid "send.scout_rule"
 msgstr "Casuslar oradaki Casuslarla karşılaşır. Eşit sayıda nadiren geçer ve yakalananların hepsi ölür. Büyük çoğunluk neredeyse her zaman başarır; fark büyüdükçe daha çok şey görürsün."
@@ -1085,3 +1079,9 @@ msgstr "Başkent {time}"
 
 msgid "bar.incoming_short"
 msgstr "{mission} {time}"
+
+msgid "ui.common.close"
+msgstr "Kapat"
+
+msgid "ui.send.from"
+msgstr "Nereden"

@@ -158,7 +158,9 @@ public partial class UiTest : Control
         var village = session.State.Villages[1];
         Expect(village.Name == turkish, $"The match uses the typed name, got '{village.Name}'");
 
-        var panel = game.GetNode<RenamePanel>("%Side/Village/Box/RenamePanel");
+        game.ShowTab(GameScreen.SideTab.Village);
+        await Frames();
+        var panel = game.GetNode<RenamePanel>("%BuildingPopup/Frame/Scroll/Box/RenamePanel");
         var edit = panel.GetNode<Button>("Edit");
         var form = panel.GetNode<Control>("Form");
         var rename = panel.GetNode<LineEdit>("Form/Field");
@@ -708,6 +710,7 @@ public partial class UiTest : Control
         await TestViewSwitching();
         await TestThirdParty();
         await TestTopBar();
+        await TestPopups();
         await TestCamera();
         await TestSelection();
         await TestSendFromMap();
@@ -980,6 +983,45 @@ public partial class UiTest : Control
     }
 
     /// <summary>The bar with everything showing at once, as in the screenshot that found the overflow.</summary>
+    private async Task TestPopups()
+    {
+        var game = Find<GameScreen>();
+        var popup = game.GetNode<PopupFrame>("%SendPopup");
+
+        game.ShowTab(GameScreen.SideTab.Send);
+        await Frames();
+        await Frames();
+        var rect = popup.GetGlobalRect();
+        Expect(popup.Visible && GetViewportRect().Encloses(rect), $"A popup stays inside the window: {rect}");
+        Expect(rect.Position.Y >= Find<ResourceBar>().Size.Y, "A popup stays below the top bar");
+        await Shot("popup-send");
+
+        PressKey(game, Key.Escape);
+        await Frames();
+        Expect(!popup.Visible, "Esc closes a popup");
+
+        game.ShowTab(GameScreen.SideTab.Troops);
+        await Frames();
+        Press(game.GetNode<PopupFrame>("%TroopsPopup").GetNode<Button>("Frame/Header/Close"));
+        await Frames();
+        Expect(!game.IsShowing(GameScreen.SideTab.Troops), "The close button closes a popup");
+
+        // Beside a target: right next to it, and never over it.
+        var target = new Rect2(GetViewportRect().Size * 0.5f - new Vector2(30, 30), new Vector2(60, 60));
+        popup.Open(target);
+        await Frames();
+        await Frames();
+        rect = popup.GetGlobalRect();
+        Expect(!rect.Intersects(target) && GetViewportRect().Encloses(rect), $"A popup opens beside its target: {rect}");
+        await Shot("popup-beside");
+        popup.Close();
+        game.ShowTab(GameScreen.SideTab.Village);
+        await Frames();
+        await Shot("popup-building");
+        game.GetNode<PopupFrame>("%BuildingPopup").Close();
+        await Frames();
+    }
+
     private async Task TestTopBar()
     {
         var game = Find<GameScreen>();
@@ -1095,9 +1137,8 @@ public partial class UiTest : Control
 
         // Once the map is larger than the view, zooming keeps the point under the cursor fixed.
         var cursor = world.Size / 2 + new Vector2(30, -20);
-        Wheel(MouseButton.WheelUp, cursor);
-        Wheel(MouseButton.WheelUp, cursor);
-        Wheel(MouseButton.WheelUp, cursor);
+        while (mapSize.X * world.Zoom <= world.Size.X || mapSize.Y * world.Zoom <= world.Size.Y)
+            Wheel(MouseButton.WheelUp, cursor);
         Expect(world.Zoom > fit, "The wheel zooms in");
         var under = world.ViewToWorld(cursor);
         Wheel(MouseButton.WheelUp, cursor);
@@ -1567,7 +1608,7 @@ public partial class UiTest : Control
         var tabs = game.GetNode<TabContainer>("%Side");
         var reports = game.GetNode<ReportsPanel>("%Reports");
         var dialog = game.GetNode<ReportDialog>("%ReportDialog");
-        var reportsTab = (int)GameScreen.SideTab.Reports;
+        const int reportsTab = 0;
 
         await Frames();
         Expect(tabs.GetTabTitle(reportsTab) == L.T("tab.reports_unread", ("count", "1")), $"An unread report is counted, got '{tabs.GetTabTitle(reportsTab)}'");
@@ -2160,14 +2201,14 @@ public partial class UiTest : Control
         game.ShowTab(GameScreen.SideTab.Send);
         Press(chips[1]);
         await Frames();
-        Expect(send.GetNode<Label>("%FromLine").Text == L.T("send.from", ("village", own[1].Name)), "The Send form names the village");
+        Expect(send.GetNode<OptionButton>("%From").Text == own[1].Name, "The Send form names the village");
         var amount = send.GetNode<SpinBox>("%Units/Swordsman/Amount");
         amount.Value = 50;
         await Frames();
         Press(chips[0]);
         await Frames();
         Expect(amount.Value == 0, "Switching clears the amounts");
-        Expect(game.GetNode<TabContainer>("%Side").CurrentTab == (int)GameScreen.SideTab.Send, "Switching keeps the tab");
+        Expect(game.IsShowing(GameScreen.SideTab.Send), "Switching keeps the tab");
 
         amount.GetLineEdit().GrabFocus();
         await Frames();
@@ -2258,7 +2299,7 @@ public partial class UiTest : Control
         Press(popup.GetNode<Button>("%Reinforce"));
         await Frames();
         var send = game.GetNode<SendPanel>("%Send");
-        Expect(game.GetNode<TabContainer>("%Side").CurrentTab == (int)GameScreen.SideTab.Send, "Reinforce opens the Send tab");
+        Expect(game.IsShowing(GameScreen.SideTab.Send), "Reinforce opens the Send tab");
         Expect(send.GetNode<OptionButton>("%Mission").GetItemText(0) == UiContent.MissionName(MovementType.Reinforce), "The mission is Reinforce");
 
         send.GetNode<SpinBox>("%Units/Swordsman/Amount").Value = 40;
@@ -2305,7 +2346,7 @@ public partial class UiTest : Control
         var reason = send.GetNode<Label>("%Reason");
         var arrival = send.GetNode<Label>("%Arrival");
         var warning = send.GetNode<Label>("%Warning");
-        Expect(game.GetNode<TabContainer>("%Side").CurrentTab == (int)GameScreen.SideTab.Send, "The Marketplace opens the Send tab");
+        Expect(game.IsShowing(GameScreen.SideTab.Send), "The Marketplace opens the Send tab");
         Expect(send.GetNode<Control>("%ResourceRows").Visible && !send.GetNode<Control>("%Units").Visible, "The form shows resources instead of troops");
         Expect(button.Disabled && reason.Text == L.T("send.pick_own"), $"With no target the form says why, got '{reason.Text}'");
 
@@ -2924,9 +2965,8 @@ public partial class UiTest : Control
         await Frames();
         Expect(!overlay.Visible, "Keep watching closes the message");
         Expect(game.CurrentView == GameScreen.MainView.World, "Watching shows the map");
-        var tabs = game.GetNode<TabContainer>("%Side");
-        Expect(tabs.CurrentTab == (int)GameScreen.SideTab.Reports, "Watching shows the reports");
-        Expect(tabs.IsTabHidden((int)GameScreen.SideTab.Send), "Watching hides the Send tab");
+        Expect(game.IsShowing(GameScreen.SideTab.Reports), "Watching shows the reports");
+        Expect(!game.IsShowing(GameScreen.SideTab.Send), "Watching closes the Send popup");
 
         PressKey(game, Key.M);
         Expect(game.CurrentView == GameScreen.MainView.World, "M can't leave the map while watching");
