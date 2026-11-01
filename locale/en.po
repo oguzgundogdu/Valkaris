@@ -1094,3 +1094,9 @@ msgstr "Raid (R)"
 
 msgid "ui.popup.scout"
 msgstr "Scout (S)"
+
+msgid "card.train"
+msgstr "Train troops"
+
+msgid "card.send_resources"
+msgstr "Send resources"

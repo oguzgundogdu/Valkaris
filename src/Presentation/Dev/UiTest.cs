@@ -712,6 +712,7 @@ public partial class UiTest : Control
         await TestTopBar();
         await TestPopups();
         await TestHoverCard();
+        await TestBuildingCard();
         await TestCamera();
         await TestSelection();
         await TestSendFromMap();
@@ -1075,6 +1076,79 @@ public partial class UiTest : Control
         world.ClearSelection();
         game.ShowView(GameScreen.MainView.Village);
         await Frames();
+    }
+
+    private async Task TestBuildingCard()
+    {
+        var game = Find<GameScreen>();
+        var view = game.GetNode<VillageView>("%VillageView");
+        var card = view.Card;
+        async Task Wait(double seconds) => await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
+
+        game.ShowView(GameScreen.MainView.Village);
+        game.ShowTab(GameScreen.SideTab.Village);
+        game.GetNode<PopupFrame>("%BuildingPopup").Close();
+        await Frames();
+
+        view.TestHoveredBuilding = BuildingType.Barracks;
+        await Wait(0.45);
+        Expect(card.Visible && card.GetNode<Label>("Box/Name").Text == UiContent.Buildings[BuildingType.Barracks].Name, "Hovering a building shows its card");
+        Expect(new Rect2(Vector2.Zero, view.Size).Encloses(card.GetRect()), "The building card stays in the view");
+        Expect(!card.GetGlobalRect().Intersects(view.BuildingScreenRect(BuildingType.Barracks)), "The card doesn't cover its building");
+        await Shot("building-card");
+        view.TestHoveredBuilding = null;
+        view.TestCursorOnCard = true;
+        await Wait(0.45);
+        Expect(card.Visible, "The building card stays while the cursor is on it");
+
+        Press(card.GetNode<Button>("Box/Action"));
+        await Frames();
+        await Frames();
+        var troops = game.GetNode<PopupFrame>("%TroopsPopup");
+        Expect(troops.Visible, "Train troops opens the training popup");
+        Expect(GetViewportRect().Encloses(troops.GetGlobalRect()), "The training popup stays in the window");
+        await Shot("train-popup");
+        troops.Close();
+        view.TestCursorOnCard = false;
+        await Wait(0.45);
+        Expect(!card.Visible, "The building card closes when the cursor leaves");
+
+        view.TestHoveredBuilding = BuildingType.Marketplace;
+        await Wait(0.45);
+        Press(card.GetNode<Button>("Box/Action"));
+        await Frames();
+        await Frames();
+        Expect(game.IsShowing(GameScreen.SideTab.Send), "Send resources opens the transfer popup");
+        game.GetNode<PopupFrame>("%SendPopup").Close();
+        view.TestHoveredBuilding = null;
+        await Wait(0.45);
+
+        view.TestHoveredBuilding = BuildingType.Farm;
+        await Wait(0.45);
+        Expect(!card.GetNode<Button>("Box/Action").Visible, "Other buildings have no action on their card");
+        view.TestHoveredBuilding = null;
+        await Wait(0.45);
+
+        // A click opens the full popup, beside the building, with the village's details only on the Main Building.
+        var building = game.GetNode<PopupFrame>("%BuildingPopup");
+        foreach (var (type, details) in new[] { (BuildingType.Farm, false), (BuildingType.MainBuilding, true) })
+        {
+            view.GetNode<BuildingTile>(type.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
+            await Frames();
+            await Frames();
+            Expect(building.Visible, $"Clicking the {type} opens its popup");
+            Expect(GetViewportRect().Encloses(building.GetGlobalRect()), "The building popup stays in the window");
+            Expect(game.GetNode<Label>("%VillageInfo").Visible == details, $"The village's details show only on the Main Building ({type})");
+        }
+        await Shot("building-popup");
+        building.Close();
+
+        var session = game.Session;
+        var village = session.State.Villages[game.CurrentVillageId!.Value];
+        if (village.BuildQueue.Count == 0)
+            session.Send(new BuildCommand(village.Id, BuildingType.Farm));
+        await Frames();
+        Expect(view.QueueLine.Visible == (village.BuildQueue.Count > 0), "The queue line follows the build queue");
     }
 
     private async Task TestPopups()

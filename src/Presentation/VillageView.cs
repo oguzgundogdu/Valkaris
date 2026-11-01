@@ -4,12 +4,17 @@ using System.Linq;
 using Godot;
 using Valkaris.Core.Hosting;
 using Valkaris.Core.Model;
+using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
 /// <summary>The village ground, with one tile per building.</summary>
 public partial class VillageView : Control
 {
+    private const int LabelsAbove = 6;
+    private const float QueueLineMargin = 12;
+    private const float QueueLineBottom = 44;
+
     private static readonly PackedScene TileScene = GD.Load<PackedScene>("res://scenes/BuildingTile.tscn");
     private readonly Dictionary<BuildingType, BuildingTile> _tiles = new();
     private readonly List<VillageScenery> _layers = new();
@@ -18,6 +23,21 @@ public partial class VillageView : Control
     private int _wallStage;
     private (int Seed, int Total, int Farm) _sceneryFor;
     private int _seed;
+    private readonly HoverTimer<BuildingType> _hover = new();
+    private BuildingCard _card = null!;
+    private PanelContainer _queueLine = null!;
+    private Label _queueText = null!;
+
+    /// <summary>Let the UI test stand in for a cursor, which a headless run doesn't have.</summary>
+    public BuildingType? TestHoveredBuilding { get; set; }
+    public bool TestCursorOnCard { get; set; }
+
+    public BuildingCard Card => _card;
+    public Control QueueLine => _queueLine;
+    public string QueueText => _queueText.Text;
+
+    public event Action? TrainingRequested;
+    public event Action? SendResourcesRequested;
 
     /// <summary>How many things stand on the ground, so tests can watch the village grow.</summary>
     public IReadOnlyList<Placed> Scenery => _scenery;
@@ -52,8 +72,64 @@ public partial class VillageView : Control
             _layers.Add(layer);
         }
 
+        _queueLine = new PanelContainer { Name = "QueueLine", ThemeTypeVariation = "CardPanel", MouseFilter = MouseFilterEnum.Ignore, Visible = false, ZIndex = LabelsAbove };
+        _queueText = new Label { Name = "Text", ThemeTypeVariation = "MutedLabel" };
+        _queueLine.AddChild(_queueText);
+        AddChild(_queueLine);
+
+        _card = new BuildingCard { Name = "Card", Visible = false, ZIndex = LabelsAbove + 1 };
+        AddChild(_card);
+        _card.TrainingRequested += () => TrainingRequested?.Invoke();
+        _card.SendResourcesRequested += () => SendResourcesRequested?.Invoke();
+
         Resized += PlaceTiles;
         PlaceTiles();
+    }
+
+    /// <summary>A building on screen, in window coordinates: what a popup must not cover.</summary>
+    public Rect2 BuildingScreenRect(BuildingType building) => _tiles[building].GetGlobalRect();
+
+    public void CloseCard() => _hover.Clear();
+
+    private BuildingType? UnderCursor()
+    {
+        if (TestHoveredBuilding is not null)
+            return TestHoveredBuilding;
+        foreach (var (building, tile) in _tiles)
+        {
+            if (tile.IsHovered())
+                return building;
+        }
+        return null;
+    }
+
+    private void RefreshCard(IGameSession session, Village village)
+    {
+        var overCard = TestCursorOnCard || (_card.Visible && _card.GetGlobalRect().HasPoint(GetGlobalMousePosition()));
+        _hover.Update(overCard ? null : UnderCursor(), overCard, GetProcessDeltaTime());
+
+        _card.Visible = _hover.Shown is not null;
+        if (_hover.Shown is not { } building)
+            return;
+
+        _card.Refresh(session, village, building);
+        _card.Size = _card.GetCombinedMinimumSize();
+        var tile = _tiles[building].GetRect();
+        var (x, y) = PopupPlacement.Beside(new ScreenRect(tile.Position.X, tile.Position.Y, tile.Size.X, tile.Size.Y), _card.Size.X, _card.Size.Y, new ScreenRect(0, 0, Size.X, Size.Y));
+        _card.Position = new Vector2((float)x, (float)y);
+    }
+
+    private void RefreshQueueLine(IGameSession session, Village village)
+    {
+        _queueLine.Visible = village.BuildQueue.Count > 0;
+        if (village.BuildQueue.Count == 0)
+            return;
+
+        var item = village.BuildQueue[0];
+        var name = L.T("queue.build_item", ("building", UiContent.Buildings[item.Building].Name), ("level", Format.Whole(item.TargetLevel)));
+        _queueText.Text = Format.Dotted(name, Format.Time(item.FinishTime - session.State.ElapsedTime));
+        _queueLine.Size = _queueLine.GetCombinedMinimumSize();
+        _queueLine.Position = new Vector2(QueueLineMargin, Size.Y - _queueLine.Size.Y - QueueLineBottom);
     }
 
     public void Refresh(IGameSession session, Village village, BuildingType selected)
@@ -85,6 +161,9 @@ public partial class VillageView : Control
         var showPlates = Input.IsKeyPressed(Key.Alt);
         foreach (var (building, tile) in _tiles)
             tile.Refresh(village, now, building == selected, session.Data.Buildings.Buildings[building].MaxLevel, showPlates);
+
+        RefreshCard(session, village);
+        RefreshQueueLine(session, village);
     }
 
     public void Pulse(BuildingType building) => _tiles[building].Pulse();

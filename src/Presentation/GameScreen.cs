@@ -113,9 +113,13 @@ public partial class GameScreen : Control
         _villageView.BuildingSelected += building =>
         {
             _selected = building;
+            _villageView.CloseCard();
             ShowTab(SideTab.Village);
+            _buildingPopup.Open(_villageView.BuildingScreenRect(building));
         };
-        _buildingPanel.TrainingRequested += () => ShowTab(SideTab.Troops);
+        _villageView.TrainingRequested += OpenTraining;
+        _villageView.SendResourcesRequested += OpenTransfer;
+        _buildingPanel.TrainingRequested += OpenTraining;
         _resourceBar.PauseRequested += TogglePause;
         _resourceBar.ViewRequested += ShowView;
         _resourceBar.IncomingPressed += villageId =>
@@ -132,11 +136,7 @@ public partial class GameScreen : Control
         _worldMap.SendRequested += OpenSend;
         _worldMap.ReinforceRequested += villageId => OpenSend(villageId, MovementType.Reinforce);
         _worldMap.SendResourcesRequested += villageId => OpenSend(villageId, MovementType.Transfer);
-        _buildingPanel.SendResourcesRequested += () =>
-        {
-            _sendPanel.ShowResourceForm();
-            ShowTab(SideTab.Send);
-        };
+        _buildingPanel.SendResourcesRequested += OpenTransfer;
         _sendPanel.MapRequested += () => ShowView(MainView.World);
 
         if (Session.CanPause)
@@ -410,6 +410,10 @@ public partial class GameScreen : Control
         if (_buildingPopup.Visible)
         {
             _buildingPopup.SetTitle(UiContent.Buildings[_selected].Name);
+            // The village's own details belong with its Main Building.
+            var isMain = _selected == BuildingType.MainBuilding;
+            _villageInfo.Visible = isMain;
+            _renamePanel.Visible = isMain;
             RefreshVillageInfo(village);
             _renamePanel.Refresh(Session, village);
             _buildingPanel.Refresh(Session, village, _selected);
@@ -452,6 +456,21 @@ public partial class GameScreen : Control
 
         _hostLost = true;
         _leaveOverlay.Configure(L.T("overlay.host_left.title"), L.T("overlay.host_left.message"), L.T("overlay.host_left.back"));
+    }
+
+    private void OpenTraining()
+    {
+        _villageView.CloseCard();
+        ShowTab(SideTab.Troops);
+        _troopsPopup.Open(_villageView.BuildingScreenRect(BuildingType.Barracks));
+    }
+
+    private void OpenTransfer()
+    {
+        _villageView.CloseCard();
+        _sendPanel.ShowResourceForm();
+        ShowTab(SideTab.Send);
+        _sendPopup.Open(_villageView.BuildingScreenRect(BuildingType.Marketplace));
     }
 
     /// <summary>Opens the send form at a village, beside it on the map.</summary>

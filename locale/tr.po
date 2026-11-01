@@ -1091,3 +1091,9 @@ msgstr "Yağma (R)"
 
 msgid "ui.popup.scout"
 msgstr "Keşif (S)"
+
+msgid "card.train"
+msgstr "Asker eğit"
+
+msgid "card.send_resources"
+msgstr "Kaynak gönder"
