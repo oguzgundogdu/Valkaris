@@ -1097,3 +1097,27 @@ msgstr "Asker eğit"
 
 msgid "card.send_resources"
 msgstr "Kaynak gönder"
+
+msgid "ui.drawer.overview"
+msgstr "Genel bakış"
+
+msgid "overview.village"
+msgstr "Köy"
+
+msgid "overview.population"
+msgstr "Nüfus"
+
+msgid "overview.score"
+msgstr "Puan"
+
+msgid "overview.troops"
+msgstr "Asker"
+
+msgid "overview.building"
+msgstr "İnşaat"
+
+msgid "overview.training"
+msgstr "Eğitim"
+
+msgid "overview.idle"
+msgstr "Boşta"

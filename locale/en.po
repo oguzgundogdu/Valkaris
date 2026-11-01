@@ -1100,3 +1100,27 @@ msgstr "Train troops"
 
 msgid "card.send_resources"
 msgstr "Send resources"
+
+msgid "ui.drawer.overview"
+msgstr "Overview"
+
+msgid "overview.village"
+msgstr "Village"
+
+msgid "overview.population"
+msgstr "Pop"
+
+msgid "overview.score"
+msgstr "Score"
+
+msgid "overview.troops"
+msgstr "Troops"
+
+msgid "overview.building"
+msgstr "Building"
+
+msgid "overview.training"
+msgstr "Training"
+
+msgid "overview.idle"
+msgstr "Idle"

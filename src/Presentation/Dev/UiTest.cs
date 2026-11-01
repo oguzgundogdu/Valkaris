@@ -65,6 +65,7 @@ public partial class UiTest : Control
     /// <summary>Tests keep to the window they were given, whatever a first launch would do.</summary>
     private static void UseSettings(string path)
     {
+        Drawer.Instant = true;
         Language.SettingsPath = path;
         UserSettings.Fullscreen = false;
     }
@@ -158,7 +159,7 @@ public partial class UiTest : Control
         var village = session.State.Villages[1];
         Expect(village.Name == turkish, $"The match uses the typed name, got '{village.Name}'");
 
-        game.ShowTab(GameScreen.SideTab.Village);
+        game.ShowPanel(GameScreen.GamePanel.Building);
         await Frames();
         var panel = game.GetNode<RenamePanel>("%BuildingPopup/Frame/Scroll/Box/RenamePanel");
         var edit = panel.GetNode<Button>("Edit");
@@ -322,6 +323,17 @@ public partial class UiTest : Control
         foreach (var (building, definition) in game.Session.Data.Buildings.Buildings)
             Valkaris.Core.Dev.DevScenario.SetLevel(village, building, definition.MaxLevel);
         await PrintFrameCost("fully grown village");
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await PrintFrameCost("fully grown village with the drawer open");
+        game.ShowPanel(GameScreen.GamePanel.Reports);
+        await PrintFrameCost("fully grown village with Reports open");
+        game.GetNode<Drawer>("%Drawer").Close();
+        game.ShowView(GameScreen.MainView.World);
+        await PrintFrameCost("map");
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await PrintFrameCost("map with the drawer open");
+        game.GetNode<Drawer>("%Drawer").Close();
+        game.ShowView(GameScreen.MainView.Village);
 
         for (var seed = 1; seed <= 3; seed++)
         {
@@ -713,6 +725,7 @@ public partial class UiTest : Control
         await TestPopups();
         await TestHoverCard();
         await TestBuildingCard();
+        await TestDrawer();
         await TestCamera();
         await TestSelection();
         await TestSendFromMap();
@@ -732,7 +745,7 @@ public partial class UiTest : Control
 
         Expect(bar.GetNode<Button>("%ViewVillage").ButtonPressed, "The toggle starts on Village");
 
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
         amount.Value = 1;
 
@@ -913,16 +926,16 @@ public partial class UiTest : Control
         await Steps();
         await Steps();
         Expect(session.State.Villages[villageId].BuildQueue.Count == 1, "A guest's command reaches the host and comes back");
-        foreach (var tab in Enum.GetValues<GameScreen.SideTab>())
+        foreach (var tab in Enum.GetValues<GameScreen.GamePanel>())
         {
-            game.ShowTab(tab);
+            game.ShowPanel(tab);
             await Steps();
         }
         game.ShowView(GameScreen.MainView.World);
         await Steps();
         await Shot("mp_map");
         game.ShowView(GameScreen.MainView.Village);
-        game.ShowTab(GameScreen.SideTab.Village);
+        game.ShowPanel(GameScreen.GamePanel.Building);
 
         host.Stop();
         await Frames();
@@ -993,8 +1006,8 @@ public partial class UiTest : Control
         var card = world.GetNode<VillagePopup>("Popup");
         var send = game.GetNode<PopupFrame>("%SendPopup");
         var panel = game.GetNode<SendPanel>("%Send");
-        game.ShowTab(GameScreen.SideTab.Reports);
-        game.ShowTab(GameScreen.SideTab.Village);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Building);
         game.GetNode<PopupFrame>("%BuildingPopup").Close();
         game.ShowView(GameScreen.MainView.World);
         world.ClearSelection();
@@ -1086,7 +1099,7 @@ public partial class UiTest : Control
         async Task Wait(double seconds) => await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
 
         game.ShowView(GameScreen.MainView.Village);
-        game.ShowTab(GameScreen.SideTab.Village);
+        game.ShowPanel(GameScreen.GamePanel.Building);
         game.GetNode<PopupFrame>("%BuildingPopup").Close();
         await Frames();
 
@@ -1118,7 +1131,7 @@ public partial class UiTest : Control
         Press(card.GetNode<Button>("Box/Action"));
         await Frames();
         await Frames();
-        Expect(game.IsShowing(GameScreen.SideTab.Send), "Send resources opens the transfer popup");
+        Expect(game.IsShowing(GameScreen.GamePanel.Send), "Send resources opens the transfer popup");
         game.GetNode<PopupFrame>("%SendPopup").Close();
         view.TestHoveredBuilding = null;
         await Wait(0.45);
@@ -1151,12 +1164,67 @@ public partial class UiTest : Control
         Expect(view.QueueLine.Visible == (village.BuildQueue.Count > 0), "The queue line follows the build queue");
     }
 
+    private async Task TestDrawer()
+    {
+        var game = Find<GameScreen>();
+        var drawer = game.GetNode<Drawer>("%Drawer");
+        var bar = Find<ResourceBar>();
+        var tabs = drawer.GetNode<Control>("Tabs");
+        drawer.Close();
+        await Frames();
+
+        Press(drawer.GetNode<Button>("Tabs/OverviewTab"));
+        await Frames();
+        Expect(drawer.IsOpen && game.IsShowing(GameScreen.GamePanel.Overview), "A tab opens the drawer");
+        Expect(game.GetNode<OverviewPanel>("%Overview").GetNode<Button>("%VillageGrid/Village0").Text == UiContent.OwnVillages(game.Session)[0].Name, "Overview lists my villages");
+        Press(drawer.GetNode<Button>("Tabs/OverviewTab"));
+        await Frames();
+        Expect(!drawer.IsOpen, "The active tab closes it");
+
+        Press(drawer.GetNode<Button>("Tabs/ReportsTab"));
+        await Frames();
+        PressKey(game, Key.Escape);
+        await Frames();
+        Expect(!drawer.IsOpen, "Esc closes the drawer");
+
+        var strip = game.GetNode<Control>("%VillageStrip");
+        var send = game.GetNode<PopupFrame>("%SendPopup");
+        var heights = new[] { ("min", Drawer.MinFraction), ("default", 0.2f), ("max", Drawer.MaxFraction) };
+        foreach (var (name, fraction) in heights)
+        {
+            drawer.SetHeightFraction(fraction);
+            game.ShowPanel(GameScreen.GamePanel.Overview);
+            game.ShowPanel(GameScreen.GamePanel.Send);
+            await Frames();
+            await Frames();
+            var sheet = drawer.SheetRect;
+            var screen = GetViewportRect().Size;
+            Expect(Mathf.Abs(sheet.Size.Y - fraction * game.GetNode<Control>("%MainArea").Size.Y) < 1 && sheet.End.Y <= screen.Y + 1, $"The drawer takes its height at {name}");
+            Expect(bar.GetGlobalRect().End.Y <= tabs.GetGlobalRect().Position.Y, $"The drawer leaves the top bar clear at {name}");
+            Expect(!strip.Visible || strip.GetGlobalRect().End.Y <= tabs.GetGlobalRect().Position.Y, $"The drawer leaves the village strip clear at {name}");
+            Expect(GetViewportRect().Encloses(send.GetGlobalRect()) && send.ZIndex + send.GetParent<Control>().ZIndex > drawer.ZIndex, $"A popup stays above the drawer at {name}");
+            await Shot($"drawer-{name}");
+            send.Close();
+        }
+
+        drawer.SetHeightFraction(Drawer.MaxFraction + 0.5f);
+        Expect(Mathf.IsEqualApprox(drawer.HeightFraction, Drawer.MaxFraction), "Dragging stops at the maximum");
+        Expect(Mathf.IsEqualApprox(UserSettings.DrawerHeight, Drawer.MaxFraction), "The height is remembered");
+        drawer.SetHeightFraction(0.2f);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
+        await Frames();
+        await Shot("drawer-reports");
+        drawer.Close();
+        await Frames();
+        await Shot("drawer-closed");
+    }
+
     private async Task TestPopups()
     {
         var game = Find<GameScreen>();
         var popup = game.GetNode<PopupFrame>("%SendPopup");
 
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
         await Frames();
         var rect = popup.GetGlobalRect();
@@ -1168,11 +1236,11 @@ public partial class UiTest : Control
         await Frames();
         Expect(!popup.Visible, "Esc closes a popup");
 
-        game.ShowTab(GameScreen.SideTab.Troops);
+        game.ShowPanel(GameScreen.GamePanel.Training);
         await Frames();
         Press(game.GetNode<PopupFrame>("%TroopsPopup").GetNode<Button>("Frame/Header/Close"));
         await Frames();
-        Expect(!game.IsShowing(GameScreen.SideTab.Troops), "The close button closes a popup");
+        Expect(!game.IsShowing(GameScreen.GamePanel.Training), "The close button closes a popup");
 
         // Beside a target: right next to it, and never over it.
         var target = new Rect2(GetViewportRect().Size * 0.5f - new Vector2(30, 30), new Vector2(60, 60));
@@ -1183,7 +1251,7 @@ public partial class UiTest : Control
         Expect(!rect.Intersects(target) && GetViewportRect().Encloses(rect), $"A popup opens beside its target: {rect}");
         await Shot("popup-beside");
         popup.Close();
-        game.ShowTab(GameScreen.SideTab.Village);
+        game.ShowPanel(GameScreen.GamePanel.Building);
         await Frames();
         await Shot("popup-building");
         game.GetNode<PopupFrame>("%BuildingPopup").Close();
@@ -1274,7 +1342,7 @@ public partial class UiTest : Control
         await Frames();
         Expect(layer.Entries.Count == marks, "The markers go when the movements end");
 
-        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
         var panel = Find<ReportsPanel>();
         panel.GetNode<Button>("%News").ButtonPressed = true;
         await Frames();
@@ -1285,7 +1353,7 @@ public partial class UiTest : Control
         await Frames();
         Expect(!rows.Visible, "The news filter switches back");
         game.ShowView(GameScreen.MainView.Village);
-        game.ShowTab(GameScreen.SideTab.Village);
+        game.ShowPanel(GameScreen.GamePanel.Building);
         await Frames();
     }
 
@@ -1296,7 +1364,23 @@ public partial class UiTest : Control
         await Frames();
         var world = game.GetNode<WorldMapView>("%WorldMapView");
         var mapSize = new Vector2(game.Session.State.Map.Width, game.Session.State.Map.Height) * WorldMapView.TileSize;
+        Expect(mapSize.X * world.Zoom >= world.Size.X - 0.5f && mapSize.Y * world.Zoom >= world.Size.Y - 0.5f, "The map opens filling the view");
+        var capital = game.Session.State.Villages[game.Session.State.Players[game.Session.LocalPlayerId].CapitalVillageId!.Value];
+        var opening = world.WorldToView(WorldMapView.VillageWorldPosition(capital));
+        Expect(new Rect2(Vector2.Zero, world.Size).HasPoint(opening), "The map opens with the capital in view");
+        await Shot("map-opening");
+        var openingZoom = world.Zoom;
+        var openingCamera = world.CameraPosition;
+        PressKey(game, Key.Space);
+        await Frames();
         var fit = world.Zoom;
+        Expect(fit < openingZoom && mapSize.Y * fit <= world.Size.Y + 0.5f, "Space fits the whole map");
+        await Shot("map-whole");
+        PressKey(game, Key.Space);
+        await Frames();
+        Expect(Mathf.IsEqualApprox(world.Zoom, openingZoom) && world.CameraPosition.IsEqualApprox(openingCamera), "Space again goes back");
+        world.FitToView();
+        await Frames();
 
         Expect(mapSize.X * fit <= world.Size.X + 0.5f && mapSize.Y * fit <= world.Size.Y + 0.5f, "The map opens fitted to the view");
 
@@ -1447,7 +1531,7 @@ public partial class UiTest : Control
         var village = session.State.Villages[1];
 
         game.ShowView(GameScreen.MainView.Village);
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
         send.GetNode<Button>("%PickTarget").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -1458,7 +1542,7 @@ public partial class UiTest : Control
         world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at });
         world._GuiInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at });
         await Frames();
-        game.ShowTab(GameScreen.SideTab.Village);
+        game.ShowPanel(GameScreen.GamePanel.Building);
         await Frames();
         world.GetNode<VillagePopup>("Popup").GetNode<Button>("%Attack").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -1724,7 +1808,7 @@ public partial class UiTest : Control
         var mission = send.GetNode<OptionButton>("%Mission");
         var spearmen = send.GetNode<VBoxContainer>("%Units").GetNode(nameof(UnitType.Spearman));
 
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
         Expect(send.IsVisibleInTree(), "The Send tab opens");
         Expect(mission.ItemCount == 3, "Attack, Raid and Scout are offered, and Reinforce isn't without a second village");
@@ -1735,7 +1819,9 @@ public partial class UiTest : Control
         var line = send.GetNode<Label>("%TargetLine").Text;
         Expect(line.StartsWith(Format.Dotted(session.State.Villages[2].Name, "Vargas", "")), $"The target line names the village, got '{line}'");
         Expect(button.Disabled && reason.Text == UiContent.RejectionText(CommandRejection.NoTroopsSelected), "No troops selected disables Send and says why");
-        Expect(send.GetNode<Label>("%None").Visible, "Nothing on the move yet");
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await Frames();
+        Expect(game.GetNode<OverviewPanel>("%Overview").GetNode<Label>("%None").Visible, "Nothing on the move yet");
 
         spearmen.GetNode<Button>("Max").EmitSignal(BaseButton.SignalName.Pressed);
         await Frames();
@@ -1752,7 +1838,9 @@ public partial class UiTest : Control
         Expect(village.TroopCount(UnitType.Spearman) == 0, "Sent troops leave the garrison");
         Expect(session.State.Movements.Count == 1 && session.State.Movements[0].Type == MovementType.Raid, "The chosen mission is sent");
         Expect((int)spearmen.GetNode<SpinBox>("Amount").Value == 0, "The form resets after sending");
-        var row = send.GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await Frames();
+        var row = game.GetNode<OverviewPanel>("%Overview").GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
         Expect(row.GetNode<Label>("Title").Text == L.T("movement.to", ("mission", UiContent.MissionName(MovementType.Raid)), ("target", session.State.Villages[2].Name)), "The movement is listed");
         await Shot("moving");
 
@@ -1766,24 +1854,25 @@ public partial class UiTest : Control
             await Frames();
         }
         Expect(session.State.Movements.Count == 0, "Everyone is home");
-        Expect(send.GetNode<Label>("%None").Visible, "The list empties again");
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await Frames();
+        Expect(game.GetNode<OverviewPanel>("%Overview").GetNode<Label>("%None").Visible, "The list empties again");
     }
 
     private async Task TestReports()
     {
         var game = Find<GameScreen>();
         var session = game.Session;
-        var tabs = game.GetNode<TabContainer>("%Side");
+        var drawer = game.GetNode<Drawer>("%Drawer");
         var reports = game.GetNode<ReportsPanel>("%Reports");
         var dialog = game.GetNode<ReportDialog>("%ReportDialog");
-        const int reportsTab = 0;
 
         await Frames();
-        Expect(tabs.GetTabTitle(reportsTab) == L.T("tab.reports_unread", ("count", "1")), $"An unread report is counted, got '{tabs.GetTabTitle(reportsTab)}'");
+        Expect(drawer.ReportsTabText == L.T("tab.reports_unread", ("count", "1")), $"An unread report is counted, got '{drawer.ReportsTabText}'");
 
-        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
         await Frames();
-        Expect(tabs.GetTabTitle(reportsTab) == L.T("tab.reports"), "Opening the tab clears the unread count");
+        Expect(drawer.ReportsTabText == L.T("tab.reports"), "Opening the tab clears the unread count");
         var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
         Expect(row.Text.StartsWith(L.T("report.headline_attacker", ("result", L.T("report.lost")), ("mission", UiContent.MissionName(MovementType.Raid)), ("target", "Vargas"))), $"The lost raid is listed, got '{row.Text}'");
         await Shot("reports");
@@ -1816,7 +1905,7 @@ public partial class UiTest : Control
 
         var send = game.GetNode<SendPanel>("%Send");
         var units = send.GetNode<VBoxContainer>("%Units");
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
 
         send.SetTarget(2);
@@ -1842,7 +1931,7 @@ public partial class UiTest : Control
         Expect(rival.BuildingLevel(BuildingType.Woodcutter) == woodcutter - 1, "The catapult hits the chosen building");
 
         var reports = game.GetNode<ReportsPanel>("%Reports");
-        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
         await Frames();
         var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>("Report1");
         Expect(row.Text.StartsWith(L.T("report.headline_attacker", ("result", L.T("report.won")), ("mission", UiContent.MissionName(MovementType.Attack)), ("target", "Rival"))), $"The won attack is listed, got '{row.Text}'");
@@ -1874,9 +1963,11 @@ public partial class UiTest : Control
         var incoming = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Button>("%Incoming");
         Expect(incoming.Visible && Shows(incoming.Text, "bar.incoming"), $"The top bar warns of the attack, got '{incoming.Text}'");
 
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
-        var row = game.GetNode<SendPanel>("%Send").GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await Frames();
+        var row = game.GetNode<OverviewPanel>("%Overview").GetNode<VBoxContainer>("%Rows").GetNode("Moving0");
         Expect(row.GetNode<Label>("Title").Text == L.T("movement.from", ("mission", UiContent.MissionName(MovementType.Attack)), ("owner", "Rival")), "The hostile movement is listed");
         await Shot("incoming");
 
@@ -1885,7 +1976,7 @@ public partial class UiTest : Control
         await Frames();
         Expect(!incoming.Visible, "The warning clears after the battle");
 
-        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
         await Frames();
         var report = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetChildren().OfType<Button>().First(b => b.Text.StartsWith(L.T("report.headline_defender", ("result", L.T("report.won")), ("mission", UiContent.MissionName(MovementType.Attack)), ("attacker", "Rival"))));
         Expect(report.Text.StartsWith(L.T("report.headline_defender", ("result", L.T("report.won")), ("mission", UiContent.MissionName(MovementType.Attack)), ("attacker", "Rival"))), $"The defender's report says they won, got '{report.Text}'");
@@ -1901,9 +1992,9 @@ public partial class UiTest : Control
         var camp = session.State.Villages.Values.First(v => v.IsBarbarian);
         session.Send(new SendTroopsCommand(1, camp.Id, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 1 }));
         session.Tick(session.State.Movements[0].ArrivalTime - session.State.ElapsedTime);
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
-        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
         await Frames();
         var barbarian = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows").GetChildren().OfType<Button>().First(b => b.Text.Contains(RaidOnBarbarians()));
         Expect(barbarian.Text.Contains(RaidOnBarbarians()), $"The barbarian battle is listed, got '{barbarian.Text}'");
@@ -2366,7 +2457,7 @@ public partial class UiTest : Control
         Expect(game.CurrentVillageId == own[2].Id, "Q moves to the previous village");
 
         var send = game.GetNode<SendPanel>("%Send");
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         Press(chips[1]);
         await Frames();
         Expect(send.GetNode<OptionButton>("%From").Text == own[1].Name, "The Send form names the village");
@@ -2376,7 +2467,7 @@ public partial class UiTest : Control
         Press(chips[0]);
         await Frames();
         Expect(amount.Value == 0, "Switching clears the amounts");
-        Expect(game.IsShowing(GameScreen.SideTab.Send), "Switching keeps the tab");
+        Expect(game.IsShowing(GameScreen.GamePanel.Send), "Switching keeps the tab");
 
         amount.GetLineEdit().GrabFocus();
         await Frames();
@@ -2408,21 +2499,23 @@ public partial class UiTest : Control
         await Frames();
         var strip = game.GetNode<VillageStrip>("%VillageStrip");
         Expect(strip.GetChildren().OfType<Button>().Count() == UiContent.OwnVillages(session).Count, "A chip for every village");
-        foreach (var tab in Enum.GetValues<GameScreen.SideTab>())
+        foreach (var tab in Enum.GetValues<GameScreen.GamePanel>())
         {
-            game.ShowTab(tab);
+            game.ShowPanel(tab);
             await Frames();
             Expect(game.GetNode<Control>("Layout").Position.Y >= 0 && game.GetNode<Control>("Layout").Size.Y <= GetViewportRect().Size.Y + 0.5f, $"The {tab} tab fits the window");
         }
 
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         game.ShowView(GameScreen.MainView.World);
         await Frames();
-        Expect(game.GetNode<SendPanel>("%Send").GetNode<Label>("%None").Size.Y > 0, "The empty list of movements is readable");
-        game.ShowTab(GameScreen.SideTab.Village);
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await Frames();
+        Expect(game.GetNode<OverviewPanel>("%Overview").GetNode<Label>("%None").Size.Y > 0, "The empty list of movements is readable");
+        game.ShowPanel(GameScreen.GamePanel.Building);
         await Frames();
         Expect(game.GetNode<BuildingPanel>("%BuildingPanel").Position.Y >= game.GetNode<Label>("%VillageInfo").GetRect().End.Y, "The Village tab stacks its panels");
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
         if (_shotsDir is not null && DisplayServer.GetName() != "headless")
         {
@@ -2433,12 +2526,12 @@ public partial class UiTest : Control
                 await Frames(10);
                 Expect(game.GetNode<Control>("Layout").Size.Y <= GetViewportRect().Size.Y + 0.5f, $"The layout fits at {name}");
                 await Shot(name);
-                game.ShowTab(GameScreen.SideTab.Village);
+                game.ShowPanel(GameScreen.GamePanel.Building);
                 game.ShowView(GameScreen.MainView.Village);
                 await Frames();
                 Expect(game.GetNode<Control>("Layout").Size.Y <= GetViewportRect().Size.Y + 0.5f, $"The Village tab fits at {name}");
                 await Shot($"{name}-village");
-                game.ShowTab(GameScreen.SideTab.Send);
+                game.ShowPanel(GameScreen.GamePanel.Send);
                 game.ShowView(GameScreen.MainView.World);
                 await Frames();
             }
@@ -2467,7 +2560,7 @@ public partial class UiTest : Control
         Press(popup.GetNode<Button>("%Reinforce"));
         await Frames();
         var send = game.GetNode<SendPanel>("%Send");
-        Expect(game.IsShowing(GameScreen.SideTab.Send), "Reinforce opens the Send tab");
+        Expect(game.IsShowing(GameScreen.GamePanel.Send), "Reinforce opens the Send tab");
         Expect(send.GetNode<OptionButton>("%Mission").GetItemText(0) == UiContent.MissionName(MovementType.Reinforce), "The mission is Reinforce");
 
         send.GetNode<SpinBox>("%Units/Swordsman/Amount").Value = 40;
@@ -2514,7 +2607,7 @@ public partial class UiTest : Control
         var reason = send.GetNode<Label>("%Reason");
         var arrival = send.GetNode<Label>("%Arrival");
         var warning = send.GetNode<Label>("%Warning");
-        Expect(game.IsShowing(GameScreen.SideTab.Send), "The Marketplace opens the Send tab");
+        Expect(game.IsShowing(GameScreen.GamePanel.Send), "The Marketplace opens the Send tab");
         Expect(send.GetNode<Control>("%ResourceRows").Visible && !send.GetNode<Control>("%Units").Visible, "The form shows resources instead of troops");
         Expect(button.Disabled && reason.Text == L.T("send.pick_own"), $"With no target the form says why, got '{reason.Text}'");
 
@@ -2576,7 +2669,9 @@ public partial class UiTest : Control
         Expect(wood.Value == 0, "Sending clears the form");
         var layer = world.GetNode<MovementLayer>("World/Movements");
         Expect(layer.Entries.Any(e => Shows(e.Description.Split("  ·  ")[0], "movement.carrying")), "The transfer is on the map");
-        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == L.T("movement.carrying", ("amount", Format.Whole(capacity + 1)), ("target", to.Name)), "The transfer is in the list");
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await Frames();
+        Expect(game.GetNode<OverviewPanel>("%Overview").GetNode<Label>("%Rows/Moving0/Title").Text == L.T("movement.carrying", ("amount", Format.Whole(capacity + 1)), ("target", to.Name)), "The transfer is in the list");
         await Shot("transfer-moving");
 
         // The overflow warning.
@@ -2599,7 +2694,9 @@ public partial class UiTest : Control
         await Frames();
         Expect(delivery is not null && delivery.Delivered + delivery.Lost == movement.Loot, "The whole load is accounted for on delivery");
         Expect(session.State.Movements.Any(m => m.Type == MovementType.CarrierReturn), "The carriers walk home");
-        Expect(send.GetNode<Label>("%Rows/Moving0/Title").Text == L.T("movement.carriers_returning"), "The list shows them returning");
+        game.ShowPanel(GameScreen.GamePanel.Overview);
+        await Frames();
+        Expect(game.GetNode<OverviewPanel>("%Overview").GetNode<Label>("%Rows/Moving0/Title").Text == L.T("movement.carriers_returning"), "The list shows them returning");
         await RunUntilArrived(session);
         Expect(CarrierRules.Free(session.State, data, from) == free, "The carriers are free again");
 
@@ -2654,7 +2751,7 @@ public partial class UiTest : Control
         var unitRows = send.GetNode<VBoxContainer>("%Units");
         var scoutRow = unitRows.GetNode<Control>(nameof(UnitType.Scout));
 
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         send.SetTarget(2);
         await Frames();
         mission.Select(2);
@@ -2679,13 +2776,13 @@ public partial class UiTest : Control
         await RunUntilArrived(session);
         Expect(state.ScoutReports.Single().Succeeded, "A village with no Scouts is always scouted");
         Expect(state.Reports.Count == 0, "Scouting fights no battle");
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         send.SetTarget(2);
         await Frames();
         Expect(intel.Visible && intel.Text.Contains(L.N("intel.troops", 5)) && intel.Text.Contains(L.T("intel.wall", ("level", "2"))), $"The form shows the latest intel, got '{intel.Text}'");
         await Shot("scout-intel");
 
-        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
         await Frames();
         var row = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutReports.Single().Id}");
         Expect(row.Text.StartsWith(L.T("scout.headline_seen", ("target", rival.Name))), $"The scout report is listed, got '{row.Text}'");
@@ -2705,7 +2802,7 @@ public partial class UiTest : Control
         await RunUntilArrived(session);
         Expect(!state.ScoutReports[^1].Succeeded, "Many Scouts catch a few");
         Expect(home.TroopCount(UnitType.Scout) == 0 && state.Movements.Count == 0, "Scouts that are caught all die");
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         send.SetTarget(2);
         await Frames();
         Expect(Shows(intel.Text, "intel.lost_only") || Shows(intel.Text, "intel.seen_then_lost"), $"The form shows the failure, got '{intel.Text}'");
@@ -2727,10 +2824,11 @@ public partial class UiTest : Control
         session.Tick(home.BuildQueue[^1].FinishTime - state.ElapsedTime + 0.001);
         await Frames();
         Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "The rival tries again");
+        game.GetNode<Drawer>("%Drawer").Close();
         await RunUntilArrived(session);
         Expect(state.ScoutReports[^1].Succeeded, "The Watchtower doesn't stop anyone by itself");
         Expect(reports.UnreadCount(session) == known + 1, "The Watchtower tells the defender of a success");
-        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
         await Frames();
         var seen = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutNotices[^1].Id}");
         Expect(seen.Text.StartsWith(L.T("notice.seen", ("sender", "Rival"), ("target", "")).TrimEnd()), $"The notice names the sender, got '{seen.Text}'");
@@ -2739,15 +2837,16 @@ public partial class UiTest : Control
         Expect(dialog.GetNode<Label>("%Result").Text == L.T("notice.result_seen"), "The Watchtower's notice opens");
         Press(dialog.GetNode<Button>("%Close"));
 
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         await Frames();
         known = reports.UnreadCount(session);
         await TrainAndWait(session, 1, 40, UnitType.Scout);
         Expect(session.SendAs(2, new SendTroopsCommand(2, 1, MovementType.Scout, new Dictionary<UnitType, int> { [UnitType.Scout] = 1 })).Success, "The rival tries once more");
+        game.GetNode<Drawer>("%Drawer").Close();
         await RunUntilArrived(session);
         Expect(!state.ScoutReports[^1].Succeeded, "The player's Scouts catch the rival's");
         Expect(reports.UnreadCount(session) == known + 1, "The defender is told about caught scouts");
-        game.ShowTab(GameScreen.SideTab.Reports);
+        game.ShowPanel(GameScreen.GamePanel.Reports);
         await Frames();
         var notice = reports.GetNode<VBoxContainer>("%Rows").GetNode<Button>($"Report{state.ScoutNotices[^1].Id}");
         Expect(Shows(notice.Text.Split("  ·  ")[0], "notice.caught") && notice.Text.Contains("Rival"), $"The notice names the sender, got '{notice.Text}'");
@@ -2777,7 +2876,7 @@ public partial class UiTest : Control
 
         var narrow = await ScoutedAt(1.5);
         Expect(narrow.Quality == ScoutQuality.Narrow && narrow.Stock is null, "A narrow success gives no exact numbers");
-        game.ShowTab(GameScreen.SideTab.Send);
+        game.ShowPanel(GameScreen.GamePanel.Send);
         send.SetTarget(2);
         await Frames();
         Expect(intel.Text.Contains(L.T("intel.narrow", ("troops", UiContent.RangeText(narrow.TroopRange!)), ("wall", UiContent.RangeText(narrow.WallRange!)))), $"The form shows the ranges, got '{intel.Text}'");
@@ -2841,7 +2940,7 @@ public partial class UiTest : Control
         var limit = BuildingRules.MaxOtherBuildingLevel(data, home.BuildingLevel(BuildingType.MainBuilding));
         Expect(home.BuildingLevel(BuildingType.Barracks) == limit && panel.GetNode<Button>("%Upgrade").Disabled, "The Main Building limit still disables the button");
 
-        game.ShowTab(GameScreen.SideTab.Troops);
+        game.ShowPanel(GameScreen.GamePanel.Training);
         await Frames();
         var row = game.GetNode<TroopsPanel>("%Troops").GetNode<VBoxContainer>("%Rows").GetNode(nameof(UnitType.Swordsman));
         Press(row.GetNode<Button>("Controls/Actions/Max"));
@@ -2972,7 +3071,7 @@ public partial class UiTest : Control
         await Shot("report-captured");
         endDialog.Visible = false;
 
-        endGame.ShowTab(GameScreen.SideTab.Village);
+        endGame.ShowPanel(GameScreen.GamePanel.Building);
         await Frames();
         var info = endGame.GetNode<Label>("%VillageInfo").Text;
         Expect(Shows(info.Split('\n')[0], "village.info") && info.Contains(L.T("popup.capital")), $"The Village tab shows loyalty and the capital, got '{info}'");
@@ -3133,8 +3232,8 @@ public partial class UiTest : Control
         await Frames();
         Expect(!overlay.Visible, "Keep watching closes the message");
         Expect(game.CurrentView == GameScreen.MainView.World, "Watching shows the map");
-        Expect(game.IsShowing(GameScreen.SideTab.Reports), "Watching shows the reports");
-        Expect(!game.IsShowing(GameScreen.SideTab.Send), "Watching closes the Send popup");
+        Expect(game.IsShowing(GameScreen.GamePanel.Reports), "Watching shows the reports");
+        Expect(!game.IsShowing(GameScreen.GamePanel.Send), "Watching closes the Send popup");
 
         PressKey(game, Key.M);
         Expect(game.CurrentView == GameScreen.MainView.World, "M can't leave the map while watching");

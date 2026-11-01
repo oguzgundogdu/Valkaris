@@ -9,6 +9,10 @@ public static class ScoreRules
     public static int Population(GameData data, Village village) =>
         village.Buildings.Sum(b => b.Value * data.Scoring.PopulationPerLevel[b.Key]);
 
+    /// <summary>What one village adds to its owner's score. Captures belong to the player, so they aren't in it.</summary>
+    public static double VillageScore(GameData data, Village village) =>
+        data.Scoring.VillageWeight + Population(data, village) * data.Scoring.PopulationWeight;
+
     public static PlayerScore For(GameState state, GameData data, Player player)
     {
         var villages = state.Villages.Values.Where(v => v.OwnerId == player.Id).ToList();

@@ -1,0 +1,43 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/Presentation/OverviewPanel.cs" id="1"]
+
+[node name="OverviewPanel" type="HBoxContainer"]
+theme_override_constants/separation = 28
+script = ExtResource("1")
+
+[node name="VillagesScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+
+[node name="VillageGrid" type="GridContainer" parent="VillagesScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 2
+
+[node name="MovingScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+
+[node name="Box" type="VBoxContainer" parent="MovingScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="Label" parent="MovingScroll/Box"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "ui.send.moving"
+
+[node name="Rows" type="VBoxContainer" parent="MovingScroll/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="None" type="Label" parent="MovingScroll/Box/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "ui.send.none"

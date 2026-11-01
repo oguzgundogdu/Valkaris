@@ -9,13 +9,12 @@ using Valkaris.Core.Systems;
 
 namespace Valkaris.Presentation;
 
-/// <summary>Sends troops at the village picked on the map, and lists what is on the way.</summary>
+/// <summary>Sends troops or resources at the village picked on the map.</summary>
 public partial class SendPanel : VBoxContainer
 {
     private sealed record UnitRow(SpinBox Amount, Label Available);
 
     private readonly Dictionary<UnitType, UnitRow> _units = new();
-    private readonly List<(HBoxContainer Box, Label Title, Label Time)> _moving = new();
     private readonly List<MovementType> _missions = new();
     private readonly Dictionary<ResourceType, UnitRow> _resources = new();
 
@@ -27,8 +26,6 @@ public partial class SendPanel : VBoxContainer
     private Label _arrival = null!;
     private Button _send = null!;
     private Label _reason = null!;
-    private VBoxContainer _rows = null!;
-    private Label _none = null!;
 
     private IGameSession? _session;
     private ICommand? _command;
@@ -83,8 +80,6 @@ public partial class SendPanel : VBoxContainer
         _arrival = GetNode<Label>("%Arrival");
         _send = GetNode<Button>("%Send");
         _reason = GetNode<Label>("%Reason");
-        _rows = GetNode<VBoxContainer>("%Rows");
-        _none = GetNode<Label>("%None");
 
         var units = GetNode<VBoxContainer>("%Units");
         foreach (var unit in Enum.GetValues<UnitType>())
@@ -197,7 +192,6 @@ public partial class SendPanel : VBoxContainer
         else
             RefreshTroopForm(session, village, target, type);
 
-        RefreshMoving(session);
     }
 
     /// <summary>The village picked in the list while it is still the player's, otherwise the one on screen.</summary>
@@ -351,41 +345,5 @@ public partial class SendPanel : VBoxContainer
 
         _session.Send(_command);
         ClearAmounts();
-    }
-
-    private void RefreshMoving(IGameSession session)
-    {
-        var now = session.State.ElapsedTime;
-        var visible = session.State.Movements
-            .Where(m => UiContent.IsVisibleMovement(session, m))
-            .OrderBy(m => m.ArrivalTime)
-            .ToList();
-
-        while (_moving.Count < visible.Count)
-            _moving.Add(AddMovingRow(_moving.Count));
-
-        _none.Visible = visible.Count == 0;
-        for (var i = 0; i < _moving.Count; i++)
-        {
-            var (box, title, time) = _moving[i];
-            box.Visible = i < visible.Count;
-            if (i >= visible.Count)
-                continue;
-
-            title.Text = UiContent.DescribeMovement(session, visible[i]);
-            title.AddThemeColorOverride("font_color", visible[i].OwnerId == session.LocalPlayerId ? UiContent.Text : UiContent.Warning);
-            time.Text = Format.Time(visible[i].ArrivalTime - now);
-        }
-    }
-
-    private (HBoxContainer, Label, Label) AddMovingRow(int index)
-    {
-        var box = new HBoxContainer { Name = $"Moving{index}" };
-        var title = new Label { Name = "Title", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var time = new Label { Name = "Time", ThemeTypeVariation = "MutedLabel" };
-        box.AddChild(title);
-        box.AddChild(time);
-        _rows.AddChild(box);
-        return (box, title, time);
     }
 }

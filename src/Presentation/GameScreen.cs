@@ -13,7 +13,6 @@ namespace Valkaris.Presentation;
 public partial class GameScreen : Control
 {
     private const double ViewFadeSeconds = 0.12;
-    private const int ReportsTabIndex = 0;
     private const int PopupsAbove = 10;
     private const int OverlaysAbove = 20;
 
@@ -22,7 +21,8 @@ public partial class GameScreen : Control
     private WorldMapView _worldMap = null!;
     private BuildingPanel _buildingPanel = null!;
     private QueuePanel _queuePanel = null!;
-    private TabContainer _tabs = null!;
+    private Drawer _drawer = null!;
+    private OverviewPanel _overview = null!;
     private PopupFrame _buildingPopup = null!;
     private PopupFrame _troopsPopup = null!;
     private PopupFrame _sendPopup = null!;
@@ -83,7 +83,9 @@ public partial class GameScreen : Control
         _worldMap = GetNode<WorldMapView>("%WorldMapView");
         _buildingPanel = GetNode<BuildingPanel>("%BuildingPanel");
         _queuePanel = GetNode<QueuePanel>("%QueuePanel");
-        _tabs = GetNode<TabContainer>("%Side");
+        _drawer = GetNode<Drawer>("%Drawer");
+        _overview = GetNode<OverviewPanel>("%Overview");
+        _overview.VillageSelected += SwitchVillage;
         _troopsPanel = GetNode<TroopsPanel>("%Troops");
         _sendPanel = GetNode<SendPanel>("%Send");
         _reportsPanel = GetNode<ReportsPanel>("%Reports");
@@ -107,6 +109,7 @@ public partial class GameScreen : Control
 
         // Building labels draw above the village, so these need to be higher still.
         GetNode<Control>("%PopupLayer").ZIndex = PopupsAbove;
+        _resourceBar.Resized += () => GetNode<Control>("%PopupLayer").OffsetTop = _resourceBar.Size.Y;
         foreach (var top in new Control[] { _toast, _reportDialog, _capitalDialog, _eliminatedOverlay, _pauseOverlay, _leaveOverlay, _surrenderOverlay, _matchEndScreen })
             top.ZIndex = OverlaysAbove;
 
@@ -114,7 +117,7 @@ public partial class GameScreen : Control
         {
             _selected = building;
             _villageView.CloseCard();
-            ShowTab(SideTab.Village);
+            ShowPanel(GamePanel.Building);
             _buildingPopup.Open(_villageView.BuildingScreenRect(building));
         };
         _villageView.TrainingRequested += OpenTraining;
@@ -239,7 +242,11 @@ public partial class GameScreen : Control
         if (key.Keycode == Key.Escape)
         {
             if (!CloseTopPopup())
+            {
+                if (_drawer.IsOpen)
+                    _drawer.Close();
                 _worldMap.ClearSelection();
+            }
             return;
         }
 
@@ -247,6 +254,8 @@ public partial class GameScreen : Control
             TogglePause();
         else if (Session.IsPaused || Session.State.IsMatchOver || _currentVillageId is null || _capitalDialog.Visible)
             return;
+        else if (key.Keycode == Key.Space && CurrentView == MainView.World)
+            _worldMap.ToggleWholeMap();
         else if (HandleMapShortcut(key.Keycode))
             GetViewport().SetInputAsHandled();
         else if (key.Keycode == Key.M)
@@ -301,7 +310,7 @@ public partial class GameScreen : Control
     private void StartWatching()
     {
         ShowView(MainView.World);
-        ShowTab(SideTab.Reports);
+        ShowPanel(GamePanel.Reports);
     }
 
     private void EnterVillage(int villageId)
@@ -343,24 +352,34 @@ public partial class GameScreen : Control
         _viewTween.TweenProperty(incoming, "modulate:a", 1f, ViewFadeSeconds);
     }
 
-    public enum SideTab
+    public enum GamePanel
     {
-        Village,
-        Troops,
+        Building,
+        Training,
         Send,
+        Overview,
         Reports,
     }
 
-    /// <summary>One popup at a time. Reports still has a tab.</summary>
-    public void ShowTab(SideTab tab)
+    /// <summary>One popup at a time. Overview and Reports are in the drawer, which can stay open behind a popup.</summary>
+    public void ShowPanel(GamePanel panel)
     {
+        switch (panel)
+        {
+            case GamePanel.Overview:
+                _drawer.Open(Drawer.Tab.Overview);
+                return;
+            case GamePanel.Reports:
+                _drawer.Open(Drawer.Tab.Reports);
+                return;
+        }
+
         CloseAllPopups();
-        _tabs.Visible = tab == SideTab.Reports;
-        if (tab == SideTab.Village)
+        if (panel == GamePanel.Building)
             _buildingPopup.Open();
-        else if (tab == SideTab.Troops)
+        else if (panel == GamePanel.Training)
             _troopsPopup.Open();
-        else if (tab == SideTab.Send)
+        else
             _sendPopup.Open();
     }
 
@@ -371,12 +390,13 @@ public partial class GameScreen : Control
         _sendPopup.Close();
     }
 
-    public bool IsShowing(SideTab tab) => tab switch
+    public bool IsShowing(GamePanel panel) => panel switch
     {
-        SideTab.Village => _buildingPopup.Visible,
-        SideTab.Troops => _troopsPopup.Visible,
-        SideTab.Send => _sendPopup.Visible,
-        _ => _tabs.Visible,
+        GamePanel.Building => _buildingPopup.Visible,
+        GamePanel.Training => _troopsPopup.Visible,
+        GamePanel.Send => _sendPopup.Visible,
+        GamePanel.Overview => _drawer.IsOpen && _drawer.ActiveTab == Drawer.Tab.Overview,
+        _ => _drawer.IsOpen && _drawer.ActiveTab == Drawer.Tab.Reports,
     };
 
     private void RefreshVillageInfo(Village village)
@@ -393,14 +413,18 @@ public partial class GameScreen : Control
     private void RefreshActiveTab(Village? village)
     {
         var unread = _reportsPanel.UnreadCount(Session);
-        _tabs.SetTabTitle(ReportsTabIndex, unread > 0 ? L.T("tab.reports_unread", ("count", Format.Whole(unread))) : L.T("tab.reports"));
+        _drawer.SetReportsTitle(unread > 0 ? L.T("tab.reports_unread", ("count", Format.Whole(unread))) : L.T("tab.reports"));
 
-        if (village is null || _tabs.Visible)
+        if (village is null && !_drawer.IsOpen)
+            _drawer.Open(Drawer.Tab.Reports);
+        if (_drawer.IsOpen && _drawer.ActiveTab == Drawer.Tab.Reports)
         {
-            _tabs.Visible = true;
             _reportsPanel.Refresh(Session);
             _reportsPanel.MarkAllRead(Session);
         }
+        if (_drawer.IsOpen && _drawer.ActiveTab == Drawer.Tab.Overview)
+            _overview.Refresh(Session);
+
         if (village is null)
         {
             CloseTopPopup();
@@ -461,7 +485,7 @@ public partial class GameScreen : Control
     private void OpenTraining()
     {
         _villageView.CloseCard();
-        ShowTab(SideTab.Troops);
+        ShowPanel(GamePanel.Training);
         _troopsPopup.Open(_villageView.BuildingScreenRect(BuildingType.Barracks));
     }
 
@@ -469,7 +493,7 @@ public partial class GameScreen : Control
     {
         _villageView.CloseCard();
         _sendPanel.ShowResourceForm();
-        ShowTab(SideTab.Send);
+        ShowPanel(GamePanel.Send);
         _sendPopup.Open(_villageView.BuildingScreenRect(BuildingType.Marketplace));
     }
 
@@ -477,7 +501,7 @@ public partial class GameScreen : Control
     private void OpenSend(int villageId, MovementType mission)
     {
         _sendPanel.SetTarget(villageId, mission);
-        ShowTab(SideTab.Send);
+        ShowPanel(GamePanel.Send);
         _sendPopup.Open(_worldMap.VillageScreenRect(villageId));
         _worldMap.ClearSelection();
     }

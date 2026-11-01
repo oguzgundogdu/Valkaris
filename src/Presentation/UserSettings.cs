@@ -9,6 +9,8 @@ public static class UserSettings
     private const string Name = "name";
     private const string Display = "display";
     private const string FullscreenKey = "fullscreen";
+    private const string DrawerKey = "drawer_height";
+    private const float DefaultDrawerHeight = 0.2f;
 
     public static string PlayerName
     {
@@ -21,6 +23,12 @@ public static class UserSettings
     {
         get => Load().GetValue(Display, FullscreenKey, true).AsBool();
         set => Save(Display, FullscreenKey, value);
+    }
+
+    public static float DrawerHeight
+    {
+        get => (float)Load().GetValue(Display, DrawerKey, DefaultDrawerHeight).AsDouble();
+        set => Save(Display, DrawerKey, value);
     }
 
     private static ConfigFile Load()

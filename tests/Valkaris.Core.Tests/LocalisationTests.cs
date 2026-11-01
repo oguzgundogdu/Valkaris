@@ -126,6 +126,7 @@ public class LocalisationTests
         ("UserSettings.cs", "name"),
         ("UserSettings.cs", "display"),
         ("UserSettings.cs", "fullscreen"),
+        ("UserSettings.cs", "drawer_height"),
         ("Language.cs", "language"), // Settings file section.
         ("Language.cs", "code"), // Settings file key.
         ("Language.cs", "en"),

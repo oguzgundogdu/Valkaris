@@ -133,29 +133,3 @@ layout_mode = 2
 theme_type_variation = &"MutedLabel"
 autowrap_mode = 2
 horizontal_alignment = 1
-
-[node name="Moving" type="PanelContainer" parent="Scroll/Content"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_type_variation = &"CardPanel"
-
-[node name="Box" type="VBoxContainer" parent="Scroll/Content/Moving"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Title" type="Label" parent="Scroll/Content/Moving/Box"]
-layout_mode = 2
-theme_type_variation = &"HeadingLabel"
-text = "ui.send.moving"
-
-[node name="Rows" type="VBoxContainer" parent="Scroll/Content/Moving/Box"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="None" type="Label" parent="Scroll/Content/Moving/Box/Rows"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-text = "ui.send.none"

@@ -18,7 +18,9 @@ public partial class WorldMapView : Control
     private const float PopupGap = 44;
     private static readonly Vector2 MarkerHalfSize = new(60, 60);
 
-    private static readonly Color Surround = new(0.09f, 0.14f, 0.18f);
+    private static readonly Color Sea = new(0.15f, 0.32f, 0.49f);
+    private static readonly Color Shore = new(0.72f, 0.64f, 0.47f);
+    private const float ShoreWidth = 3;
 
     private readonly Dictionary<int, VillageMarker> _markers = new();
     private Control _world = null!;
@@ -41,6 +43,7 @@ public partial class WorldMapView : Control
     private TileCoord? _selectedTile;
     private Village? _currentVillage;
     private Vector2? _hoverPoint;
+    private (float Zoom, Vector2 Position)? _beforeWholeMap;
     private readonly HoverTimer<HoverTarget> _hover = new();
 
     /// <summary>What a hover card can be about: a village, or land a Settler could go to.</summary>
@@ -126,11 +129,12 @@ public partial class WorldMapView : Control
         Resized += OnResized;
     }
 
+    /// <summary>The sea beyond the map's edges, which shows when the whole map is in view.</summary>
     public override void _Draw()
     {
-        var surround = new StyleBoxFlat { BgColor = Surround };
-        surround.SetCornerRadiusAll(12);
-        DrawStyleBox(surround, new Rect2(Vector2.Zero, Size));
+        DrawRect(new Rect2(Vector2.Zero, Size), Sea);
+        if (_built)
+            DrawRect(new Rect2(_world.Position, _worldSize * _zoom).Grow(ShoreWidth / 2), Shore, filled: false, width: ShoreWidth);
     }
 
     public void Refresh(IGameSession session, Village? currentVillage)
@@ -257,7 +261,47 @@ public partial class WorldMapView : Control
         _terrain.Build(state);
 
         AddNewMarkers(session);
+        FillView(session);
+    }
+
+    /// <summary>How the map opens: filling the view, centred on the capital.</summary>
+    private void FillView(IGameSession session)
+    {
+        if (!_built || Size.X <= 0 || Size.Y <= 0)
+            return;
+
+        _userMovedCamera = false;
+        _zoom = Mathf.Clamp(Mathf.Max(Size.X / _worldSize.X, Size.Y / _worldSize.Y), MinZoom, MaxZoom);
+        ApplyZoom();
+        var player = session.State.Players[session.LocalPlayerId];
+        var home = player.CapitalVillageId is { } capital ? capital : _currentVillage?.Id;
+        _world.Position = home is { } id
+            ? Size / 2 - VillageWorldPosition(session.State.Villages[id]) * _zoom
+            : (Size - _worldSize * _zoom) / 2;
+        ClampCamera();
+        QueueRedraw();
+    }
+
+    /// <summary>Space: shows the whole map, and goes back to the view before.</summary>
+    public void ToggleWholeMap()
+    {
+        if (!_built)
+            return;
+
+        if (_beforeWholeMap is { } before)
+        {
+            _beforeWholeMap = null;
+            _zoom = before.Zoom;
+            _world.Position = before.Position;
+            ApplyZoom();
+            QueueRedraw();
+            return;
+        }
+
+        _beforeWholeMap = (_zoom, _world.Position);
+        var moved = _userMovedCamera;
         FitToView();
+        _userMovedCamera = moved;
     }
 
     /// <summary>Villages appear during a match when a Settler arrives.</summary>
@@ -278,9 +322,10 @@ public partial class WorldMapView : Control
 
     private void OnResized()
     {
-        if (!_userMovedCamera)
+        _beforeWholeMap = null;
+        if (!_userMovedCamera && _session is not null)
         {
-            FitToView();
+            FillView(_session);
         }
         else if (_built)
         {
@@ -299,6 +344,7 @@ public partial class WorldMapView : Control
         _zoom = MinZoom;
         _world.Position = (Size - _worldSize * _zoom) / 2;
         ApplyZoom();
+        QueueRedraw();
     }
 
     public override void _Notification(int what)
@@ -427,6 +473,7 @@ public partial class WorldMapView : Control
     {
         var scaled = _worldSize * _zoom;
         _world.Position = new Vector2(ClampAxis(_world.Position.X, scaled.X, Size.X), ClampAxis(_world.Position.Y, scaled.Y, Size.Y));
+        QueueRedraw();
     }
 
     private static float ClampAxis(float position, float scaled, float view) =>
@@ -437,6 +484,7 @@ public partial class WorldMapView : Control
 
     private void ApplyZoom()
     {
+        QueueRedraw();
         _world.Scale = new Vector2(_zoom, _zoom);
         foreach (var marker in _markers.Values)
             marker.Scale = Vector2.One * MarkerScale / _zoom;
