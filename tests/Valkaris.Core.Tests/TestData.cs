@@ -4,10 +4,33 @@ using Valkaris.Core.Data;
 namespace Valkaris.Core.Tests;
 
 /// <summary>Reads the real data/ files, which the test project links into its output.</summary>
-internal sealed class ShippedDataSource : IDataSource
+internal sealed class RealDataSource : IDataSource
 {
     public string ReadText(string fileName) =>
         File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", fileName));
+}
+
+/// <summary>The real files with every nation's bonus at 1, so tests of how the rules work don't move when nations are tuned.</summary>
+internal sealed class ShippedDataSource : IDataSource
+{
+    private static readonly string NeutralNations = BuildNeutralNations();
+
+    public string ReadText(string fileName) =>
+        fileName == GameData.NationsFile ? NeutralNations : new RealDataSource().ReadText(fileName);
+
+    private static string BuildNeutralNations()
+    {
+        var root = JsonNode.Parse(new RealDataSource().ReadText(GameData.NationsFile))!;
+        foreach (var (_, nation) in root["nations"]!.AsObject())
+        {
+            foreach (var (name, value) in nation!.AsObject().ToList())
+            {
+                if (value is JsonValue)
+                    nation[name] = 1;
+            }
+        }
+        return root.ToJsonString();
+    }
 }
 
 /// <summary>Shipped data with one file edited, for tests that need invalid or altered values.</summary>

@@ -2199,7 +2199,7 @@ public partial class UiTest : Control
         await Frames();
 
         var settings = new GameSettings(1_000_000, 1000, MapSize.Small);
-        var slots = new[] { new PlayerSlot("You", Nation.Valdren, false), new PlayerSlot("Rival", Nation.Karuk, true) };
+        var slots = new[] { new PlayerSlot("You", Nation.Karuk, false), new PlayerSlot("Rival", Nation.Karuk, true) };
         var session = new LocalGameSession(GameFactory.CreateMatch(settings, slots, data), data, 1);
         var game = GD.Load<PackedScene>("res://scenes/Game.tscn").Instantiate<GameScreen>();
         game.Init(session);
@@ -2228,7 +2228,7 @@ public partial class UiTest : Control
             await Frames();
         }
 
-        // Level 8 costs more stone than a level 1 Warehouse holds, however long the player saves.
+        // Level 8 costs more stone than a level 1 Warehouse holds, however long the player saves. Karuk has no larger Warehouse.
         UpgradeTo(BuildingType.MainBuilding, 7);
         UpgradeTo(BuildingType.Woodcutter, 7);
         session.Tick(60);

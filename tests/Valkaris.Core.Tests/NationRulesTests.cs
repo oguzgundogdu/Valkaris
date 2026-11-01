@@ -144,4 +144,16 @@ public class NationRulesTests
         var problem = Assert.Throws<GameDataException>(() => GameData.Load(new MutatedDataSource(GameData.NationsFile, root => root["nations"]!["Karuk"]!["unitSpeed"] = 0)));
         Assert.Contains("UnitSpeed", problem.Message);
     }
+
+    /// <summary>Each nation keeps its character however the numbers get tuned.</summary>
+    [Fact]
+    public void ShippedNationsHaveTheirStrengthsAndWeaknesses()
+    {
+        var nations = GameData.Load(new RealDataSource()).Nations.Nations;
+        var (valdren, karuk, solari) = (nations[Nation.Valdren], nations[Nation.Karuk], nations[Nation.Solari]);
+
+        Assert.True(valdren.WallBonus > 1 && valdren.WarehouseCapacity > 1 && valdren.UnitSpeed < 1);
+        Assert.True(karuk.UnitCost < 1 && karuk.TrainingTime < 1 && karuk.LootCapacity > 1 && karuk.WallBonus < 1);
+        Assert.True(solari.UnitSpeed > 1 && solari.BuildTime < 1 && solari.ScoutStrength > 1 && solari.UnitCost > 1);
+    }
 }
