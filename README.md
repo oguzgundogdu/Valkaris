@@ -14,6 +14,9 @@ Build a village, train troops, raid barbarians, found and capture villages, and 
 - Multiplayer for up to 4 players over LAN, direct IP or Tailscale, with AI in any seat and AI taking over for anyone who disconnects
 - Sight around your villages, public news of battles elsewhere, and clash effects
 - English and Turkish, and villages you can name and rename
+- The map fills the window, with a bottom drawer, popups beside their target, hover cards and keyboard shortcuts
+- Sound effects, music and a settings screen
+- Spectators who see every movement and battle, as a host option
 - Rule-based AI opponents (Easy, Normal, Hard) that play by the same rules and see only what a player sees
 - A headless AI-vs-AI simulation tool for balance work
 
@@ -65,7 +68,9 @@ godot-mono --headless --build-solutions --quit                   # build the gam
 godot-mono --headless --path . res://scenes/dev/UiTest.tscn      # UI test, prints [uitest] PASS
 godot-mono --headless --path . res://scenes/dev/UiTest.tscn -- --dev-language=tr --dev-culture=tr-TR   # in Turkish
 tools/nettest.sh                                                 # real processes over ENet on this machine
-tools/gate.sh                                                    # all of the above, from a clean build
+godot-mono --headless --path . res://scenes/dev/UiTest.tscn -- --real-input                       # real clicks and keys only
+godot-mono --headless --path . --resolution 1024x640 res://scenes/dev/UiTest.tscn -- --layout-sweep   # every screen at one size
+tools/gate.sh                                                    # all of the above, from a clean build, at three sizes and in both languages
 ```
 
 ## Simulate AI matches
@@ -86,7 +91,7 @@ Use `--minutes=unlimited` for Unlimited matches, which stop at `--cap-minutes` (
 | `src/Valkaris.Core` | Game rules and state, with no Godot dependency |
 | `src/Valkaris.Ai` | The AI, which can only act through commands |
 | `src/Presentation` | Godot scenes' scripts |
-| `scenes/`, `assets/` | Godot scenes and art. `assets/village` holds rendered CC0 sprites with their licence files |
+| `scenes/`, `assets/` | Godot scenes and art. `assets/village` holds rendered CC0 sprites, `assets/audio` and `assets/cursors` hold CC0 sounds and cursors, each with their licence files |
 | `tools/art/` | Dev tool that renders the village sprites: `godot-mono --path tools/art --script render.gd` |
 | `data/` | All balance values, as JSON |
 | `locale/` | All player-facing text, as PO files |

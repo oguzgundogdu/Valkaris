@@ -142,7 +142,7 @@ The model is never serialized directly. `SnapshotMapper` converts `GameState` to
 
 ### 3.5 Localisation
 - Languages: English (default) and Turkish, with Godot's translation system and one PO file per language. Scenes and `L.T` / `L.N` use namespaced keys such as `ui.start.language` and `rejection.queue_full`, with named placeholders so word order can differ. Plurals come from each file's own rules: English has two forms and Turkish one.
-- The language is chosen on the start screen and saved in `user://settings.cfg`. A first launch uses Turkish if the system is Turkish, and English otherwise. It can't change during a match.
+- The language is chosen on the start screen or in Settings from there, and saved in `user://settings.cfg`. A first launch uses Turkish if the system is Turkish, and English otherwise. It can't change during a match, so in-game Settings shows it disabled with a note.
 - Buildings, units, resources, missions, tiers, difficulty, map size and terrain are translated through keys built from their identifiers, which stay unchanged in `data/*.json` and in code. The food resource reads "Grain" in English.
 - **Not translated:** proper nouns, meaning nation names, AI player names and village names, which read the same in every language, so all players in a multiplayer match see the same names. Also dev-only text, the sim tool's output and data validation messages.
 - Turkish strings are worded so that player and village names never need a grammatical suffix.
@@ -299,8 +299,9 @@ This applies in single player and multiplayer, through `Visibility`, the one pla
 - **Sight:** each village sees `sightRadius` tiles (3), plus `sightPerWatchtowerLevel` (0.5) per Watchtower level, both in `data/map.json`.
 - **Sightings:** another player's movement within sight shows as a neutral marker with no route, and hovering shows only its mission. `SightedMovement` has no owner, origin, target, arrival time or troops, so the wire can't leak them. Scouts stay invisible even in sight, as 7.2 says.
 - **Attacks on your own villages** warn from any distance, without troops or loot. Their icon shows the mission, not a unit type.
-- **Public notices:** an Attack or Raid between two other players is news for everyone: "<attacking village> attacked <target village>", with names as they were at that moment. Notices appear in Reports under the News filter, and as a small mark on the target village for 15 seconds, gently pulsing and one size on screen at any zoom. Attacks on barbarian or abandoned villages aren't news.
+- **Public notices:** an Attack or Raid between two other players is news for everyone: "<attacking village> attacked <target village> · won/lost", with the result from the attacker's side, with names as they were at that moment. Notices appear in Reports under the News filter, and as a small mark on the target village for 15 seconds, gently pulsing and one size on screen at any zoom. Attacks on barbarian or abandoned villages aren't news.
 - **Clash effect:** crossed swords with a dark outline and a flash for 2 seconds, for your own battles and any at a village within sight.
+- **Spectators:** a host option in the lobby, off by default, and always on in single player. Once a player is out, they see every movement with its route and every battle report. Garrisons, resources and scout reports stay hidden. Turning it on accepts that a spectator could tell a live friend everything.
 - Captures still show, since village owners are visible on the map. Hiding that needs fog of war (v2).
 
 ---
@@ -359,26 +360,40 @@ Players must be able to manage their villages from both views.
 - **Wall ring:** none until the Wall is built, then a fence, a low wall, and a full wall with corner towers, by stage. It draws under everything, so it never covers a building, label or click area.
 - **Labels:** each building shows a small level badge, plus a progress strip while building. Its full name plate shows on hover and when selected, and holding Alt shows all of them. Labels draw above neighbouring buildings and scenery.
 
-**Village view layout:** a top bar (resources with cap and rate, hostile arrival warning, pause, match clock), the village ground with one clickable tile per building, and a side column of tabs: **Village** (selected building's details, build queue), **Troops** (garrison, training, training queue), **Send** (target, mission, troops, what is on the way) and **Reports** (with an unread count; a report opens in a modal). A disabled upgrade button always states why, including when a cost is above warehouse capacity and saving up alone can never pay it.
+**Layout:** the map or village fills the window under a top bar. The top bar holds resources with cap and rate, population, score, the `Village | World` toggle, warnings, mute, the menu and the clock. When space runs short it drops, in order, the brand, rates, capacity, then shortens the view toggle to icons and the warnings' text. The clock, menu and warnings' times always stay.
 
-**World map layout:** the same top bar and side tabs, with the map in place of the village ground.
+**Drawer:** Overview and Reports slide up from a tab strip at the bottom over a blurred backdrop. It takes 20% of the height by default, and dragging its top edge sets 12% to 70%, which is remembered. Overview lists your villages and what is on the way. Reports has My reports, Scouting and News filters, and "Near my villages only" for News. Your own battles and captures of your villages stay pinned until opened or marked read. News merges repeats, keeps the latest 50 and fades after 5 minutes.
+
+**Popups:** the Send, Training and Building popups float above the view without pausing or blocking it, one at a time. Each stays inside the window, and opens beside its target without covering it, centred only if there is no room. Clicking a building opens its popup, and the Main Building's also holds the village's name, loyalty and rename. A slim queue line sits at the bottom left of the village view.
+
+**Hover cards:** resting the mouse on a building or a map village for about 0.3 s opens a card that stays while the cursor is on either. The Barracks card opens training and the Marketplace card opens transfers.
+
+**Esc** closes one layer per press, top first: settings, confirmations, menu, report, capital dialog, popup, then the drawer and map selection. The choice after elimination and the match end screen don't close this way. Keys don't reach the game behind anything that covers it.
+
+**World map layout:** the same top bar and drawer, with the map in place of the village ground. Painted sea fills the space beyond the map, with sand only where land reaches its edge.
 - Terrain is painted as a soft blended image with irregular shorelines, so it reads as a map rather than a grid. The grid only shows as a highlight on the hovered tile.
-- Drag to pan, wheel or pinch to zoom towards the cursor, limited to the map's edges. It opens fitted to the whole map. Markers keep a constant size on screen.
-- Clicking a village opens a popup: Send troops for other villages, Enter village and Reinforce for your own. Double-clicking your own village also enters it.
+- Drag to pan, wheel or pinch to zoom towards the cursor, limited to the map's edges. It opens zoomed to fill the width, centred on your capital, and `Space` toggles the whole map and back. Markers keep a constant size on screen.
+- Clicking a village opens its hover card and keeps it open until you click elsewhere. A rival's offers Attack (`A`), Raid (`R`) and Scout (`S`), and your own Enter (`Enter`), Reinforce and Send resources (`T`). The keys act on the village under the cursor, and never while typing. Double-clicking your own village also enters it.
 - When the current village has a Settler, clicking empty land opens a popup with the travel time and Send settler, or the reason it can't be settled. Otherwise, clicking empty land only closes the popup.
 - Movements are dashed routes with moving markers, coloured for your own, hostile and returning troops, with mission and time left on hover.
 
 **Switching views:** a `Village | World` toggle in the top bar and the `M` key, with a short fade. Both views stay alive, so the camera, selection and a half-filled Send form survive. The hostile arrival warning jumps to the map, centred on the village under attack.
 
-**Sending troops:** the Send tab's target comes from the map, through a village's popup. The form has a "From" line, a target line and a button to the map.
+**Sending troops:** the Send popup opens directly at its target, with a "From" selector, the mission and each troop type.
 
-**Sending resources:** the same Send tab. With one of your own villages as the target, Mission offers Reinforce and Send resources, and the form shows resource rows with carriers used and arrival time. It opens from the Send resources button in your other villages' map popup, or from the Marketplace in the Village tab. Transfers appear in the "On the way" list and on the map.
+**Sending resources:** the same popup. With one of your own villages as the target, Mission offers Reinforce and Send resources, and the form shows resource rows with carriers used and arrival time. It opens from your other villages' card, or from the Marketplace. Transfers appear in Overview and on the map.
 
-**Switching villages:** a strip of village chips above the main view, in both views, shows the capital's star and warns of threats. It is hidden with one village. `Q` and `E` cycle. Switching keeps the view, tab and Send target and clears the troop amounts; on the map the camera centres on the village, which has its own ring. If the current village is lost, the view moves to the capital or another village.
+**Switching villages:** a strip of village chips above the main view, in both views, shows the capital's star and warns of threats. It is hidden with one village. `Q` and `E` cycle. Switching keeps the view and Send target and clears the troop amounts; on the map the camera centres on the village, which has its own ring. If the current village is lost, the view moves to the capital or another village.
 
 **Dialogs:** the new capital dialog lists your villages with a countdown and the penalty. It can be set aside: a countdown warning stays in the top bar and reopens it, and the timeout is unchanged. A player eliminated while others play on can keep watching, with only the map and Reports, or leave. The match end screen shows Victory, Defeat or Draw, the reason, and a ranked table of villages, population, captures and score.
 
-**Scenes:** `Main` (screen switching), `StartScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `WorldMapView` + `VillagePopup`, `VillageStrip`, `BuildingPanel`, `QueuePanel`, `TroopsPanel`, `SendPanel`, `ReportsPanel`, `ReportDialog`, `CapitalDialog`, `MatchEndScreen`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
+**Audio:** CC0 effects from Kenney and looping music from OpenGameArt, with licences in `assets/audio`. Master, Music and Effects buses. Every button has a hover and click sound, and the game plays building and training complete, a warning per new attack, the clash at your own battles, capture, victory and defeat.
+
+**Settings:** reachable from the start screen and the in-game menu, in single player and multiplayer: master, music and effects volume, mute, fullscreen and language. Every change applies and saves at once, and a button in the top bar mutes. The first launch is fullscreen, and F11 toggles it.
+
+**Intro and cursor:** a logo animation of 2.5 s once per launch replaces Godot's boot image, and any key or click skips it. The cursor is Kenney's CC0 set (`assets/cursors`): arrow, hand over actions, target over a rival's village, and not allowed over disabled buttons.
+
+**Scenes:** `Main` (screen switching), `StartScreen`, `IntroScreen`, `SettingsScreen`, `Game` (`ResourceBar`, `VillageView` + `BuildingTile`, `WorldMapView` + `VillagePopup`, `VillageStrip`, `Drawer` + `OverviewPanel`, `PopupFrame`, `BuildingPanel`, `QueuePanel`, `TroopsPanel`, `SendPanel`, `ReportsPanel`, `ReportDialog`, `CapitalDialog`, `MatchEndScreen`, `Overlay`). `scenes/dev/` holds the UI test and must be excluded from exports; its script is left out of `ExportRelease` builds by `Valkaris.csproj`.
 
 ---
 
@@ -466,8 +481,9 @@ Players must be able to manage their villages from both views.
 6.8. **Localisation:** English and Turkish, and village naming.
 6.9. **Village view visuals:** rendered 2.5D sprites, three stages per building, a painted ground, growth from houses and scenery, and the Wall ring.
 7. **Multiplayer:** LAN and direct IP for up to 4 players, with a lobby, filtered state per player, AI takeover, and sight, sightings, news and clash effects (7.3) in every match.
+7.1. **UX overhaul:** whole-window views, the drawer, popups, hover cards and shortcuts, news with results and pinning, spectators, a top bar that always fits, audio, settings, intro and cursors.
 8. **Nations:** passive bonuses.
-9. **Polish:** visuals, animations, sounds, UI. Includes filling the side bars on wide windows (e.g. water or fog beyond the map edge).
+9. **Polish:** visuals, animations, UI.
    Parked from 6.9:
    - Ambient village life: chimney smoke, villagers on paths, swaying trees, a carrier leaving when resources are sent, troops gathering at the Barracks after training. Kenney Mini Characters 1 (CC0, licence file included) is the chosen source for figures.
    - Wall ring: the stage 2 side walls read as a stack of diamonds, and its corner posts look thin.
