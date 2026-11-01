@@ -73,6 +73,7 @@ public partial class UiTest : Control
         Drawer.Instant = true;
         Language.SettingsPath = path;
         UserSettings.Fullscreen = false;
+        UserSettings.Nation = Nation.Valdren;
     }
 
     private void TestFullscreenDefault()
@@ -574,6 +575,7 @@ public partial class UiTest : Control
         TestCulture();
         await TestLanguage();
         await TestSettingsFromStart();
+        await TestNationPicker();
 
         await TestFullscreenKey();
         await TestStartVillageName();
@@ -3348,9 +3350,9 @@ public partial class UiTest : Control
         Expect(end.GetNode<Label>("%Reason").Text == L.T("end.you_last"), "The reason is stated");
         var cells = end.GetNode<GridContainer>("%Table").GetChildren().OfType<Label>().Select(l => l.Text).ToList();
         var top = session.State.Outcome!.Scores[0];
-        Expect(cells.Count == 18, $"A header and one row per player, got {cells.Count} cells");
-        Expect(cells[7] == L.T("player.you") && cells[8] == $"{top.Villages}" && cells[9] == $"{top.Population}" && cells[10] == $"{top.Captures}" && cells[11] == $"{top.Score:0}", "The table matches the score");
-        Expect(cells[13].EndsWith(L.T("end.eliminated", ("name", ""))), "Eliminated players are marked");
+        Expect(cells.Count == 21, $"A header and one row per player, got {cells.Count} cells");
+        Expect(cells[8] == L.T("player.you") && cells[9] == session.State.Players[1].Nation.ToString() && cells[10] == $"{top.Villages}" && cells[11] == $"{top.Population}" && cells[12] == $"{top.Captures}" && cells[13] == $"{top.Score:0}", "The table matches the score");
+        Expect(cells[15].EndsWith(L.T("end.eliminated", ("name", ""))), "Eliminated players are marked");
         await Shot("end-victory");
 
         (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, rivalAttacks: true);
@@ -3516,6 +3518,54 @@ public partial class UiTest : Control
         foreach (var cursors in FindAll<Cursors>(this).ToList())
             if (cursors.GetParent() == this)
                 cursors.QueueFree();
+    }
+
+    /// <summary>The picker through real clicks' worth of signals, then a match that uses the choice and shows it.</summary>
+    private async Task TestNationPicker()
+    {
+        var start = Find<StartScreen>();
+        var picker = start.GetNode<OptionButton>("%Nation");
+        var opponents = start.GetNode<OptionButton>("%OpponentNation");
+        var info = start.GetNode<Label>("%NationInfo");
+        var names = Enum.GetValues<Nation>();
+
+        Expect(picker.ItemCount == names.Length + 1 && picker.GetItemText(0) == L.T("start.nation_random"), "The picker offers Random and every nation");
+        Expect(opponents.GetItemText(1) == names[0].ToString() && opponents.Selected == 0, "Opponents are Random by default");
+        Expect(picker.GetItemText(1) == "Valdren", "Nation names aren't translated");
+
+        foreach (var nation in names)
+        {
+            picker.Select(StartScreen.NationIndex(nation));
+            picker.EmitSignal(OptionButton.SignalName.ItemSelected, picker.Selected);
+            Expect(info.Text == UiContent.NationDescription(nation), $"{nation} shows its description");
+            Expect(UserSettings.Nation == nation, $"{nation} is remembered");
+            CheckLayout($"nation picker {nation}");
+            await Shot($"picker-{nation}");
+        }
+
+        picker.Select(StartScreen.NationIndex(Nation.Karuk));
+        picker.EmitSignal(OptionButton.SignalName.ItemSelected, picker.Selected);
+        opponents.Select(StartScreen.NationIndex(Nation.Solari));
+        Press(start.GetNode<Button>("%Start"));
+        await Frames();
+
+        var game = Find<GameScreen>();
+        var session = game.Session;
+        Expect(session.State.Players[1].Nation == Nation.Karuk, "The match uses my nation");
+        Expect(session.State.Players[2].Nation == Nation.Solari, "The match uses the opponents' nation");
+
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        game.ShowView(GameScreen.MainView.World);
+        world.CentreOn(session.State.Villages[2]);
+        await Frames();
+        world._GuiInput(new InputEventMouseMotion { Position = world.WorldToView(WorldMapView.VillageWorldPosition(session.State.Villages[2])) });
+        await Settle(0.45);
+        var owner = world.GetNode<VillagePopup>("Popup").GetNode<Label>("%Owner").Text;
+        Expect(owner.Contains("Solari"), $"The hover card names the nation, got '{owner}'");
+
+        UserSettings.Nation = Nation.Valdren;
+        game.ExitToStart();
+        await Frames();
     }
 
     private async Task TestSettingsFromStart()

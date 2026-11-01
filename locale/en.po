@@ -1184,3 +1184,27 @@ msgstr "Mute all sound"
 
 msgid "bar.unmute_tip"
 msgstr "Turn sound back on"
+
+msgid "ui.start.nation"
+msgstr "Nation"
+
+msgid "ui.start.opponent_nation"
+msgstr "Opponents' nation"
+
+msgid "start.nation_random"
+msgstr "Random"
+
+msgid "start.nation_random_desc"
+msgstr "A nation is drawn for you when the match starts."
+
+msgid "end.header.nation"
+msgstr "Nation"
+
+msgid "nation.valdren_desc"
+msgstr "Stronger Walls and larger warehouses, but slower troops."
+
+msgid "nation.karuk_desc"
+msgstr "Cheaper, faster-trained troops that carry more loot, but weaker Walls."
+
+msgid "nation.solari_desc"
+msgstr "Faster troops, quicker building and stronger Scouts, but costlier troops."

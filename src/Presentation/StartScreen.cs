@@ -7,10 +7,10 @@ using Valkaris.Core.Systems;
 namespace Valkaris.Presentation;
 
 /// <summary>What the start screen asks for.</summary>
-public sealed record MatchSetup(GameSettings Settings, int Opponents, AiDifficulty Difficulty, string? VillageName = null);
+public sealed record MatchSetup(GameSettings Settings, int Opponents, AiDifficulty Difficulty, string? VillageName = null, Nation? Nation = null, Nation? OpponentNation = null);
 
 /// <summary>What is selected on the start screen, kept when a language change rebuilds it.</summary>
-public sealed record StartChoices(int Duration, int Speed, int MapSize, int Opponents, int Difficulty, string VillageName);
+public sealed record StartChoices(int Duration, int Speed, int MapSize, int Opponents, int Difficulty, string VillageName, int OpponentNation = 0);
 
 /// <summary>Match settings. The options come from data/game.json.</summary>
 public partial class StartScreen : CenterContainer
@@ -49,6 +49,20 @@ public partial class StartScreen : CenterContainer
         }
     }
 
+    /// <summary>Random first, then each nation. The same list here and in the lobby.</summary>
+    public static void FillNations(OptionButton picker)
+    {
+        picker.AddItem(L.T("start.nation_random"));
+        foreach (var nation in Enum.GetValues<Nation>())
+            picker.AddItem(UiContent.NationName(nation));
+    }
+
+    public static Nation? ChosenNation(OptionButton picker) =>
+        picker.Selected == 0 ? null : Enum.GetValues<Nation>()[picker.Selected - 1];
+
+    public static int NationIndex(Nation? nation) =>
+        nation is { } chosen ? Array.IndexOf(Enum.GetValues<Nation>(), chosen) + 1 : 0;
+
     /// <summary>Seconds, or null for Unlimited, which comes after the durations.</summary>
     public static double? ChosenDuration(GameData data, OptionButton duration)
     {
@@ -74,6 +88,18 @@ public partial class StartScreen : CenterContainer
             difficulty.AddItem(L.T(L.Key("difficulty", level)));
         difficulty.Select(Array.IndexOf(difficulties, AiDifficulty.Normal));
 
+        var nation = GetNode<OptionButton>("%Nation");
+        var opponentNation = GetNode<OptionButton>("%OpponentNation");
+        FillNations(nation);
+        FillNations(opponentNation);
+        nation.Select(NationIndex(UserSettings.Nation));
+        nation.ItemSelected += _ =>
+        {
+            UserSettings.Nation = ChosenNation(nation);
+            ShowNationInfo(ChosenNation(nation));
+        };
+        ShowNationInfo(ChosenNation(nation));
+
         var villageName = GetNode<LineEdit>("%VillageName");
         villageName.MaxLength = _data.Game.VillageNames.MaxLength;
         villageName.TextChanged += _ => CheckVillageName();
@@ -86,6 +112,7 @@ public partial class StartScreen : CenterContainer
             mapSize.Select(choices.MapSize);
             opponents.Select(choices.Opponents);
             difficulty.Select(choices.Difficulty);
+            opponentNation.Select(choices.OpponentNation);
         }
 
         var language = GetNode<OptionButton>("%Language");
@@ -95,7 +122,7 @@ public partial class StartScreen : CenterContainer
         language.ItemSelected += index =>
         {
             Language.Choose(Language.Codes[index]);
-            LanguageChanged?.Invoke(new StartChoices(duration.Selected, speed.Selected, mapSize.Selected, opponents.Selected, difficulty.Selected, villageName.Text));
+            LanguageChanged?.Invoke(new StartChoices(duration.Selected, speed.Selected, mapSize.Selected, opponents.Selected, difficulty.Selected, villageName.Text, opponentNation.Selected));
         };
         CheckVillageName();
 
@@ -103,7 +130,7 @@ public partial class StartScreen : CenterContainer
         settings.LanguageChosen += code =>
         {
             Language.Choose(code);
-            LanguageChanged?.Invoke(new StartChoices(duration.Selected, speed.Selected, mapSize.Selected, opponents.Selected, difficulty.Selected, villageName.Text));
+            LanguageChanged?.Invoke(new StartChoices(duration.Selected, speed.Selected, mapSize.Selected, opponents.Selected, difficulty.Selected, villageName.Text, opponentNation.Selected));
         };
         GetNode<Button>("%Settings").Pressed += settings.Open;
         GetNode<Button>("%Host").Pressed += () => HostRequested?.Invoke();
@@ -113,9 +140,12 @@ public partial class StartScreen : CenterContainer
             var seconds = ChosenDuration(_data, duration);
             var multiplier = _data.Game.SpeedMultipliers[speed.Selected];
             var settings = new GameSettings(seconds, multiplier, mapSizes[mapSize.Selected]);
-            StartRequested?.Invoke(new MatchSetup(settings, _data.Game.MinPlayers - 1 + opponents.Selected, difficulties[difficulty.Selected], villageName.Text));
+            StartRequested?.Invoke(new MatchSetup(settings, _data.Game.MinPlayers - 1 + opponents.Selected, difficulties[difficulty.Selected], villageName.Text, ChosenNation(nation), ChosenNation(opponentNation)));
         };
     }
+
+    private void ShowNationInfo(Nation? nation) =>
+        GetNode<Label>("%NationInfo").Text = UiContent.NationDescription(nation);
 
     /// <summary>Empty is fine, and means a random name from data.</summary>
     private void CheckVillageName()

@@ -127,6 +127,7 @@ public class LocalisationTests
         ("UserSettings.cs", "display"),
         ("UserSettings.cs", "fullscreen"),
         ("UserSettings.cs", "drawer_height"),
+        ("UserSettings.cs", "nation"),
         ("UserSettings.cs", "audio"),
         ("UserSettings.cs", "master"),
         ("UserSettings.cs", "music"),

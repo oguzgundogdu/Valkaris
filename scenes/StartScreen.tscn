@@ -115,6 +115,38 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 
+[node name="NationRow" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/NationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.nation"
+
+[node name="Nation" type="OptionButton" parent="Card/Box/NationRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+
+[node name="NationInfo" type="Label" parent="Card/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+autowrap_mode = 2
+
+[node name="OpponentNationRow" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Card/Box/OpponentNationRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "ui.start.opponent_nation"
+
+[node name="OpponentNation" type="OptionButton" parent="Card/Box/OpponentNationRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+
 [node name="VillageNameRow" type="HBoxContainer" parent="Card/Box"]
 layout_mode = 2
 

@@ -1181,3 +1181,27 @@ msgstr "Tüm sesleri kapat"
 
 msgid "bar.unmute_tip"
 msgstr "Sesi yeniden aç"
+
+msgid "ui.start.nation"
+msgstr "Ulus"
+
+msgid "ui.start.opponent_nation"
+msgstr "Rakiplerin ulusu"
+
+msgid "start.nation_random"
+msgstr "Rastgele"
+
+msgid "start.nation_random_desc"
+msgstr "Oyun başlarken senin için bir ulus seçilir."
+
+msgid "end.header.nation"
+msgstr "Ulus"
+
+msgid "nation.valdren_desc"
+msgstr "Daha güçlü Surlar ve daha büyük depolar, ama daha yavaş birlikler."
+
+msgid "nation.karuk_desc"
+msgstr "Daha ucuz ve daha hızlı eğitilen, daha çok ganimet taşıyan birlikler, ama daha zayıf Surlar."
+
+msgid "nation.solari_desc"
+msgstr "Daha hızlı birlikler, daha kısa inşaat ve daha güçlü Öncüler, ama daha pahalı birlikler."

@@ -37,6 +37,8 @@ public partial class VillagePopup : PanelContainer
 
         GetNode<Label>("%Name").Text = village.Name;
         var owner = UiContent.OwnerName(session, village.OwnerId);
+        if (session.State.Players.TryGetValue(village.OwnerId, out var player))
+            owner = Format.Dotted(owner, UiContent.NationName(player.Nation));
         var ownerLabel = GetNode<Label>("%Owner");
         ownerLabel.Visible = true;
         ownerLabel.Text = village.BarbarianTier is { } tier ? Format.Dotted(owner, UiContent.TierName(session, tier))

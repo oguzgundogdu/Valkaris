@@ -84,6 +84,17 @@ public static class UiContent
         || (movement.Type is not (MovementType.Transfer or MovementType.CarrierReturn or MovementType.Scout) && movement.ToVillageId is { } target && session.State.Villages[target].OwnerId == session.LocalPlayerId);
 
     /// <summary>The local player's villages, in the order they are shown and cycled through.</summary>
+    /// <summary>Proper nouns read the same in every language, so the identifier is the name.</summary>
+    public static string NationName(Nation nation) => Enum.GetName(nation)!;
+
+    public static string NationDescription(Nation? nation) => L.T(nation switch
+    {
+        Nation.Valdren => "nation.valdren_desc",
+        Nation.Karuk => "nation.karuk_desc",
+        Nation.Solari => "nation.solari_desc",
+        _ => "start.nation_random_desc",
+    });
+
     /// <summary>Attacks and raids on the way to the local player's villages.</summary>
     public static IEnumerable<Movement> IncomingAttacks(IGameSession session) => session.State.Movements
         .Where(m => m.OwnerId != session.LocalPlayerId

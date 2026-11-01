@@ -203,13 +203,13 @@ public partial class Main : Control
 
     private void StartMatch(MatchSetup setup)
     {
-        var nations = new[] { Nation.Karuk, Nation.Solari, Nation.Valdren };
-        var slots = new List<PlayerSlot> { new("You", Nation.Valdren, IsAi: false, VillageName: setup.VillageName) };
-        for (var i = 0; i < setup.Opponents; i++)
-            slots.Add(new PlayerSlot(_data.Ai.Names[i], nations[i % nations.Length], IsAi: true, setup.Difficulty));
-
         var devOptions = DevOptions.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
         var seeded = devOptions.Apply(setup.Settings) with { Seed = (ulong)Random.Shared.NextInt64(), SpectatorsSeeAll = true };
+
+        var slots = new List<PlayerSlot> { new("You", NationPicker.Resolve(setup.Nation, seeded.Seed, 0), IsAi: false, VillageName: setup.VillageName) };
+        for (var i = 0; i < setup.Opponents; i++)
+            slots.Add(new PlayerSlot(_data.Ai.Names[i], NationPicker.Resolve(setup.OpponentNation, seeded.Seed, i + 1), IsAi: true, setup.Difficulty));
+
         var state = GameFactory.CreateMatch(seeded, slots, _data);
 #if VALKARIS_DEV
         if (devOptions.Scenario is { } scenario && !Valkaris.Core.Dev.DevScenario.Apply(state, _data, scenario))

@@ -9,7 +9,7 @@ namespace Valkaris.Presentation;
 /// <summary>The result of the match, with everyone's final score.</summary>
 public partial class MatchEndScreen : ColorRect
 {
-    private static readonly string[] Headers = { "end.header.rank", "end.header.player", "end.header.villages", "end.header.population", "end.header.captured", "end.header.score" };
+    private static readonly string[] Headers = { "end.header.rank", "end.header.player", "end.header.nation", "end.header.villages", "end.header.population", "end.header.captured", "end.header.score" };
 
     public event Action? BackRequested;
 
@@ -52,7 +52,7 @@ public partial class MatchEndScreen : ColorRect
             else if (player.IsEliminated)
                 name = L.T("end.eliminated", ("name", name));
 
-            foreach (var cell in new[] { Format.Whole(i + 1), name, Format.Whole(score.Villages), Format.Whole(score.Population), Format.Whole(score.Captures), Format.Whole(score.Score) })
+            foreach (var cell in new[] { Format.Whole(i + 1), name, UiContent.NationName(player.Nation), Format.Whole(score.Villages), Format.Whole(score.Population), Format.Whole(score.Captures), Format.Whole(score.Score) })
                 table.AddChild(new Label { Text = cell, ThemeTypeVariation = style });
         }
 

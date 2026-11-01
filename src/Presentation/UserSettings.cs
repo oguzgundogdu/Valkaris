@@ -1,4 +1,6 @@
+using System;
 using Godot;
+using Valkaris.Core.Model;
 
 namespace Valkaris.Presentation;
 
@@ -7,6 +9,7 @@ public static class UserSettings
 {
     private const string Player = "player";
     private const string Name = "name";
+    private const string NationKey = "nation";
     private const string Display = "display";
     private const string FullscreenKey = "fullscreen";
     private const string DrawerKey = "drawer_height";
@@ -24,6 +27,13 @@ public static class UserSettings
     {
         get => Load().GetValue(Player, Name, "").AsString();
         set => Save(Player, Name, value);
+    }
+
+    /// <summary>Null is Random.</summary>
+    public static Nation? Nation
+    {
+        get => Enum.TryParse<Nation>(Load().GetValue(Player, NationKey, "").AsString(), out var nation) ? nation : null;
+        set => Save(Player, NationKey, value?.ToString() ?? "");
     }
 
     /// <summary>On by default, so a first launch opens fullscreen.</summary>
