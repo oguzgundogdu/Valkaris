@@ -29,6 +29,7 @@ public partial class UiTest : Control
     public override async void _Ready()
     {
         _windowSize = DisplayServer.WindowGetSize();
+        Main.SkipIntro = true;
         _shotsDir = OS.GetCmdlineUserArgs()
             .FirstOrDefault(a => a.StartsWith("--shots="))?["--shots=".Length..];
 
@@ -562,6 +563,7 @@ public partial class UiTest : Control
         UseSettings("user://uitest_settings.cfg");
         DirAccess.RemoveAbsolute(Language.SettingsPath);
         TestFullscreenDefault();
+        await TestIntro();
 
         _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
         _main.IdleOpponents = true;
@@ -2288,6 +2290,7 @@ public partial class UiTest : Control
         await TestRealInput(data);
         await TestSounds(data);
         await TestSettings(data);
+        await TestCursors(data);
         await TestGodMode(data);
         await TestLiveAi();
     }
@@ -3447,6 +3450,72 @@ public partial class UiTest : Control
         Sound.ApplySettings();
     }
 
+    private async Task TestIntro()
+    {
+        Expect(!ProjectSettings.GetSetting("application/boot_splash/show_image").AsBool(), "Godot's own image is off");
+        Main.SkipIntro = false;
+        var skips = new (string Name, Func<Task> Act)[]
+        {
+            ("a key", () => PressKeyEvent(Key.Space)),
+            ("a click", () => ClickAndSettle(new Vector2(200, 200))),
+            ("waiting", () => Settle(IntroScreen.Seconds + 0.3)),
+        };
+        foreach (var (name, act) in skips)
+        {
+            _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
+            AddChild(_main);
+            await Frames();
+            Expect(FindAll<IntroScreen>(_main).Any() && !FindAll<StartScreen>(_main).Any(), "A launch opens on the intro");
+            await Shot("intro");
+            await act();
+            await Frames();
+            Expect(FindAll<StartScreen>(_main).Any() && !FindAll<IntroScreen>(_main).Any(), $"The intro ends with {name}");
+            _main.QueueFree();
+            await Frames();
+        }
+        Main.SkipIntro = true;
+    }
+
+    private async Task TestCursors(GameData data)
+    {
+        foreach (var name in new[] { "arrow", "hand", "attack", "forbidden" })
+            Expect(GD.Load<Texture2D>($"res://assets/cursors/{name}.png")?.GetWidth() <= 64, $"The {name} cursor loads at a cursor's size");
+
+        var (game, session) = await StartMatch(data, null);
+        if (!FindAll<Cursors>(this).Any())
+            AddChild(new Cursors { Name = "Cursors" });
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        game.ShowView(GameScreen.MainView.World);
+        await Frames();
+
+        async Task At(Village village)
+        {
+            world.CentreOn(village);
+            await Frames();
+            await MoveMouse(world.GetGlobalTransform() * world.WorldToView(WorldMapView.VillageWorldPosition(village)));
+        }
+
+        await At(session.State.Villages[2]);
+        Expect(world.MouseDefaultCursorShape == Control.CursorShape.Cross, "A rival's village shows the attack cursor");
+        await At(session.State.Villages[1]);
+        Expect(world.MouseDefaultCursorShape == Control.CursorShape.PointingHand, "My own village shows the hand");
+        await MoveMouse(EmptySpot(game));
+        Expect(world.MouseDefaultCursorShape == Control.CursorShape.Arrow, "Empty land shows the arrow");
+
+        var (other, _) = await StartMatch(data, null);
+        var button = other.GetNode<Button>("%Drawer/Tabs/OverviewTab");
+        await MoveMouse(button.GetGlobalRect().GetCenter());
+        Expect(button.MouseDefaultCursorShape == Control.CursorShape.PointingHand, "A button shows the hand");
+        await MoveMouse(EmptySpot(other));
+        button.Disabled = true;
+        await MoveMouse(button.GetGlobalRect().GetCenter());
+        Expect(button.MouseDefaultCursorShape == Control.CursorShape.Forbidden, "A disabled button shows it can't be pressed");
+        button.Disabled = false;
+        foreach (var cursors in FindAll<Cursors>(this).ToList())
+            if (cursors.GetParent() == this)
+                cursors.QueueFree();
+    }
+
     private async Task TestSettingsFromStart()
     {
         var start = Find<StartScreen>();
@@ -3525,6 +3594,7 @@ public partial class UiTest : Control
         await TestRealInput(GameData.Load(new GodotDataSource()));
         await TestSounds(GameData.Load(new GodotDataSource()));
         await TestSettings(GameData.Load(new GodotDataSource()));
+        await TestCursors(GameData.Load(new GodotDataSource()));
     }
 
     /// <summary>

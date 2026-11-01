@@ -12,6 +12,8 @@ config_version=5
 
 config/name="Valkaris"
 run/main_scene="res://scenes/Main.tscn"
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.114, 0.094, 0.078, 1)
 config/features=PackedStringArray("4.7", "C#")
 
 [display]

@@ -19,9 +19,13 @@ public partial class Main : Control
 
     private static readonly Vector2I MinWindowSize = new(1024, 640);
     private static readonly PackedScene StartScene = GD.Load<PackedScene>("res://scenes/StartScreen.tscn");
+    private static readonly PackedScene IntroScene = GD.Load<PackedScene>("res://scenes/IntroScreen.tscn");
     private static readonly PackedScene GameScene = GD.Load<PackedScene>("res://scenes/Game.tscn");
     private static readonly PackedScene ConnectScene = GD.Load<PackedScene>("res://scenes/ConnectScreen.tscn");
     private static readonly PackedScene LobbyScene = GD.Load<PackedScene>("res://scenes/LobbyScreen.tscn");
+
+    /// <summary>Dev only: tests go straight to the start screen.</summary>
+    public static bool SkipIntro { get; set; }
 
     /// <summary>Dev only: opponents stand still, for scripted tests that need a predictable match.</summary>
     public bool IdleOpponents { get; set; }
@@ -46,6 +50,7 @@ public partial class Main : Control
         ApplyWindowMode();
         GetTree().AutoAcceptQuit = false;
         AddChild(new Sound { Name = "Sound" });
+        AddChild(new Cursors { Name = "Cursors" });
 
         try
         {
@@ -58,7 +63,15 @@ public partial class Main : Control
             return;
         }
 
-        ShowStartScreen();
+        if (SkipIntro)
+        {
+            ShowStartScreen();
+            return;
+        }
+
+        var intro = IntroScene.Instantiate<IntroScreen>();
+        intro.Finished += ShowStartScreen;
+        SwitchTo(intro);
     }
 
     public override void _Input(InputEvent @event)

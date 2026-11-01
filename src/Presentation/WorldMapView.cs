@@ -428,8 +428,14 @@ public partial class WorldMapView : Control
 
         _hoverPoint = viewPoint;
 
-        var overVillage = VillageAt(viewPoint) is not null;
-        MouseDefaultCursorShape = overVillage ? CursorShape.PointingHand : CursorShape.Arrow;
+        var hovered = VillageAt(viewPoint);
+        var overVillage = hovered is not null;
+        MouseDefaultCursorShape = hovered switch
+        {
+            null => CursorShape.Arrow,
+            { } id when _session!.State.Villages[id].OwnerId != _session.LocalPlayerId && !_session.State.Players[_session.LocalPlayerId].IsEliminated => CursorShape.Cross,
+            _ => CursorShape.PointingHand,
+        };
 
         var world = ViewToWorld(viewPoint);
         var inside = !overVillage && world.X >= 0 && world.Y >= 0 && world.X < _worldSize.X && world.Y < _worldSize.Y;
