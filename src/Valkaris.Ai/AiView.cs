@@ -13,6 +13,7 @@ public sealed class AiView
 {
     private readonly GameState _state;
     private readonly GameData _data;
+    private readonly NationAiConfig _nationAi;
     private readonly Func<ICommand, CommandResult> _send;
 
     public AiView(GameState state, GameData data, int playerId, Func<ICommand, CommandResult> send)
@@ -21,10 +22,24 @@ public sealed class AiView
         _data = data;
         _send = send;
         PlayerId = playerId;
-        Profile = data.Ai.Difficulties[state.Players[playerId].Difficulty ?? AiDifficulty.Normal];
+        _nationAi = data.Nations.Nations[state.Players[playerId].Nation].Ai;
+        Profile = WithNation(data.Ai.Difficulties[state.Players[playerId].Difficulty ?? AiDifficulty.Normal], data);
     }
 
+    private AiProfile WithNation(AiProfile profile, GameData data) => profile with
+    {
+        MaxWallLevel = Raised(profile.MaxWallLevel, _nationAi.MaxWallLevelBonus, data.Buildings.Buildings[BuildingType.Wall].MaxLevel),
+        MaxWatchtowerLevel = Raised(profile.MaxWatchtowerLevel, _nationAi.MaxWatchtowerBonus, data.Buildings.Buildings[BuildingType.Watchtower].MaxLevel),
+        RaidCooldownSeconds = profile.RaidCooldownSeconds * _nationAi.RaidCooldownFactor,
+        MaxRaidsPerVillage = profile.MaxRaidsPerVillage + _nationAi.MaxRaidsBonus,
+        ScoutMaxAgeSeconds = profile.ScoutMaxAgeSeconds * _nationAi.ScoutMaxAgeFactor,
+        MassSeconds = profile.MassSeconds * _nationAi.MassSecondsFactor,
+    };
+
+    private static int Raised(int level, int bonus, int max) => level == 0 ? 0 : Math.Min(level + bonus, max);
+
     public int PlayerId { get; }
+    public double CavalryPerSwordsman => _data.Ai.CavalryPerSwordsman * _nationAi.CavalryFactor;
     public AiProfile Profile { get; }
     public int RejectedCommands { get; private set; }
 

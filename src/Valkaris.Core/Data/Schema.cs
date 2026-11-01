@@ -466,6 +466,16 @@ public sealed class NationConfig
         LootCapacity = 1,
         BuildTime = 1,
         ScoutStrength = 1,
+        Ai = new NationAiConfig
+        {
+            MaxWallLevelBonus = 0,
+            RaidCooldownFactor = 1,
+            MaxRaidsBonus = 0,
+            CavalryFactor = 1,
+            MaxWatchtowerBonus = 0,
+            ScoutMaxAgeFactor = 1,
+            MassSecondsFactor = 1,
+        },
     };
 
     public required double WallBonus { get; init; }
@@ -476,4 +486,17 @@ public sealed class NationConfig
     public required double LootCapacity { get; init; }
     public required double BuildTime { get; init; }
     public required double ScoutStrength { get; init; }
+    public required NationAiConfig Ai { get; init; }
+}
+
+/// <summary>How the AI leans into a nation, on top of its difficulty. A level it never builds at that difficulty stays unbuilt.</summary>
+public sealed class NationAiConfig
+{
+    public required int MaxWallLevelBonus { get; init; }
+    public required double RaidCooldownFactor { get; init; }
+    public required int MaxRaidsBonus { get; init; }
+    public required double CavalryFactor { get; init; }
+    public required int MaxWatchtowerBonus { get; init; }
+    public required double ScoutMaxAgeFactor { get; init; }
+    public required double MassSecondsFactor { get; init; }
 }

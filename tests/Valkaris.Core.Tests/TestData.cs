@@ -28,6 +28,10 @@ internal sealed class ShippedDataSource : IDataSource
                 if (value is JsonValue)
                     nation[name] = 1;
             }
+            foreach (var (name, _) in nation!["ai"]!.AsObject().ToList())
+            {
+                nation["ai"]![name] = name.EndsWith("Bonus", StringComparison.Ordinal) ? 0 : 1;
+            }
         }
         return root.ToJsonString();
     }

@@ -41,6 +41,10 @@ internal static class GameDataValidator
                 (nameof(bonus.LootCapacity), bonus.LootCapacity),
                 (nameof(bonus.BuildTime), bonus.BuildTime),
                 (nameof(bonus.ScoutStrength), bonus.ScoutStrength),
+                (nameof(bonus.Ai.RaidCooldownFactor), bonus.Ai.RaidCooldownFactor),
+                (nameof(bonus.Ai.CavalryFactor), bonus.Ai.CavalryFactor),
+                (nameof(bonus.Ai.ScoutMaxAgeFactor), bonus.Ai.ScoutMaxAgeFactor),
+                (nameof(bonus.Ai.MassSecondsFactor), bonus.Ai.MassSecondsFactor),
             })
             {
                 if (value <= 0)

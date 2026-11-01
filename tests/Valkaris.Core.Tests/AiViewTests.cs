@@ -126,6 +126,55 @@ public class AiViewTests
         Assert.Equal(2, PublicSurfaceViolations(typeof(PlantedCheck)).Count);
 
     [Fact]
+    public void ANationAdjustsTheProfile()
+    {
+        var data = GameData.Load(new MutatedDataSource(GameData.NationsFile, root =>
+        {
+            var ai = root["nations"]!["Karuk"]!["ai"]!;
+            ai["maxWallLevelBonus"] = 2;
+            ai["raidCooldownFactor"] = 0.5;
+            ai["maxRaidsBonus"] = 1;
+            ai["cavalryFactor"] = 2;
+            ai["maxWatchtowerBonus"] = 1;
+            ai["scoutMaxAgeFactor"] = 0.5;
+            ai["massSecondsFactor"] = 0.5;
+        }));
+        AiView ViewAs(AiDifficulty difficulty)
+        {
+            var slots = new[] { new PlayerSlot("A", Nation.Karuk, true, difficulty), new PlayerSlot("B", Nation.Valdren, true, difficulty) };
+            return new AiView(GameFactory.CreateMatch(new GameSettings(3600, 1, MapSize.Small, 1), slots, data), data, 1, _ => CommandResult.Rejected(CommandRejection.MatchOver));
+        }
+
+        var view = ViewAs(AiDifficulty.Normal);
+        var plain = data.Ai.Difficulties[AiDifficulty.Normal];
+        Assert.Equal(plain.MaxWallLevel + 2, view.Profile.MaxWallLevel);
+        Assert.Equal(plain.MaxWatchtowerLevel + 1, view.Profile.MaxWatchtowerLevel);
+        Assert.Equal(plain.RaidCooldownSeconds / 2, view.Profile.RaidCooldownSeconds);
+        Assert.Equal(plain.MaxRaidsPerVillage + 1, view.Profile.MaxRaidsPerVillage);
+        Assert.Equal(plain.ScoutMaxAgeSeconds / 2, view.Profile.ScoutMaxAgeSeconds);
+        Assert.Equal(plain.MassSeconds / 2, view.Profile.MassSeconds);
+        Assert.Equal(data.Ai.CavalryPerSwordsman * 2, view.CavalryPerSwordsman);
+
+        // A difficulty that never builds a Wall stays that way, so Easy stays soft.
+        Assert.Equal(0, ViewAs(AiDifficulty.Easy).Profile.MaxWallLevel);
+    }
+
+    [Fact]
+    public void AiCodeNeverBranchesOnTheNation()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root.FullName, "Valkaris.sln")))
+            root = root.Parent!;
+        var offenders = Directory.GetFiles(Path.Combine(root.FullName, "src", "Valkaris.Ai"), "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            .Where(f => Path.GetFileName(f) != nameof(AiView) + ".cs")
+            .Where(f => System.Text.RegularExpressions.Regex.IsMatch(File.ReadAllText(f), @"\bNation\b|NationRules|NationConfig"))
+            .ToList();
+
+        Assert.Empty(offenders);
+    }
+
+    [Fact]
     public void AiCodeNeverBranchesOnTheDifficulty()
     {
         var root = new DirectoryInfo(AppContext.BaseDirectory);
@@ -144,7 +193,7 @@ public class AiViewTests
 
     [Fact]
     public void ProfileComesFromThePlayersDifficulty() =>
-        Assert.Same(TestData.Shipped.Ai.Difficulties[AiDifficulty.Hard], _view.Profile);
+        Assert.Equal(TestData.Shipped.Ai.Difficulties[AiDifficulty.Hard], _view.Profile);
 
     [Fact]
     public void OwnVillagesAreOnlyItsOwn() => Assert.All(_view.OwnVillages, v => Assert.Equal(Self, v.OwnerId));

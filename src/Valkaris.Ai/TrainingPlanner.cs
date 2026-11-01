@@ -135,7 +135,7 @@ public sealed class TrainingPlanner
 
         var swords = Count(village, UnitType.Swordsman);
         var cavalry = Count(village, UnitType.Cavalry);
-        if (cavalry < swords * _view.Config.CavalryPerSwordsman)
+        if (cavalry < swords * _view.CavalryPerSwordsman)
             yield return UnitType.Cavalry;
         yield return UnitType.Swordsman;
         yield return UnitType.Spearman;
