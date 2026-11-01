@@ -22,7 +22,10 @@ public static class BuildingRules
     }
 
     /// <summary>Seconds needed to upgrade a building to the given level.</summary>
-    public static double BuildTimeSeconds(GameData data, BuildingType type, int level)
+    public static double BuildTimeSeconds(GameData data, BuildingType type, int level, NationConfig nation) =>
+        BuildTimeSeconds(data, type, level) * nation.BuildTime;
+
+    internal static double BuildTimeSeconds(GameData data, BuildingType type, int level)
     {
         RequireBuildableLevel(level);
         return Rounded(data.Buildings.Buildings[type].BuildTime.ValueAt(level));
@@ -49,7 +52,14 @@ public static class BuildingRules
     public static double WarehouseCapacity(GameData data, int warehouseLevel) =>
         data.Buildings.Buildings[BuildingType.Warehouse].Capacity!.ValueAt(warehouseLevel);
 
-    public static double VillageCapacity(GameData data, Village village) =>
+    public static double WarehouseCapacity(GameData data, int warehouseLevel, NationConfig nation) =>
+        WarehouseCapacity(data, warehouseLevel) * nation.WarehouseCapacity;
+
+    /// <summary>Follows the village's current owner.</summary>
+    public static double VillageCapacity(GameData data, GameState state, Village village) =>
+        WarehouseCapacity(data, village.BuildingLevel(BuildingType.Warehouse), NationRules.Of(data, state, village.OwnerId));
+
+    internal static double VillageCapacity(GameData data, Village village) =>
         WarehouseCapacity(data, village.BuildingLevel(BuildingType.Warehouse));
 
     /// <summary>Highest level other buildings may reach under a Main Building of the given level.</summary>

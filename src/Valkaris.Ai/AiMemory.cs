@@ -111,9 +111,9 @@ public sealed class AiMemory
         var earlier = _sightings.GetValueOrDefault(report.TargetVillageId);
         var known = earlier?.OwnerId == report.DefenderId ? earlier : null;
         var ceiling = report.TroopRange is { } troops
-            ? troops.High * _view.Config.Beliefs.PowerPerTroop * (1 + _view.Combat.WallBonusPerLevel * report.WallRange!.High)
+            ? troops.High * _view.Config.Beliefs.PowerPerTroop * (1 + _view.WallBonusPerLevelOf(report.DefenderId) * report.WallRange!.High)
             : (double?)null;
-        var defence = ceiling ?? DefenceOf(report.Garrison!, report.WallLevel!.Value);
+        var defence = ceiling ?? DefenceOf(report.Garrison!, report.WallLevel!.Value, report.DefenderId);
 
         _caught.Remove(report.TargetVillageId);
         _sightings[report.TargetVillageId] = new Sighting(
@@ -154,7 +154,7 @@ public sealed class AiMemory
             report.DefenderId,
             report.Time,
             remaining,
-            DefenceOf(report.DefenderPresent, report.WallLevel),
+            DefenceOf(report.DefenderPresent, report.WallLevel, report.DefenderId),
             report.WallLevel,
             loyalty,
             isProtected,
@@ -166,10 +166,10 @@ public sealed class AiMemory
     }
 
     /// <summary>Defence power, taking the middle of defence against infantry and cavalry since the attacker's mix isn't known yet.</summary>
-    public double DefenceOf(IReadOnlyDictionary<UnitType, int> troops, int wallLevel)
+    public double DefenceOf(IReadOnlyDictionary<UnitType, int> troops, int wallLevel, int ownerId)
     {
         var total = troops.Sum(t => t.Value * (_view.Units.Units[t.Key].DefenceVsInfantry + _view.Units.Units[t.Key].DefenceVsCavalry) / 2);
-        return total * (1 + _view.Combat.WallBonusPerLevel * wallLevel);
+        return total * (1 + _view.WallBonusPerLevelOf(ownerId) * wallLevel);
     }
 
     /// <summary>The defence the AI expects there now. Unwatched villages are assumed to keep growing.</summary>
@@ -182,7 +182,7 @@ public sealed class AiMemory
         if (_sightings.TryGetValue(village.Id, out var sighting) && sighting.OwnerId == village.OwnerId)
         {
             var minutes = (_view.Now - sighting.Time) * _view.GameSpeed / 60;
-            var remaining = sighting.DefenceCeiling ?? DefenceOf(sighting.Remaining, sighting.WallLevel);
+            var remaining = sighting.DefenceCeiling ?? DefenceOf(sighting.Remaining, sighting.WallLevel, sighting.OwnerId);
 
             // Scouts count only who was home, and a player's army may be out.
             if (!village.IsBarbarian && sighting.FromScouts)
@@ -219,10 +219,10 @@ public sealed class AiMemory
 
             // A count made just after a fight is low, and a player trains back up.
             var scouts = village.IsBarbarian ? counted : Math.Max(counted, believed);
-            return scouts * (1 + _view.Combat.Scouting.WatchtowerBonusPerLevel * (sighting.WatchtowerLevel ?? 0));
+            return scouts * (1 + _view.Combat.Scouting.WatchtowerBonusPerLevel * (sighting.WatchtowerLevel ?? 0)) * _view.ScoutStrengthOf(village.OwnerId);
         }
 
-        return village.BarbarianTier is not null ? 0 : believed;
+        return village.BarbarianTier is not null ? 0 : believed * _view.ScoutStrengthOf(village.OwnerId);
     }
 
     /// <summary>Resources a barbarian village should hold. It refills after a raid, up to what the tier is believed to hold.</summary>

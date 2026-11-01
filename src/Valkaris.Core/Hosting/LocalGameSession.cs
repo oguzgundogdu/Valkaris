@@ -132,7 +132,7 @@ public sealed class LocalGameSession : IGameSession
     {
         foreach (var village in State.Villages.Values.Where(v => v.OwnerId == LocalPlayerId))
         {
-            var capacity = BuildingRules.VillageCapacity(Data, village);
+            var capacity = BuildingRules.VillageCapacity(Data, State, village);
             village.Resources = new Resources(capacity, capacity, capacity);
         }
     }

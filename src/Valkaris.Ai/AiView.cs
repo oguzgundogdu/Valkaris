@@ -101,7 +101,14 @@ public sealed class AiView
 
     public int FreeCarriers(Village own) => CarrierRules.Free(_state, _data, own);
 
-    public double CapacityOf(Village own) => BuildingRules.VillageCapacity(_data, own);
+    public double CapacityOf(Village own) => BuildingRules.VillageCapacity(_data, _state, own);
+
+    /// <summary>A player's nation is public, so what it does to a Wall or to Scouts can be counted on.</summary>
+    public double WallBonusPerLevelOf(int ownerId) => _data.Combat.WallBonusPerLevel * NationRules.Of(_data, _state, ownerId).WallBonus;
+
+    public double ScoutStrengthOf(int ownerId) => NationRules.Of(_data, _state, ownerId).ScoutStrength;
+
+    public Resources CostOf(UnitType unit) => UnitRules.Cost(_data, unit, NationRules.Of(_data, _state, PlayerId));
 
     public Resources ProductionOf(Village own) => BuildingRules.VillageProduction(_data, own);
 

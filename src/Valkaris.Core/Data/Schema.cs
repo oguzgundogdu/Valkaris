@@ -446,3 +446,34 @@ public sealed record AiProfile
     /// <summary>Game seconds that news of a target stays good enough to attack on. Older than this, it scouts first.</summary>
     public required double ScoutMaxAgeSeconds { get; init; }
 }
+
+public sealed class NationsConfig
+{
+    public required IReadOnlyDictionary<Nation, NationConfig> Nations { get; init; }
+}
+
+/// <summary>A nation's passive bonuses, each a multiplier where 1 changes nothing.</summary>
+public sealed class NationConfig
+{
+    /// <summary>For villages with no nation: barbarian and abandoned ones.</summary>
+    public static readonly NationConfig Neutral = new()
+    {
+        WallBonus = 1,
+        WarehouseCapacity = 1,
+        UnitSpeed = 1,
+        UnitCost = 1,
+        TrainingTime = 1,
+        LootCapacity = 1,
+        BuildTime = 1,
+        ScoutStrength = 1,
+    };
+
+    public required double WallBonus { get; init; }
+    public required double WarehouseCapacity { get; init; }
+    public required double UnitSpeed { get; init; }
+    public required double UnitCost { get; init; }
+    public required double TrainingTime { get; init; }
+    public required double LootCapacity { get; init; }
+    public required double BuildTime { get; init; }
+    public required double ScoutStrength { get; init; }
+}

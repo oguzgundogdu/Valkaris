@@ -33,8 +33,9 @@ public static class TrainPreview
         var god = GodRules.Applies(state, playerId);
         var definition = data.Units.Units[unit];
         var barracksLevel = village.BuildingLevel(BuildingType.Barracks);
-        var cost = god ? Resources.Zero : definition.Cost * Math.Max(0, count);
-        var seconds = god ? 0 : UnitRules.SecondsPerUnit(data, unit, barracksLevel) * Math.Max(0, count);
+        var nation = NationRules.Of(data, state, playerId);
+        var cost = god ? Resources.Zero : UnitRules.Cost(data, unit, nation) * Math.Max(0, count);
+        var seconds = god ? 0 : UnitRules.SecondsPerUnit(data, unit, barracksLevel, nation) * Math.Max(0, count);
 
         return new TrainOption
         {
@@ -44,7 +45,7 @@ public static class TrainPreview
             // One batch at a time: this one starts when the one before it finishes.
             StartTime = village.TrainingQueue.Count > 0 ? village.TrainingQueue[^1].FinishTime : state.ElapsedTime,
             DurationSeconds = seconds / state.Settings.SpeedMultiplier,
-            MaxCount = god ? int.MaxValue : UnitRules.MaxAffordable(data, unit, village.Resources),
+            MaxCount = god ? int.MaxValue : UnitRules.MaxAffordable(data, unit, village.Resources, nation),
         };
     }
 

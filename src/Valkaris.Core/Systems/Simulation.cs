@@ -210,7 +210,7 @@ public sealed class Simulation
     /// <summary>Adds what the warehouse can hold and returns that amount. The rest is lost.</summary>
     private Resources Deposit(Village village, Resources load)
     {
-        var capacity = BuildingRules.VillageCapacity(_data, village);
+        var capacity = BuildingRules.VillageCapacity(_data, _state, village);
         var before = village.Resources;
 
         // Worked out from the room left: subtracting afterwards would report rounding errors as lost resources.
@@ -297,16 +297,17 @@ public sealed class Simulation
         var target = _state.Villages[movement.ToVillageId!.Value];
         var scouts = movement.Troops.Values.Sum();
         var defenders = target.TroopCount(UnitType.Scout);
-        var defendStrength = ScoutRules.DefendingStrength(_data, target);
+        var defendStrength = ScoutRules.DefendingStrength(_data, _state, target);
+        var attackStrength = scouts * NationRules.Of(_data, _state, movement.OwnerId).ScoutStrength;
 
-        var succeeded = defenders == 0 || _state.NextRandomShare() < ScoutRules.SuccessChance(_data, scouts / defendStrength);
-        var scoutsLost = defenders == 0 ? 0 : ScoutRules.AttackersLost(scouts, scouts, defendStrength, succeeded);
-        var defendersLost = defenders == 0 ? 0 : ScoutRules.DefendersLost(defenders, scouts, defendStrength);
+        var succeeded = defenders == 0 || _state.NextRandomShare() < ScoutRules.SuccessChance(_data, attackStrength / defendStrength);
+        var scoutsLost = defenders == 0 ? 0 : ScoutRules.AttackersLost(scouts, attackStrength, defendStrength, succeeded);
+        var defendersLost = defenders == 0 ? 0 : ScoutRules.DefendersLost(defenders, attackStrength, defendStrength);
         target.RemoveTroops(UnitType.Scout, defendersLost);
 
         ScoutQuality? quality = !succeeded ? null
             : defenders == 0 ? ScoutQuality.Overwhelming
-            : ScoutRules.Quality(_data, scouts / defendStrength);
+            : ScoutRules.Quality(_data, attackStrength / defendStrength);
         var exact = quality is ScoutQuality.Clear or ScoutQuality.Overwhelming;
         var overwhelming = quality == ScoutQuality.Overwhelming;
 
@@ -368,7 +369,7 @@ public sealed class Simulation
         var defenders = target.Troops.Where(t => t.Value > 0 && t.Key != UnitType.Scout).ToDictionary(t => t.Key, t => t.Value);
         var wallLevel = target.BuildingLevel(BuildingType.Wall);
 
-        var result = CombatResolver.Resolve(_data, movement.Type, movement.Troops, defenders, wallLevel);
+        var result = CombatResolver.Resolve(_data, movement.Type, movement.Troops, defenders, wallLevel, NationRules.Of(_data, _state, target.OwnerId).WallBonus);
 
         foreach (var (unit, lost) in result.DefenderLost)
             target.RemoveTroops(unit, lost);
@@ -381,7 +382,7 @@ public sealed class Simulation
         var capitalProtected = false;
         if (result.AttackerWon)
         {
-            loot = LootRules.Calculate(_data, target, survivors);
+            loot = LootRules.Calculate(_data, _state, target, survivors, movement.OwnerId);
             target.Resources -= loot;
 
             if (movement.Type == MovementType.Attack)
@@ -558,7 +559,7 @@ public sealed class Simulation
         }
 
         AddTroops(home, movement.Troops);
-        home.Resources = (home.Resources + movement.Loot).CappedAt(BuildingRules.VillageCapacity(_data, home));
+        home.Resources = (home.Resources + movement.Loot).CappedAt(BuildingRules.VillageCapacity(_data, _state, home));
         return new TroopsReturned(movement.ArrivalTime, home.Id, movement.Loot);
     }
 
@@ -580,7 +581,7 @@ public sealed class Simulation
     {
         var from = fromTile ?? _state.Villages[fromVillageId].Position;
         var home = HomeFor(ownerId, homeVillageId);
-        var duration = GodRules.TravelSeconds(_state, ownerId, UnitRules.TravelSeconds(_data, _state, from, home.Position, troops));
+        var duration = GodRules.TravelSeconds(_state, ownerId, UnitRules.TravelSeconds(_data, _state, from, home.Position, troops, NationRules.Of(_data, _state, ownerId)));
 
         _state.AddMovement(new Movement(
             _state.NextMovementId++,
@@ -640,7 +641,7 @@ public sealed class Simulation
             }
 
             var produced = BuildingRules.VillageProduction(_data, village) * gameSeconds;
-            village.Resources = (village.Resources + produced).CappedAt(BuildingRules.VillageCapacity(_data, village));
+            village.Resources = (village.Resources + produced).CappedAt(BuildingRules.VillageCapacity(_data, _state, village));
         }
     }
 }

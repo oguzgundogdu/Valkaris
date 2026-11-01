@@ -620,7 +620,7 @@ public partial class UiTest : Control
         Expect(village.Resources.Wood < woodBefore, "Upgrade pays the cost");
         await Shot("queued");
 
-        session.Tick(BuildingRules.BuildTimeSeconds(session.Data, BuildingType.Woodcutter, 2));
+        session.Tick(BuildingRules.BuildTimeSeconds(session.Data, BuildingType.Woodcutter, 2, NationRules.Of(session.Data, session.State, 1)));
         await Frames();
         Expect(panel.GetNode<Label>("%Level").Text == L.T("common.level", ("level", "2")), "Level changes when the build completes");
 
@@ -1826,7 +1826,7 @@ public partial class UiTest : Control
         var open = panel.GetNode<Button>("%OpenTraining");
         Expect(open.Visible, "The Barracks offers a way to its training");
         panel.GetNode<Button>("%Upgrade").EmitSignal(BaseButton.SignalName.Pressed);
-        session.Tick(BuildingRules.BuildTimeSeconds(session.Data, BuildingType.Barracks, 1) + 1);
+        session.Tick(BuildingRules.BuildTimeSeconds(session.Data, BuildingType.Barracks, 1, NationRules.Of(session.Data, session.State, 1)) + 1);
         await Frames();
         Expect(village.BuildingLevel(BuildingType.Barracks) == 1, "Barracks is built");
 
@@ -2759,7 +2759,7 @@ public partial class UiTest : Control
         await Shot("transfer-moving");
 
         // The overflow warning.
-        var room = BuildingRules.VillageCapacity(data, to) - to.Resources.Stone;
+        var room = BuildingRules.VillageCapacity(data, session.State, to) - to.Resources.Stone;
         var fill = Math.Floor(Math.Min(from.Resources.Stone, (free - 2) * capacity));
         Expect(fill > room, $"This load overflows the target: fill {fill}, room {room}");
         stone.Value = fill;
@@ -3002,7 +3002,7 @@ public partial class UiTest : Control
 
         var state = session.State;
         var home = state.Villages[1];
-        var capacity = BuildingRules.VillageCapacity(data, home);
+        var capacity = BuildingRules.VillageCapacity(data, session.State, home);
         Expect(home.Resources.Wood == capacity && home.Resources.Food == capacity, "Resources show as full");
 
         var panel = FindAll<BuildingPanel>(game).First();

@@ -101,7 +101,7 @@ public partial class TroopsPanel : VBoxContainer
             var definition = session.Data.Units.Units[unit];
             row.Count.Text = Format.Times(village.TroopCount(unit));
             row.Stats.Text =
-                L.T("troops.stats", ("attack", Format.Whole(definition.Attack)), ("infantry", Format.Whole(definition.DefenceVsInfantry)), ("cavalry", Format.Whole(definition.DefenceVsCavalry)), ("carry", Format.Whole(definition.LootCapacity)));
+                L.T("troops.stats", ("attack", Format.Whole(definition.Attack)), ("infantry", Format.Whole(definition.DefenceVsInfantry)), ("cavalry", Format.Whole(definition.DefenceVsCavalry)), ("carry", Format.Whole(definition.LootCapacity * NationRules.Of(session.Data, session.State, session.LocalPlayerId).LootCapacity)));
 
             var locked = barracks < definition.RequiredBarracksLevel;
             row.Controls.Visible = !locked;

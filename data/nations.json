@@ -1,0 +1,7 @@
+{
+  "nations": {
+    "Valdren": { "wallBonus": 1, "warehouseCapacity": 1, "unitSpeed": 1, "unitCost": 1, "trainingTime": 1, "lootCapacity": 1, "buildTime": 1, "scoutStrength": 1 },
+    "Karuk": { "wallBonus": 1, "warehouseCapacity": 1, "unitSpeed": 1, "unitCost": 1, "trainingTime": 1, "lootCapacity": 1, "buildTime": 1, "scoutStrength": 1 },
+    "Solari": { "wallBonus": 1, "warehouseCapacity": 1, "unitSpeed": 1, "unitCost": 1, "trainingTime": 1, "lootCapacity": 1, "buildTime": 1, "scoutStrength": 1 }
+  }
+}

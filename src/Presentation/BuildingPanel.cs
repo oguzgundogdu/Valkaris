@@ -107,7 +107,7 @@ public partial class BuildingPanel : PanelContainer
         }
 
         if (building == BuildingType.Warehouse)
-            return Compare(l => L.T("effect.holds", ("amount", Format.Amount(BuildingRules.WarehouseCapacity(data, l)))));
+            return Compare(l => L.T("effect.holds", ("amount", Format.Amount(BuildingRules.WarehouseCapacity(data, l, NationRules.Of(data, session.State, session.LocalPlayerId))))));
 
         if (building == BuildingType.MainBuilding)
             return Compare(l => L.T("effect.others", ("level", Format.Whole(BuildingRules.MaxOtherBuildingLevel(data, l)))));
@@ -121,7 +121,7 @@ public partial class BuildingPanel : PanelContainer
         }
 
         if (building == BuildingType.Watchtower)
-            return Compare(l => L.T("effect.watchtower", ("value", Format.Trimmed(1 + data.Combat.Scouting.WatchtowerBonusPerLevel * l))));
+            return Compare(l => L.T("effect.watchtower", ("value", Format.Trimmed((1 + data.Combat.Scouting.WatchtowerBonusPerLevel * l) * NationRules.Of(data, session.State, session.LocalPlayerId).ScoutStrength))));
 
         return "";
     }

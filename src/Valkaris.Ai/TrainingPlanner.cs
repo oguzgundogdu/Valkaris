@@ -158,7 +158,7 @@ public sealed class TrainingPlanner
 
     private int Affordable(UnitType unit, Resources available)
     {
-        var cost = _view.Units.Units[unit].Cost;
+        var cost = _view.CostOf(unit);
         var count = int.MaxValue;
         foreach (var resource in Enum.GetValues<ResourceType>())
         {

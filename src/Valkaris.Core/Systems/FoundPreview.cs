@@ -34,7 +34,7 @@ public static class FoundPreview
         if (rejection is not null)
             return new FoundOption { Rejection = rejection };
 
-        var duration = GodRules.TravelSeconds(state, playerId, UnitRules.TravelSeconds(data, state, from.Position, tile, OneSettler));
+        var duration = GodRules.TravelSeconds(state, playerId, UnitRules.TravelSeconds(data, state, from.Position, tile, OneSettler, NationRules.Of(data, state, playerId)));
         return new FoundOption { DurationSeconds = duration, ArrivalTime = state.ElapsedTime + duration };
     }
 

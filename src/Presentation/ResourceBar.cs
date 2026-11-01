@@ -127,7 +127,7 @@ public partial class ResourceBar : PanelContainer
 
     private void RefreshResources(IGameSession session, Village village)
     {
-        var capacity = BuildingRules.VillageCapacity(session.Data, village);
+        var capacity = BuildingRules.VillageCapacity(session.Data, session.State, village);
         var production = BuildingRules.VillageProduction(session.Data, village) * session.State.Settings.SpeedMultiplier;
 
         foreach (var (type, chip) in _chips)

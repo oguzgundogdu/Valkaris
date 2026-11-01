@@ -6,7 +6,10 @@ namespace Valkaris.Core.Systems;
 /// <summary>How a contest between Scouts goes. Pure: the random number is passed in.</summary>
 public static class ScoutRules
 {
-    public static double DefendingStrength(GameData data, Village village) =>
+    public static double DefendingStrength(GameData data, GameState state, Village village) =>
+        DefendingStrength(data, village) * NationRules.Of(data, state, village.OwnerId).ScoutStrength;
+
+    internal static double DefendingStrength(GameData data, Village village) =>
         village.TroopCount(UnitType.Scout) * (1 + data.Combat.Scouting.WatchtowerBonusPerLevel * village.BuildingLevel(BuildingType.Watchtower));
 
     /// <summary>The chance from the curve in data: linear between its points, rising from zero at ratio 0, and flat after the last.</summary>

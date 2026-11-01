@@ -80,7 +80,7 @@ public static class SendResourcesPreview
     /// <summary>The target's stock, what it produces until arrival, and transfers arriving first, against its capacity.</summary>
     private static Resources ExpectedLoss(GameState state, GameData data, Village to, Resources load, double duration, double arrival)
     {
-        var capacity = BuildingRules.VillageCapacity(data, to);
+        var capacity = BuildingRules.VillageCapacity(data, state, to);
         var produced = BuildingRules.VillageProduction(data, to) * (duration * state.Settings.SpeedMultiplier);
         var stock = (to.Resources + produced).CappedAt(capacity);
 

@@ -49,7 +49,7 @@ public static class BuildPreview
         }
 
         var cost = god ? Resources.Zero : BuildingRules.UpgradeCost(data, building, targetLevel);
-        var capacity = BuildingRules.VillageCapacity(data, village);
+        var capacity = BuildingRules.VillageCapacity(data, state, village);
 
         return new BuildOption
         {
@@ -59,7 +59,7 @@ public static class BuildPreview
 
             // One builder per village: this item starts when the one before it finishes.
             StartTime = village.BuildQueue.Count > 0 ? village.BuildQueue[^1].FinishTime : state.ElapsedTime,
-            DurationSeconds = god ? 0 : BuildingRules.BuildTimeSeconds(data, building, targetLevel) / state.Settings.SpeedMultiplier,
+            DurationSeconds = god ? 0 : BuildingRules.BuildTimeSeconds(data, building, targetLevel, NationRules.Of(data, state, playerId)) / state.Settings.SpeedMultiplier,
             CostExceedsCapacity = cost.Wood > capacity || cost.Stone > capacity || cost.Food > capacity,
         };
     }

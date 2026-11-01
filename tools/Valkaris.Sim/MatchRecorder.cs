@@ -66,7 +66,7 @@ public sealed class MatchRecorder
                 AddDefenceSpent(_state.Villages[wall.VillageId].OwnerId, BuildingRules.UpgradeCost(_data, BuildingType.Wall, wall.NewLevel));
                 break;
             case TroopsTrained { Unit: UnitType.Spearman } spears:
-                AddDefenceSpent(_state.Villages[spears.VillageId].OwnerId, _data.Units.Units[UnitType.Spearman].Cost * spears.Count);
+                AddDefenceSpent(_state.Villages[spears.VillageId].OwnerId, UnitRules.Cost(_data, UnitType.Spearman, NationRules.Of(_data, _state, _state.Villages[spears.VillageId].OwnerId)) * spears.Count);
                 break;
             case BuildingCompleted { Building: BuildingType.Barracks } built:
                 _firstBarracks.TryAdd(_state.Villages[built.VillageId].OwnerId, built.Time);
@@ -117,7 +117,7 @@ public sealed class MatchRecorder
 
         if (!_unitSpending.TryGetValue(playerId, out var spending))
             _unitSpending[playerId] = spending = new Dictionary<UnitType, double>();
-        spending[unit] = spending.GetValueOrDefault(unit) + Total(_data.Units.Units[unit].Cost) * count;
+        spending[unit] = spending.GetValueOrDefault(unit) + Total(UnitRules.Cost(_data, unit, NationRules.Of(_data, _state, playerId))) * count;
     }
 
     private double ValueOf(IReadOnlyDictionary<UnitType, int> troops) =>
@@ -136,7 +136,7 @@ public sealed class MatchRecorder
         double HomePower(Village village)
         {
             var troops = village.Troops.Sum(t => t.Value * (_data.Units.Units[t.Key].DefenceVsInfantry + _data.Units.Units[t.Key].DefenceVsCavalry) / 2);
-            return troops * (1 + _data.Combat.WallBonusPerLevel * village.BuildingLevel(BuildingType.Wall));
+            return troops * (1 + _data.Combat.WallBonusPerLevel * NationRules.Of(_data, _state, village.OwnerId).WallBonus * village.BuildingLevel(BuildingType.Wall));
         }
 
         return (villages.Average(v => v.BuildingLevel(BuildingType.Wall)), villages.Average(HomePower));
@@ -157,7 +157,7 @@ public sealed class MatchRecorder
 
         foreach (var village in _state.Villages.Values.Where(v => !v.IsBarbarian))
         {
-            var capacity = BuildingRules.VillageCapacity(_data, village);
+            var capacity = BuildingRules.VillageCapacity(_data, _state, village);
             var production = BuildingRules.VillageProduction(_data, village);
             foreach (var resource in Enum.GetValues<ResourceType>())
             {
@@ -271,7 +271,7 @@ public sealed class MatchRecorder
             scouted.Count(r => r.Quality == ScoutQuality.Narrow),
             scouted.Count(r => r.Quality == ScoutQuality.Clear),
             scouted.Count(r => r.Quality == ScoutQuality.Overwhelming),
-            (int)Math.Round(_unitSpending.GetValueOrDefault(player.Id)?.GetValueOrDefault(UnitType.Scout) / Total(_data.Units.Units[UnitType.Scout].Cost) ?? 0),
+            (int)Math.Round(_unitSpending.GetValueOrDefault(player.Id)?.GetValueOrDefault(UnitType.Scout) / Total(UnitRules.Cost(_data, UnitType.Scout, NationRules.Of(_data, _state, player.Id))) ?? 0),
             villages.Count == 0 ? 0 : villages.Average(v => v.BuildingLevel(BuildingType.Watchtower)),
             Record(q => q is ScoutQuality.Clear or ScoutQuality.Overwhelming),
             Record(q => q == ScoutQuality.Narrow),
@@ -280,7 +280,7 @@ public sealed class MatchRecorder
 
     /// <summary>News can be at its limit when the army leaves, and the army still has to walk there.</summary>
     private double TravelAllowance(BattleReport attack) =>
-        UnitRules.TravelSeconds(_data, _state, _state.Villages[attack.AttackerVillageId].Position, _state.Villages[attack.DefenderVillageId].Position, attack.AttackerSent);
+        UnitRules.TravelSeconds(_data, _state, _state.Villages[attack.AttackerVillageId].Position, _state.Villages[attack.DefenderVillageId].Position, attack.AttackerSent, NationRules.Of(_data, _state, attack.AttackerId));
 
     private static double Total(Resources resources) => resources.Wood + resources.Stone + resources.Food;
 }

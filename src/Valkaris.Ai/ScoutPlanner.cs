@@ -71,7 +71,7 @@ public sealed class ScoutPlanner
     /// <summary>Enough to beat what it expects there by its margin, and twice what was caught last time.</summary>
     private int ScoutsFor(KnownVillage target)
     {
-        var scouts = Math.Max(1, (int)Math.Ceiling(_memory.ExpectedScoutStrength(target) * _view.Profile.ScoutMargin));
+        var scouts = Math.Max(1, (int)Math.Ceiling(_memory.ExpectedScoutStrength(target) * _view.Profile.ScoutMargin / _view.ScoutStrengthOf(_view.PlayerId)));
         return _memory.CaughtAt(target) is { } caught ? Math.Max(scouts, caught.Scouts * 2) : scouts;
     }
 }

@@ -18,7 +18,8 @@ public static class CombatResolver
         MovementType type,
         IReadOnlyDictionary<UnitType, int> attackers,
         IReadOnlyDictionary<UnitType, int> defenders,
-        int wallLevel)
+        int wallLevel,
+        double wallBonus = 1)
     {
         var infantryAttack = AttackOfClass(data, attackers, UnitClass.Infantry);
         var cavalryAttack = AttackOfClass(data, attackers, UnitClass.Cavalry);
@@ -31,7 +32,7 @@ public static class CombatResolver
 
         // Defence is weighted by what is actually attacking, so the attacker's mix matters.
         var weighted = (defenceVsInfantry * infantryAttack + defenceVsCavalry * cavalryAttack) / attack;
-        var defence = weighted * (1 + data.Combat.WallBonusPerLevel * wallLevel);
+        var defence = weighted * (1 + data.Combat.WallBonusPerLevel * wallBonus * wallLevel);
 
         var attackerWon = attack > defence;
         var ratio = attackerWon ? defence / attack : attack / defence;

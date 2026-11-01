@@ -26,8 +26,9 @@ public sealed class GameData
     public const string VillagesFile = "villages.json";
     public const string ScoringFile = "scoring.json";
     public const string AiFile = "ai.json";
+    public const string NationsFile = "nations.json";
 
-    public static readonly IReadOnlyList<string> Files = new[] { GameFile, BuildingsFile, UnitsFile, CombatFile, MapFile, VillagesFile, ScoringFile, AiFile };
+    public static readonly IReadOnlyList<string> Files = new[] { GameFile, BuildingsFile, UnitsFile, CombatFile, MapFile, VillagesFile, ScoringFile, AiFile, NationsFile };
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -38,7 +39,7 @@ public sealed class GameData
         Converters = { new JsonStringEnumConverter(allowIntegerValues: false) },
     };
 
-    internal GameData(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map, VillagesConfig villages, ScoringConfig scoring, AiConfig ai)
+    internal GameData(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map, VillagesConfig villages, ScoringConfig scoring, AiConfig ai, NationsConfig nations)
     {
         Game = game;
         Buildings = buildings;
@@ -48,6 +49,7 @@ public sealed class GameData
         Villages = villages;
         Scoring = scoring;
         Ai = ai;
+        Nations = nations;
     }
 
     public GameConfig Game { get; }
@@ -58,6 +60,7 @@ public sealed class GameData
     public VillagesConfig Villages { get; }
     public ScoringConfig Scoring { get; }
     public AiConfig Ai { get; }
+    public NationsConfig Nations { get; }
 
     public static GameData Load(IDataSource source)
     {
@@ -69,12 +72,13 @@ public sealed class GameData
         var villages = Parse<VillagesConfig>(source, VillagesFile);
         var scoring = Parse<ScoringConfig>(source, ScoringFile);
         var ai = Parse<AiConfig>(source, AiFile);
+        var nations = Parse<NationsConfig>(source, NationsFile);
 
-        var errors = GameDataValidator.Validate(game, buildings, units, combat, map, villages, scoring, ai);
+        var errors = GameDataValidator.Validate(game, buildings, units, combat, map, villages, scoring, ai, nations);
         if (errors.Count > 0)
             throw new GameDataException("Invalid game data:\n" + string.Join("\n", errors));
 
-        return new GameData(game, buildings, units, combat, map, villages, scoring, ai);
+        return new GameData(game, buildings, units, combat, map, villages, scoring, ai, nations);
     }
 
     private static T Parse<T>(IDataSource source, string fileName) where T : class

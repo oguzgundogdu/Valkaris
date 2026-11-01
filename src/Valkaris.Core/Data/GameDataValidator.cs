@@ -6,7 +6,7 @@ namespace Valkaris.Core.Data;
 /// <summary>Checks values that parse correctly but would break the game. Reports every problem at once.</summary>
 internal static class GameDataValidator
 {
-    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map, VillagesConfig villages, ScoringConfig scoring, AiConfig ai)
+    public static IReadOnlyList<string> Validate(GameConfig game, BuildingsConfig buildings, UnitsConfig units, CombatConfig combat, MapConfig map, VillagesConfig villages, ScoringConfig scoring, AiConfig ai, NationsConfig nations)
     {
         var errors = new List<string>();
         ValidateBuildings(buildings, errors);
@@ -17,7 +17,36 @@ internal static class GameDataValidator
         ValidateVillages(villages, buildings, errors);
         ValidateScoring(scoring, errors);
         ValidateAi(ai, game, buildings, map, errors);
+        ValidateNations(nations, errors);
         return errors;
+    }
+
+    private static void ValidateNations(NationsConfig config, List<string> errors)
+    {
+        foreach (var nation in Enum.GetValues<Nation>())
+        {
+            if (!config.Nations.TryGetValue(nation, out var bonus))
+            {
+                errors.Add($"{GameData.NationsFile}: nations.{nation} is missing.");
+                continue;
+            }
+
+            foreach (var (name, value) in new[]
+            {
+                (nameof(bonus.WallBonus), bonus.WallBonus),
+                (nameof(bonus.WarehouseCapacity), bonus.WarehouseCapacity),
+                (nameof(bonus.UnitSpeed), bonus.UnitSpeed),
+                (nameof(bonus.UnitCost), bonus.UnitCost),
+                (nameof(bonus.TrainingTime), bonus.TrainingTime),
+                (nameof(bonus.LootCapacity), bonus.LootCapacity),
+                (nameof(bonus.BuildTime), bonus.BuildTime),
+                (nameof(bonus.ScoutStrength), bonus.ScoutStrength),
+            })
+            {
+                if (value <= 0)
+                    errors.Add($"{GameData.NationsFile}: nations.{nation}.{name} must be positive.");
+            }
+        }
     }
 
     private static void ValidateBuildings(BuildingsConfig config, List<string> errors)
