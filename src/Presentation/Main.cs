@@ -34,6 +34,10 @@ public partial class Main : Control
     private string _lastVillage = "";
     private string _lastAddress = "";
     private Control? _screen;
+    private Action? _leaveMatch;
+
+    /// <summary>Dev only: lets tests see a quit without ending the run.</summary>
+    public static Action? QuitForTest { get; set; }
 
     public override void _Ready()
     {
@@ -94,10 +98,22 @@ public partial class Main : Control
     private static void ApplyWindowMode() =>
         DisplayServer.WindowSetMode(UserSettings.Fullscreen ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed);
 
-    public override async void _Notification(int what)
+    public override void _Notification(int what)
     {
-        if (what != NotificationWMCloseRequest)
+        if (what == NotificationWMCloseRequest)
+            Quit();
+    }
+
+    /// <summary>Every way out comes here: the buttons, Cmd+Q and Alt+F4. Whoever is connected gets told at once.</summary>
+    public async void Quit()
+    {
+        _leaveMatch?.Invoke();
+        _leaveMatch = null;
+        if (QuitForTest is { } quitForTest)
+        {
+            quitForTest();
             return;
+        }
 
         // Quitting with live scenes can abort inside Godot's shutdown (mutex lock failed), so free them first.
         _screen?.QueueFree();
@@ -115,6 +131,7 @@ public partial class Main : Control
         screen.Init(_data, choices);
         screen.StartRequested += StartMatch;
         screen.LanguageChanged += ShowStartScreen;
+        screen.QuitRequested += Quit;
         screen.HostRequested += () => ShowConnect(hosting: true);
         screen.JoinRequested += () => ShowConnect(hosting: false);
         SwitchTo(screen);
@@ -193,8 +210,11 @@ public partial class Main : Control
     {
         var screen = GameScene.Instantiate<GameScreen>();
         screen.Init(session);
+        _leaveMatch = leave;
+        screen.QuitRequested += Quit;
         screen.ExitRequested += () =>
         {
+            _leaveMatch = null;
             leave();
             ShowStartScreen();
         };
@@ -228,6 +248,7 @@ public partial class Main : Control
 
         var screen = GameScene.Instantiate<GameScreen>();
         screen.Init(session);
+        screen.QuitRequested += Quit;
         screen.ExitRequested += ShowStartScreen;
 #if VALKARIS_DEV
         if (devOptions.God)

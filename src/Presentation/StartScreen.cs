@@ -21,6 +21,7 @@ public partial class StartScreen : CenterContainer
     public event Action<MatchSetup>? StartRequested;
     public event Action? HostRequested;
     public event Action? JoinRequested;
+    public event Action? QuitRequested;
 
     /// <summary>The language changed, so the screen needs rebuilding with these choices.</summary>
     public event Action<StartChoices>? LanguageChanged;
@@ -135,6 +136,7 @@ public partial class StartScreen : CenterContainer
         GetNode<Button>("%Settings").Pressed += settings.Open;
         GetNode<Button>("%Host").Pressed += () => HostRequested?.Invoke();
         GetNode<Button>("%Join").Pressed += () => JoinRequested?.Invoke();
+        GetNode<Button>("%Quit").Pressed += () => QuitRequested?.Invoke();
         GetNode<Button>("%Start").Pressed += () =>
         {
             var seconds = ChosenDuration(_data, duration);

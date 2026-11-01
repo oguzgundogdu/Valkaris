@@ -1217,3 +1217,12 @@ msgstr "Zoom in (+)"
 
 msgid "map.zoom_out_tip"
 msgstr "Zoom out (-)"
+
+msgid "ui.start.quit"
+msgstr "Quit game"
+
+msgid "overlay.quit"
+msgstr "Quit game"
+
+msgid "overlay.quit.title"
+msgstr "Quit the game?"

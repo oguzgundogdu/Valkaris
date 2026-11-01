@@ -172,11 +172,22 @@ horizontal_alignment = 2
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
-[node name="Start" type="Button" parent="Card/Box"]
+[node name="StartRow" type="HBoxContainer" parent="Card/Box"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Start" type="Button" parent="Card/Box/StartRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
 text = "ui.start.start"
+size_flags_horizontal = 3
+
+[node name="Quit" type="Button" parent="Card/Box/StartRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SecondaryButton"
+text = "ui.start.quit"
 
 [node name="Network" type="HBoxContainer" parent="Card/Box"]
 layout_mode = 2

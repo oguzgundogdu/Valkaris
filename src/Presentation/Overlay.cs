@@ -10,6 +10,7 @@ public partial class Overlay : ColorRect
     public event Action? SecondaryPressed;
     public event Action? TertiaryPressed;
     public event Action? SettingsPressed;
+    public event Action? QuitPressed;
 
     public override void _Ready()
     {
@@ -17,14 +18,18 @@ public partial class Overlay : ColorRect
         GetNode<Button>("%Secondary").Pressed += () => SecondaryPressed?.Invoke();
         GetNode<Button>("%Tertiary").Pressed += () => TertiaryPressed?.Invoke();
         GetNode<Button>("%Settings").Pressed += () => SettingsPressed?.Invoke();
+        GetNode<Button>("%Quit").Pressed += () => QuitPressed?.Invoke();
     }
 
-    /// <summary>Only the in-game menu leads to the settings.</summary>
-    public void ShowSettings()
+    /// <summary>Only the in-game menu leads to the settings and to quitting.</summary>
+    public void ShowMenuChoices()
     {
         var settings = GetNode<Button>("%Settings");
         settings.Text = L.T("overlay.settings");
         settings.Visible = true;
+        var quit = GetNode<Button>("%Quit");
+        quit.Text = L.T("overlay.quit");
+        quit.Visible = true;
     }
 
     /// <summary>A third choice, shown only when there is text for it.</summary>

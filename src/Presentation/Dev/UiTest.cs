@@ -576,6 +576,7 @@ public partial class UiTest : Control
         await TestLanguage();
         await TestSettingsFromStart();
         await TestNationPicker();
+        await TestQuit();
 
         await TestFullscreenKey();
         await TestStartVillageName();
@@ -3596,6 +3597,54 @@ public partial class UiTest : Control
         await Frames();
     }
 
+    /// <summary>Every way out reaches Main, and a host's guests hear at once.</summary>
+    private async Task TestQuit()
+    {
+        var quits = 0;
+        Main.QuitForTest = () => quits++;
+
+        var start = Find<StartScreen>();
+        await ClickAndSettle(start.GetNode<Button>("%Quit"));
+        Expect(quits == 1, "The start screen's Quit game asks nothing and quits");
+
+        _main.Notification((int)Node.NotificationWMCloseRequest);
+        await Frames();
+        Expect(quits == 2, "Closing the window quits, as Cmd+Q and Alt+F4 do");
+
+        var data = GameData.Load(new GodotDataSource());
+        var network = new MemoryNetwork();
+        _main.OpenHostLobby(network.Host, "Oğuz", null, Array.Empty<string>(), Handshake.DefaultPort);
+        await Frames();
+        var guest = new LobbyClient(network.Connect(), data, Handshake.DataHash(new GodotDataSource()), "Ayla", null);
+        ClientGameSession? session = null;
+        guest.MatchStarted += started => session = started;
+        guest.Poll();
+        await Frames();
+        Press(Find<LobbyScreen>().GetNode<Button>("%Start"));
+        await Frames();
+        guest.Poll();
+
+        var game = Find<GameScreen>();
+        var heardLoss = false;
+        session!.ConnectionLost += () => heardLoss = true;
+        await ClickAndSettle(Find<ResourceBar>().GetNode<Button>("%Pause"));
+        var menuChoices = new[] { "%Action", "%Settings", "%Secondary", "%Tertiary", "%Quit" }.Select(name => game.GetNode<Overlay>("%PauseOverlay").GetNode<Button>(name).Text).ToList();
+        Expect(menuChoices.Distinct().Count() == menuChoices.Count, $"Every menu choice reads differently: {string.Join(", ", menuChoices)}");
+        var confirm = game.GetNode<Overlay>("%QuitOverlay");
+        await ClickAndSettle(game.GetNode<Overlay>("%PauseOverlay").GetNode<Button>("%Quit"));
+        Expect(confirm.Visible && confirm.GetNode<Label>("%Message").Text == L.T("overlay.leave.message_host"), "A host is told that quitting ends the match");
+        CheckLayout("quit confirmation");
+        await Shot("quit-confirm");
+        await ClickAndSettle(confirm.GetNode<Button>("%Action"));
+        Expect(quits == 3, "Confirming quits");
+        session.Tick(0);
+        Expect(heardLoss, "A host quitting tells the guests at once");
+
+        Main.QuitForTest = null;
+        game.ExitToStart();
+        await Frames();
+    }
+
     private async Task TestSettingsFromStart()
     {
         var start = Find<StartScreen>();
@@ -3833,6 +3882,7 @@ public partial class UiTest : Control
         AddChild(_main);
         await Frames();
         await TestSettingsFromStart();
+        await TestQuit();
         await TestRealInput(GameData.Load(new GodotDataSource()));
         await TestSounds(GameData.Load(new GodotDataSource()));
         await TestSettings(GameData.Load(new GodotDataSource()));
@@ -4103,6 +4153,11 @@ public partial class UiTest : Control
             Expect(surrender.Visible && !pause.Visible, $"Round {i}: Surrender asks first");
             await Dismiss(surrender.GetNode<Button>("%Secondary"));
             Expect(!surrender.Visible && pause.Visible, $"Round {i}: {how} backs out of surrendering, to the menu");
+            var confirmQuit = game.GetNode<Overlay>("%QuitOverlay");
+            await ClickAndSettle(pause.GetNode<Button>("%Quit"));
+            Expect(confirmQuit.Visible && !pause.Visible, $"Round {i}: Quit asks first during a match");
+            await Dismiss(confirmQuit.GetNode<Button>("%Secondary"));
+            Expect(!confirmQuit.Visible && pause.Visible, $"Round {i}: {how} backs out of quitting, to the menu");
             await ClickAndSettle(pause.GetNode<Button>("%Action"));
             Expect(!pause.Visible, $"Round {i}: the menu closes after backing out");
             await CheckClicksWork(game, $"backing out of the confirmations with {how}");

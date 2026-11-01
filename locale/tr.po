@@ -558,7 +558,7 @@ msgid "overlay.keep_playing"
 msgstr "Oynamaya devam et"
 
 msgid "overlay.leave.title"
-msgstr "Oyundan çıkılsın mı?"
+msgstr "Oyun kapatılsın mı?"
 
 msgid "overlay.leave.message"
 msgstr "Bu oyundaki ilerlemen kaybolacak."
@@ -1214,3 +1214,12 @@ msgstr "Yakınlaştır (+)"
 
 msgid "map.zoom_out_tip"
 msgstr "Uzaklaştır (-)"
+
+msgid "ui.start.quit"
+msgstr "Oyunu kapat"
+
+msgid "overlay.quit"
+msgstr "Oyunu kapat"
+
+msgid "overlay.quit.title"
+msgstr "Oyundan çıkılsın mı?"
