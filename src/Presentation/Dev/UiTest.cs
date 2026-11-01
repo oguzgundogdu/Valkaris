@@ -41,6 +41,8 @@ public partial class UiTest : Control
                 await NetReport();
             else if (netWindow is not null)
                 await NetWindow(netWindow);
+            else if (OS.GetCmdlineUserArgs().Contains("--real-input"))
+                await RealInputOnly();
             else
                 await Run();
         }
@@ -980,6 +982,16 @@ public partial class UiTest : Control
         Expect(host.State.Players[sessions[0].LocalPlayerId].IsAi, "An AI takes the seat of someone who leaves");
         sessions[1].Tick(0);
         Expect(sessions[1].State.Players[sessions[0].LocalPlayerId].IsAi, "Others can see that");
+
+        // The multiplayer menu doesn't pause, so nothing else is holding the game still behind it.
+        Drawer.Instant = false;
+        await OverlaysByMouse(game, 1);
+        await ClickAndSettle(Find<ResourceBar>().GetNode<Button>("%Pause"));
+        var viewBehindMenu = game.CurrentView;
+        await PressKeyEvent(Key.M);
+        Expect(game.CurrentView == viewBehindMenu, "Keys don't reach the game behind the multiplayer menu");
+        await EscapeAndSettle();
+        Drawer.Instant = true;
 
         var heardLoss = false;
         sessions[1].ConnectionLost += () => heardLoss = true;
@@ -2272,6 +2284,7 @@ public partial class UiTest : Control
         await TestCapitalTimeout(data);
         await TestWatchingAfterElimination(data);
         await TestMatchResults(data);
+        await TestRealInput(data);
         await TestGodMode(data);
         await TestLiveAi();
     }
@@ -3362,6 +3375,346 @@ public partial class UiTest : Control
 
     private void SelectTile(BuildingType building) =>
         Find<VillageView>().GetNode<BuildingTile>(building.ToString()).EmitSignal(BaseButton.SignalName.Pressed);
+
+    private async Task RealInputOnly()
+    {
+        UseSettings("user://uitest_settings.cfg");
+        _main = GD.Load<PackedScene>("res://scenes/Main.tscn").Instantiate<Main>();
+        _main.IdleOpponents = true;
+        AddChild(_main);
+        await Frames();
+        await TestRealInput(GameData.Load(new GodotDataSource()));
+    }
+
+    /// <summary>
+    /// Real mouse and key events through the viewport, with the real slide: a control hidden or stacked wrongly only shows up this way.
+    /// In a window, leave the mouse alone during the run. Moving the real cursor cancels the click being tested.
+    /// </summary>
+    private async Task TestRealInput(GameData data)
+    {
+        Drawer.Instant = false;
+        try
+        {
+            var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.Villages);
+            session.Send(new SendTroopsCommand(1, 2, MovementType.Raid, new Dictionary<UnitType, int> { [UnitType.Spearman] = 2 }));
+            await RunUntilArrived(session);
+            Expect(session.State.Reports.Count > 0, "The raid gives a report to open");
+            var (rounds, views) = (3, new[] { GameScreen.MainView.Village, GameScreen.MainView.World });
+
+            // First with no view change at all, the way a player would meet it right after the match starts.
+            await DrawerByMouse(game, 1, false);
+            await CheckClicksWork(game, "the drawer, before any view change");
+
+            foreach (var view in views)
+            {
+                game.ShowView(view);
+                await Frames();
+                await CheckClicksWork(game, $"switching to {view}");
+                await DrawerByMouse(game, rounds, true);
+                await ReportDialogByMouse(game, rounds);
+                await OverlaysByMouse(game, rounds);
+            }
+
+            await PopupsByMouse(game, rounds);
+            await TestCapitalDialogByMouse(data);
+            await TestEliminatedByMouse(data);
+        }
+        finally
+        {
+            Drawer.Instant = true;
+        }
+    }
+
+    private async Task DrawerByMouse(GameScreen game, int rounds, bool check)
+    {
+        var drawer = game.GetNode<Drawer>("%Drawer");
+        var overview = drawer.GetNode<Button>("Tabs/OverviewTab");
+        var reports = drawer.GetNode<Button>("Tabs/ReportsTab");
+        foreach (var (tab, kind) in new[] { (overview, Drawer.Tab.Overview), (reports, Drawer.Tab.Reports) })
+        {
+            for (var i = 0; i < rounds; i++)
+            {
+                await ClickAndSettle(tab);
+                Expect(drawer.IsOpen && drawer.ActiveTab == kind, $"Round {i}: a click on the tab opens {kind}");
+                await ClickAndSettle(tab);
+                Expect(!drawer.IsOpen, $"Round {i}: a click on the same tab closes {kind}");
+                if (check)
+                    await CheckClicksWork(game, $"closing {kind} with its tab");
+
+                await ClickAndSettle(tab);
+                await EscapeAndSettle();
+                Expect(!drawer.IsOpen, $"Round {i}: Esc closes {kind}");
+                if (check)
+                    await CheckClicksWork(game, $"closing {kind} with Esc");
+            }
+        }
+
+        // Moving between tabs leaves it open, and the filters inside respond.
+        await ClickAndSettle(overview);
+        await ClickAndSettle(reports);
+        Expect(drawer.IsOpen && drawer.ActiveTab == Drawer.Tab.Reports, "A click on the other tab swaps the page");
+        var panel = game.GetNode<ReportsPanel>("%Reports");
+        foreach (var filter in new[] { "%News", "%Scouting", "%Mine" })
+        {
+            await ClickAndSettle(panel.GetNode<Button>(filter));
+            Expect(panel.GetNode<Button>(filter).ButtonPressed, $"A click reaches the {filter} filter");
+        }
+        await ClickAndSettle(reports);
+    }
+
+    private async Task ReportDialogByMouse(GameScreen game, int rounds)
+    {
+        var drawer = game.GetNode<Drawer>("%Drawer");
+        var dialog = game.GetNode<ReportDialog>("%ReportDialog");
+        var reportsTab = drawer.GetNode<Button>("Tabs/ReportsTab");
+        var rows = game.GetNode<ReportsPanel>("%Reports").GetNode<VBoxContainer>("%Rows");
+        var view = game.CurrentView;
+        for (var i = 0; i < rounds * 2; i++)
+        {
+            var byEscape = i % 2 == 1;
+            await ClickAndSettle(reportsTab);
+            var row = rows.GetChildren().OfType<Button>().First(b => b.Visible);
+            await ClickAndSettle(row);
+            Expect(dialog.Visible, $"Round {i}: a click on a row opens the report");
+
+            await PressKeyEvent(Key.M);
+            Expect(game.CurrentView == view && dialog.Visible, $"Round {i}: keys don't reach the game behind the report");
+            await ClickAndSettle(new Vector2(4, 4));
+            Expect(dialog.Visible, $"Round {i}: a click beside the report doesn't reach the game behind it");
+
+            if (byEscape)
+                await EscapeAndSettle();
+            else
+                await ClickAndSettle(dialog.GetNode<Button>("%Close"));
+            Expect(!dialog.Visible, $"Round {i}: {(byEscape ? "Esc" : "Close")} hides the report");
+            Expect(drawer.IsOpen, $"Round {i}: closing the report leaves the drawer open");
+
+            await ClickAndSettle(reportsTab);
+            Expect(!drawer.IsOpen, $"Round {i}: the tab still closes the drawer after the report");
+            await CheckClicksWork(game, $"closing the report with {(byEscape ? "Esc" : "Close")}");
+        }
+    }
+
+    private async Task PopupsByMouse(GameScreen game, int rounds)
+    {
+        var session = game.Session;
+        var view = game.GetNode<VillageView>("%VillageView");
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var building = game.GetNode<PopupFrame>("%BuildingPopup");
+        var troops = game.GetNode<PopupFrame>("%TroopsPopup");
+        var send = game.GetNode<PopupFrame>("%SendPopup");
+        var rival = session.State.Villages[2];
+
+        async Task CloseIt(PopupFrame popup, bool byEscape, string name)
+        {
+            if (byEscape)
+                await EscapeAndSettle();
+            else
+                await ClickAndSettle(popup.GetNode<Button>("Frame/Header/Close"));
+            Expect(!popup.Visible, $"{(byEscape ? "Esc" : "Its close button")} closes {name}");
+            await MoveMouse(EmptySpot(game));
+            await Settle(0.5);
+            await CheckClicksWork(game, $"closing {name} with {(byEscape ? "Esc" : "its button")}");
+        }
+
+        async Task OnVillage(BuildingType type)
+        {
+            game.ShowView(GameScreen.MainView.Village);
+            game.SwitchVillage(1);
+            await Frames();
+            await MoveMouse(view.BuildingScreenRect(type).GetCenter());
+            await Settle(0.5);
+            Expect(view.Card.Visible, $"Resting the mouse on the {type} opens its card");
+        }
+
+        for (var i = 0; i < rounds * 2; i++)
+        {
+            var byEscape = i % 2 == 1;
+
+            await OnVillage(BuildingType.Farm);
+            await ClickAndSettle(view.BuildingScreenRect(BuildingType.Farm).GetCenter());
+            Expect(building.Visible, $"Round {i}: a click on a building opens its popup");
+            await CloseIt(building, byEscape, "the building popup");
+
+            await OnVillage(BuildingType.Barracks);
+            await ClickAndSettle(view.Card.GetNode<Button>("Box/Action"));
+            Expect(troops.Visible, $"Round {i}: the Barracks card opens training");
+            await CloseIt(troops, byEscape, "the training popup");
+
+            await OnVillage(BuildingType.Marketplace);
+            await ClickAndSettle(view.Card.GetNode<Button>("Box/Action"));
+            Expect(send.Visible, $"Round {i}: the Marketplace card opens the transfer");
+            await CloseIt(send, byEscape, "the transfer popup");
+
+            game.ShowView(GameScreen.MainView.World);
+            world.CentreOn(rival);
+            await Frames();
+            var at = world.GetGlobalTransform() * world.WorldToView(WorldMapView.VillageWorldPosition(rival));
+            await MoveMouse(at);
+            await Settle(0.5);
+            var card = world.GetNode<VillagePopup>("Popup");
+            Expect(card.Visible, $"Round {i}: resting the mouse on a rival opens its card");
+            await ClickAndSettle(card.GetNode<Button>("%Raid"));
+            Expect(send.Visible, $"Round {i}: the card's Raid opens the send popup");
+            await CloseIt(send, byEscape, "the send popup");
+            world.ClearSelection();
+        }
+    }
+
+    private async Task OverlaysByMouse(GameScreen game, int rounds)
+    {
+        var bar = game.GetNode<ResourceBar>("%ResourceBar");
+        var menu = bar.GetNode<Button>("%Pause");
+        var pause = game.GetNode<Overlay>("%PauseOverlay");
+        var leave = game.GetNode<Overlay>("%LeaveOverlay");
+        var surrender = game.GetNode<Overlay>("%SurrenderOverlay");
+
+        for (var i = 0; i < rounds * 2; i++)
+        {
+            var byEscape = i % 2 == 1;
+            var how = byEscape ? "Esc" : "its button";
+            async Task Dismiss(Button button)
+            {
+                if (byEscape)
+                    await EscapeAndSettle();
+                else
+                    await ClickAndSettle(button);
+            }
+
+            await ClickAndSettle(menu);
+            Expect(pause.Visible, $"Round {i}: the top bar opens the menu");
+            await Dismiss(pause.GetNode<Button>("%Action"));
+            Expect(!pause.Visible, $"Round {i}: {how} closes the menu");
+            await CheckClicksWork(game, $"closing the menu with {how}");
+
+            await ClickAndSettle(menu);
+            await ClickAndSettle(pause.GetNode<Button>("%Secondary"));
+            Expect(leave.Visible && !pause.Visible, $"Round {i}: Leave asks first");
+            await Dismiss(leave.GetNode<Button>("%Secondary"));
+            Expect(!leave.Visible && pause.Visible, $"Round {i}: {how} backs out of leaving, to the menu");
+            await ClickAndSettle(pause.GetNode<Button>("%Tertiary"));
+            Expect(surrender.Visible && !pause.Visible, $"Round {i}: Surrender asks first");
+            await Dismiss(surrender.GetNode<Button>("%Secondary"));
+            Expect(!surrender.Visible && pause.Visible, $"Round {i}: {how} backs out of surrendering, to the menu");
+            await ClickAndSettle(pause.GetNode<Button>("%Action"));
+            Expect(!pause.Visible, $"Round {i}: the menu closes after backing out");
+            await CheckClicksWork(game, $"backing out of the confirmations with {how}");
+        }
+    }
+
+    private async Task TestCapitalDialogByMouse(GameData data)
+    {
+        var (game, _) = await LoseCapital(data);
+        var dialog = game.GetNode<CapitalDialog>("%CapitalDialog");
+        var warning = game.GetNode<ResourceBar>("%ResourceBar").GetNode<Button>("%CapitalWarning");
+        for (var i = 0; i < 6; i++)
+        {
+            var byEscape = i % 2 == 1;
+            Expect(dialog.Visible, $"Round {i}: the capital dialog is open");
+            if (byEscape)
+                await EscapeAndSettle();
+            else
+                await ClickAndSettle(dialog.GetNode<Button>("%Later"));
+            Expect(!dialog.Visible, $"Round {i}: {(byEscape ? "Esc" : "Later")} sets the capital dialog aside");
+            await CheckClicksWork(game, $"setting the capital dialog aside with {(byEscape ? "Esc" : "Later")}");
+            await ClickAndSettle(warning);
+        }
+    }
+
+    private async Task TestEliminatedByMouse(GameData data)
+    {
+        var (game, session) = await StartMatch(data, Valkaris.Core.Dev.DevScenario.LastStand, players: 3, rivalAttacks: true);
+        await RunUntilArrived(session);
+        await Frames();
+        var overlay = game.GetNode<Overlay>("%EliminatedOverlay");
+        Expect(overlay.Visible, "Elimination is announced");
+        await EscapeAndSettle();
+        Expect(overlay.Visible, "Esc can't skip the choice after elimination");
+        await ClickAndSettle(overlay.GetNode<Button>("%Action"));
+        Expect(!overlay.Visible, "Keep watching closes the message");
+
+        var drawer = game.GetNode<Drawer>("%Drawer");
+        await ClickAndSettle(drawer.GetNode<Button>("Tabs/OverviewTab"));
+        Expect(drawer.IsOpen && drawer.ActiveTab == Drawer.Tab.Overview, "A watcher's tab still responds");
+        await ClickAndSettle(drawer.GetNode<Button>("Tabs/OverviewTab"));
+        Expect(!drawer.IsOpen, "A watcher can close the drawer, and it stays closed");
+        var world = game.GetNode<WorldMapView>("%WorldMapView");
+        var hits = 0;
+        void Count(InputEvent e) => hits += e is InputEventMouseButton ? 1 : 0;
+        world.GuiInput += Count;
+        await ClickAndSettle(EmptySpot(game));
+        world.GuiInput -= Count;
+        Expect(hits > 0, "A watcher's map still takes clicks");
+    }
+
+    /// <summary>The map or village, a drawer tab and a top-bar button all answer a real click. Leaves everything as it found it.</summary>
+    private async Task CheckClicksWork(GameScreen game, string after)
+    {
+        var drawer = game.GetNode<Drawer>("%Drawer");
+        var view = game.CurrentView;
+        Control shown = view == GameScreen.MainView.World ? game.GetNode<Control>("%WorldMapView") : game.GetNode<Control>("%VillageView");
+
+        var hits = 0;
+        void Count(InputEvent e) => hits += e is InputEventMouseButton ? 1 : 0;
+        shown.GuiInput += Count;
+        await ClickAndSettle(EmptySpot(game));
+        shown.GuiInput -= Count;
+        Expect(hits > 0, $"After {after}: a click reaches the {view} view");
+
+        var tab = drawer.GetNode<Button>("Tabs/OverviewTab");
+        await ClickAndSettle(tab);
+        Expect(drawer.IsOpen && drawer.ActiveTab == Drawer.Tab.Overview, $"After {after}: a click on a drawer tab opens it");
+        await ClickAndSettle(tab);
+        Expect(!drawer.IsOpen, $"After {after}: a click on the tab closes it");
+
+        var bar = game.GetNode<ResourceBar>("%ResourceBar");
+        var other = view == GameScreen.MainView.World ? GameScreen.MainView.Village : GameScreen.MainView.World;
+        await ClickAndSettle(bar.GetNode<Button>(other == GameScreen.MainView.World ? "%ViewWorld" : "%ViewVillage"));
+        Expect(game.CurrentView == other, $"After {after}: a click on the top bar switches the view");
+        await ClickAndSettle(bar.GetNode<Button>(view == GameScreen.MainView.World ? "%ViewWorld" : "%ViewVillage"));
+        Expect(game.CurrentView == view, $"After {after}: a click on the top bar switches back");
+    }
+
+    /// <summary>Near the left edge, clear of the top bar, the village strip, the drawer and the buildings.</summary>
+    private static Vector2 EmptySpot(GameScreen game)
+    {
+        var area = game.GetNode<Control>("%MainArea").GetGlobalRect();
+        return new Vector2(area.Position.X + 3, area.Position.Y + 70);
+    }
+
+    private async Task MoveMouse(Vector2 at)
+    {
+        GetViewport().PushInput(new InputEventMouseMotion { Position = at, GlobalPosition = at }, true);
+        await Frames(2);
+    }
+
+    private async Task ClickAndSettle(Control control) => await ClickAndSettle(control.GetGlobalRect().GetCenter());
+
+    private async Task ClickAndSettle(Vector2 at)
+    {
+        await MoveMouse(at);
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true, Position = at, GlobalPosition = at, ButtonMask = MouseButtonMask.Left }, true);
+        await Frames(1);
+        GetViewport().PushInput(new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false, Position = at, GlobalPosition = at }, true);
+        await Settle(0.2);
+    }
+
+    private async Task PressKeyEvent(Key key)
+    {
+        GetViewport().PushInput(new InputEventKey { Pressed = true, Keycode = key, PhysicalKeycode = key });
+        await Frames(1);
+        GetViewport().PushInput(new InputEventKey { Pressed = false, Keycode = key, PhysicalKeycode = key });
+        await Frames(2);
+    }
+
+    private async Task EscapeAndSettle()
+    {
+        await PressKeyEvent(Key.Escape);
+        await Settle(0.2);
+    }
+
+    /// <summary>Longer than the drawer's slide.</summary>
+    private async Task Settle(double seconds) => await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
 
     private T Find<T>() where T : Node =>
         FindAll<T>(_main).FirstOrDefault() ?? throw new InvalidOperationException($"{typeof(T).Name} not found.");

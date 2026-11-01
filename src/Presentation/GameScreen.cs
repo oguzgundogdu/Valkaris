@@ -241,18 +241,17 @@ public partial class GameScreen : Control
 
         if (key.Keycode == Key.Escape)
         {
-            if (!CloseTopPopup())
-            {
-                if (_drawer.IsOpen)
-                    _drawer.Close();
-                _worldMap.ClearSelection();
-            }
+            HandleEscape();
             return;
         }
 
+        // Whatever covers the game keeps the keys from reaching it.
+        if (_reportDialog.Visible || _eliminatedOverlay.Visible || _matchEndScreen.Visible || _confirmingLeave || _confirmingSurrender || _hostLost)
+            return;
+
         if (key.Keycode == Key.P)
             TogglePause();
-        else if (Session.IsPaused || Session.State.IsMatchOver || _currentVillageId is null || _capitalDialog.Visible)
+        else if (Session.IsPaused || _menuOpen || Session.State.IsMatchOver || _currentVillageId is null || _capitalDialog.Visible)
             return;
         else if (key.Keycode == Key.Space && CurrentView == MainView.World)
             _worldMap.ToggleWholeMap();
@@ -264,6 +263,32 @@ public partial class GameScreen : Control
             CycleVillage(-1);
         else if (key.Keycode == Key.E)
             CycleVillage(1);
+    }
+
+    /// <summary>Closes whatever is on top, one layer per press. The choices that have to be made stay until they are.</summary>
+    private void HandleEscape()
+    {
+        if (_hostLost || _matchEndScreen.Visible)
+            return;
+
+        if (_confirmingLeave)
+            _confirmingLeave = false;
+        else if (_confirmingSurrender)
+            _confirmingSurrender = false;
+        else if (Session.IsPaused || _menuOpen)
+            TogglePause();
+        else if (_eliminatedOverlay.Visible)
+            return;
+        else if (_reportDialog.Visible)
+            _reportDialog.Visible = false;
+        else if (_capitalDialog.Visible)
+            _capitalSetAside = true;
+        else if (!CloseTopPopup())
+        {
+            if (_drawer.IsOpen)
+                _drawer.Close();
+            _worldMap.ClearSelection();
+        }
     }
 
     private void CycleVillage(int direction)
@@ -299,18 +324,20 @@ public partial class GameScreen : Control
             ? Session.State.Villages[capital]
             : UiContent.OwnVillages(Session).FirstOrDefault();
 
+        var hadVillage = _currentVillageId is not null;
         _currentVillageId = next?.Id;
         _sendPanel.ClearAmounts();
         if (next is null)
-            StartWatching();
+            StartWatching(hadVillage);
         return next;
     }
 
-    /// <summary>A player with no villages keeps only the map and the reports.</summary>
-    private void StartWatching()
+    /// <summary>A player with no villages keeps only the map. The reports open once, and the drawer is theirs after that.</summary>
+    private void StartWatching(bool justLost)
     {
         ShowView(MainView.World);
-        ShowPanel(GamePanel.Reports);
+        if (justLost)
+            ShowPanel(GamePanel.Reports);
     }
 
     private void EnterVillage(int villageId)
@@ -344,7 +371,6 @@ public partial class GameScreen : Control
         _viewTween?.Kill();
         incoming.Visible = true;
         incoming.Modulate = new Color(1, 1, 1, 0);
-        incoming.GetParent().MoveChild(incoming, -1);
         outgoing.Visible = false;
         outgoing.Modulate = Colors.White;
 
@@ -415,8 +441,6 @@ public partial class GameScreen : Control
         var unread = _reportsPanel.UnreadCount(Session);
         _drawer.SetReportsTitle(unread > 0 ? L.T("tab.reports_unread", ("count", Format.Whole(unread))) : L.T("tab.reports"));
 
-        if (village is null && !_drawer.IsOpen)
-            _drawer.Open(Drawer.Tab.Reports);
         if (_drawer.IsOpen && _drawer.ActiveTab == Drawer.Tab.Reports)
         {
             _reportsPanel.Refresh(Session);
