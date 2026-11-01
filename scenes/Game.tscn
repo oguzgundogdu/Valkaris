@@ -1,5 +1,6 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
+[ext_resource type="PackedScene" path="res://scenes/SettingsScreen.tscn" id="settings"]
 [ext_resource type="Script" path="res://src/Presentation/GameScreen.cs" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/ResourceBar.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/BuildingPanel.tscn" id="3"]
@@ -325,6 +326,11 @@ layout_mode = 1
 
 [node name="SurrenderOverlay" parent="." instance=ExtResource("7")]
 unique_name_in_owner = true
+layout_mode = 1
+
+[node name="SettingsScreen" parent="." instance=ExtResource("settings")]
+unique_name_in_owner = true
+visible = false
 layout_mode = 1
 
 [node name="MatchEndScreen" parent="." instance=ExtResource("15")]

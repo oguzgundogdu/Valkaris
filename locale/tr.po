@@ -1145,3 +1145,39 @@ msgstr "{attacker}: {target} üzerine {mission} kazandı"
 
 msgid "report.headline_watched_lost"
 msgstr "{attacker}: {target} üzerine {mission} kaybetti"
+
+msgid "ui.settings.title"
+msgstr "Ayarlar"
+
+msgid "ui.settings.master"
+msgstr "Ana ses"
+
+msgid "ui.settings.music"
+msgstr "Müzik"
+
+msgid "ui.settings.effects"
+msgstr "Efektler"
+
+msgid "ui.settings.mute"
+msgstr "Tüm sesleri kapat"
+
+msgid "ui.settings.fullscreen"
+msgstr "Tam ekran"
+
+msgid "ui.settings.language_locked"
+msgstr "Dil, başlangıç ekranından değiştirilebilir."
+
+msgid "ui.settings.close"
+msgstr "Kapat"
+
+msgid "ui.start.settings"
+msgstr "Ayarlar"
+
+msgid "overlay.settings"
+msgstr "Ayarlar"
+
+msgid "bar.mute_tip"
+msgstr "Tüm sesleri kapat"
+
+msgid "bar.unmute_tip"
+msgstr "Sesi yeniden aç"

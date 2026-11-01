@@ -1,5 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
+[ext_resource type="PackedScene" path="res://scenes/SettingsScreen.tscn" id="settings"]
 [ext_resource type="Script" path="res://src/Presentation/StartScreen.cs" id="1"]
 
 [node name="StartScreen" type="CenterContainer"]
@@ -160,3 +161,16 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "ui.start.join"
+
+[node name="Settings" type="Button" parent="Card/Box/Network"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+text = "ui.start.settings"
+
+[node name="SettingsScreen" parent="." instance=ExtResource("settings")]
+unique_name_in_owner = true
+visible = false
+top_level = true
+layout_mode = 2

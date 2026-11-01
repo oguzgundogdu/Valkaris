@@ -1,5 +1,7 @@
-[gd_resource type="Theme" load_steps=14 format=3]
+[gd_resource type="Theme" load_steps=17 format=3]
 
+[ext_resource type="Texture2D" path="res://assets/icons/check_off.svg" id="check_off"]
+[ext_resource type="Texture2D" path="res://assets/icons/check_on.svg" id="check_on"]
 [ext_resource type="FontVariation" path="res://assets/fonts/NunitoRegular.tres" id="1"]
 [ext_resource type="FontVariation" path="res://assets/fonts/NunitoBold.tres" id="2"]
 
@@ -155,7 +157,25 @@ corner_radius_bottom_left = 6
 [sub_resource type="StyleBoxEmpty" id="tab_panel"]
 content_margin_top = 8.0
 
+[sub_resource type="StyleBoxEmpty" id="checkbox_plain"]
+content_margin_top = 4.0
+content_margin_bottom = 4.0
+
 [resource]
+CheckBox/icons/unchecked = ExtResource("check_off")
+CheckBox/icons/checked = ExtResource("check_on")
+CheckBox/icons/unchecked_disabled = ExtResource("check_off")
+CheckBox/icons/checked_disabled = ExtResource("check_on")
+CheckBox/colors/font_color = Color(0.941, 0.902, 0.839, 1)
+CheckBox/colors/font_hover_color = Color(0.941, 0.902, 0.839, 1)
+CheckBox/colors/font_pressed_color = Color(0.941, 0.902, 0.839, 1)
+CheckBox/colors/font_hover_pressed_color = Color(0.941, 0.902, 0.839, 1)
+CheckBox/styles/normal = SubResource("checkbox_plain")
+CheckBox/styles/hover = SubResource("checkbox_plain")
+CheckBox/styles/pressed = SubResource("checkbox_plain")
+CheckBox/styles/hover_pressed = SubResource("checkbox_plain")
+CheckBox/styles/disabled = SubResource("checkbox_plain")
+CheckBox/styles/focus = SubResource("checkbox_plain")
 default_font = ExtResource("1")
 default_font_size = 16
 Label/colors/font_color = Color(0.941, 0.902, 0.839, 1)

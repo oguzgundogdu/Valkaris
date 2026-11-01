@@ -105,6 +105,13 @@ theme_type_variation = &"SecondaryButton"
 theme_override_colors/font_color = Color(0.961, 0.682, 0.243, 1)
 theme_override_colors/font_hover_color = Color(0.961, 0.682, 0.243, 1)
 
+[node name="Mute" type="Button" parent="Clip/Box"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 0)
+layout_mode = 2
+focus_mode = 0
+theme_type_variation = &"SecondaryButton"
+
 [node name="Pause" type="Button" parent="Clip/Box"]
 unique_name_in_owner = true
 layout_mode = 2

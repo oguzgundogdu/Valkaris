@@ -99,6 +99,13 @@ public partial class StartScreen : CenterContainer
         };
         CheckVillageName();
 
+        var settings = GetNode<SettingsScreen>("%SettingsScreen");
+        settings.LanguageChosen += code =>
+        {
+            Language.Choose(code);
+            LanguageChanged?.Invoke(new StartChoices(duration.Selected, speed.Selected, mapSize.Selected, opponents.Selected, difficulty.Selected, villageName.Text));
+        };
+        GetNode<Button>("%Settings").Pressed += settings.Open;
         GetNode<Button>("%Host").Pressed += () => HostRequested?.Invoke();
         GetNode<Button>("%Join").Pressed += () => JoinRequested?.Invoke();
         GetNode<Button>("%Start").Pressed += () =>

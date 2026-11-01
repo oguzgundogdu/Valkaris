@@ -12,6 +12,8 @@ namespace Valkaris.Presentation;
 public partial class ResourceBar : PanelContainer
 {
     private const float IconButtonWidth = 44;
+    private const string SoundOnIcon = "res://assets/icons/sound_on.svg";
+    private const string SoundOffIcon = "res://assets/icons/sound_off.svg";
     private const string ViewVillageIcon = "res://assets/icons/view_village.svg";
     private const string ViewWorldIcon = "res://assets/icons/view_world.svg";
 
@@ -20,6 +22,8 @@ public partial class ResourceBar : PanelContainer
     private readonly Dictionary<ResourceType, Chip> _chips = new();
     private Label _clock = null!;
     private Button _pause = null!;
+    private Button _mute = null!;
+    private bool _showingMuted;
     private Button _incoming = null!;
 
     private Button _viewVillage = null!;
@@ -48,6 +52,11 @@ public partial class ResourceBar : PanelContainer
     {
         _clock = GetNode<Label>("%Clock");
         _pause = GetNode<Button>("%Pause");
+        _mute = GetNode<Button>("%Mute");
+        _mute.ExpandIcon = true;
+        _mute.Pressed += () => Sound.SetMuted(!Sound.IsMuted);
+        _extraItems.Add(_mute);
+        ShowMute(Sound.IsMuted);
         _incoming = GetNode<Button>("%Incoming");
         _incoming.Pressed += () => IncomingPressed?.Invoke(_incomingTarget);
         _pause.Pressed += () => PauseRequested?.Invoke();
@@ -68,6 +77,13 @@ public partial class ResourceBar : PanelContainer
         // The row sits in a clipped box of no minimum width, so it can never push the window wider.
         var clip = GetNode<Control>("%Clip");
         clip.CustomMinimumSize = new Vector2(0, GetNode<Control>("%Box").GetCombinedMinimumSize().Y);
+    }
+
+    private void ShowMute(bool muted)
+    {
+        _showingMuted = muted;
+        _mute.Icon = GD.Load<Texture2D>(muted ? SoundOffIcon : SoundOnIcon);
+        _mute.TooltipText = L.T(muted ? "bar.unmute_tip" : "bar.mute_tip");
     }
 
     /// <summary>Something else that always shows in the bar, such as the God mode badge.</summary>
@@ -126,6 +142,8 @@ public partial class ResourceBar : PanelContainer
 
     public void Refresh(IGameSession session, Village? village, GameScreen.MainView view)
     {
+        if (Sound.IsMuted != _showingMuted)
+            ShowMute(Sound.IsMuted);
         _viewVillage.ButtonPressed = view == GameScreen.MainView.Village;
         _viewWorld.ButtonPressed = view == GameScreen.MainView.World;
         GetNode<Control>("%ViewToggle").Visible = village is not null;

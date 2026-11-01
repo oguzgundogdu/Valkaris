@@ -51,6 +51,14 @@ public partial class Sound : Node
 
     public static void Play(SoundEffect effect) => _instance?.PlayEffect(effect);
 
+    public static bool IsMuted => AudioServer.IsBusMute(AudioServer.GetBusIndex(MasterBus));
+
+    public static void SetMuted(bool muted)
+    {
+        UserSettings.Muted = muted;
+        ApplySettings();
+    }
+
     /// <summary>Puts the saved volumes and mute on the buses.</summary>
     public static void ApplySettings()
     {

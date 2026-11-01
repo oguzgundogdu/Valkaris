@@ -49,6 +49,7 @@ public partial class GameScreen : Control
     private RenamePanel _renamePanel = null!;
     private Tween? _viewTween;
     private bool _menuOpen;
+    private SettingsScreen _settings = null!;
     private readonly HashSet<int> _heardAttacks = new();
     private bool _hostLost;
 
@@ -102,6 +103,8 @@ public partial class GameScreen : Control
         _eliminatedOverlay = GetNode<Overlay>("%EliminatedOverlay");
         _capitalDialog = GetNode<CapitalDialog>("%CapitalDialog");
         _matchEndScreen = GetNode<MatchEndScreen>("%MatchEndScreen");
+        _settings = GetNode<SettingsScreen>("%SettingsScreen");
+        _settings.LanguageLocked = true;
 
         _buildingPopup = GetNode<PopupFrame>("%BuildingPopup");
         _troopsPopup = GetNode<PopupFrame>("%TroopsPopup");
@@ -112,7 +115,7 @@ public partial class GameScreen : Control
         // Building labels draw above the village, so these need to be higher still.
         GetNode<Control>("%PopupLayer").ZIndex = PopupsAbove;
         _resourceBar.Resized += () => GetNode<Control>("%PopupLayer").OffsetTop = _resourceBar.Size.Y;
-        foreach (var top in new Control[] { _toast, _reportDialog, _capitalDialog, _eliminatedOverlay, _pauseOverlay, _leaveOverlay, _surrenderOverlay, _matchEndScreen })
+        foreach (var top in new Control[] { _toast, _reportDialog, _capitalDialog, _eliminatedOverlay, _pauseOverlay, _leaveOverlay, _surrenderOverlay, _settings, _matchEndScreen })
             top.ZIndex = OverlaysAbove;
 
         _villageView.BuildingSelected += building =>
@@ -148,6 +151,8 @@ public partial class GameScreen : Control
             _pauseOverlay.Configure(L.T("overlay.paused.title"), L.T("overlay.paused.message"), L.T("overlay.resume"), L.T("overlay.leave"));
         else
             _pauseOverlay.Configure(L.T("overlay.menu.title"), L.T("overlay.menu.message"), L.T("overlay.close"), L.T("overlay.leave"));
+        _pauseOverlay.ShowSettings();
+        _pauseOverlay.SettingsPressed += _settings.Open;
         _pauseOverlay.ActionPressed += TogglePause;
         _pauseOverlay.SecondaryPressed += () => _confirmingLeave = true;
 
@@ -197,7 +202,7 @@ public partial class GameScreen : Control
             _worldMap.Refresh(Session, village);
         RefreshActiveTab(village);
 
-        _pauseOverlay.Visible = (Session.IsPaused || _menuOpen) && !_confirmingLeave && !_confirmingSurrender && !_hostLost;
+        _pauseOverlay.Visible = (Session.IsPaused || _menuOpen) && !_confirmingLeave && !_confirmingSurrender && !_hostLost && !_settings.Visible;
         _pauseOverlay.SetTertiary(Session.State.Players[Session.LocalPlayerId].IsEliminated ? null : L.T("overlay.surrender"));
         _leaveOverlay.Visible = _confirmingLeave || _hostLost;
         _surrenderOverlay.Visible = _confirmingSurrender && !_hostLost;
@@ -258,7 +263,7 @@ public partial class GameScreen : Control
         }
 
         // Whatever covers the game keeps the keys from reaching it.
-        if (_reportDialog.Visible || _eliminatedOverlay.Visible || _matchEndScreen.Visible || _confirmingLeave || _confirmingSurrender || _hostLost)
+        if (_settings.Visible || _reportDialog.Visible || _eliminatedOverlay.Visible || _matchEndScreen.Visible || _confirmingLeave || _confirmingSurrender || _hostLost)
             return;
 
         if (key.Keycode == Key.P)
@@ -283,7 +288,9 @@ public partial class GameScreen : Control
         if (_hostLost || _matchEndScreen.Visible)
             return;
 
-        if (_confirmingLeave)
+        if (_settings.Visible)
+            _settings.Close();
+        else if (_confirmingLeave)
             _confirmingLeave = false;
         else if (_confirmingSurrender)
             _confirmingSurrender = false;

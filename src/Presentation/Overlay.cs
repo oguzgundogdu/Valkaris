@@ -9,12 +9,22 @@ public partial class Overlay : ColorRect
     public event Action? ActionPressed;
     public event Action? SecondaryPressed;
     public event Action? TertiaryPressed;
+    public event Action? SettingsPressed;
 
     public override void _Ready()
     {
         GetNode<Button>("%Action").Pressed += () => ActionPressed?.Invoke();
         GetNode<Button>("%Secondary").Pressed += () => SecondaryPressed?.Invoke();
         GetNode<Button>("%Tertiary").Pressed += () => TertiaryPressed?.Invoke();
+        GetNode<Button>("%Settings").Pressed += () => SettingsPressed?.Invoke();
+    }
+
+    /// <summary>Only the in-game menu leads to the settings.</summary>
+    public void ShowSettings()
+    {
+        var settings = GetNode<Button>("%Settings");
+        settings.Text = L.T("overlay.settings");
+        settings.Visible = true;
     }
 
     /// <summary>A third choice, shown only when there is text for it.</summary>

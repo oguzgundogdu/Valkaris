@@ -70,9 +70,11 @@ public partial class Main : Control
         }
     }
 
-    public void ToggleFullscreen()
+    public void ToggleFullscreen() => SetFullscreen(!UserSettings.Fullscreen);
+
+    public static void SetFullscreen(bool fullscreen)
     {
-        UserSettings.Fullscreen = !UserSettings.Fullscreen;
+        UserSettings.Fullscreen = fullscreen;
         ApplyWindowMode();
     }
 

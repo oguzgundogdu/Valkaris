@@ -1148,3 +1148,39 @@ msgstr "{attacker}: {mission} on {target} won"
 
 msgid "report.headline_watched_lost"
 msgstr "{attacker}: {mission} on {target} lost"
+
+msgid "ui.settings.title"
+msgstr "Settings"
+
+msgid "ui.settings.master"
+msgstr "Master volume"
+
+msgid "ui.settings.music"
+msgstr "Music"
+
+msgid "ui.settings.effects"
+msgstr "Effects"
+
+msgid "ui.settings.mute"
+msgstr "Mute all sound"
+
+msgid "ui.settings.fullscreen"
+msgstr "Fullscreen"
+
+msgid "ui.settings.language_locked"
+msgstr "Language can be changed from the start screen."
+
+msgid "ui.settings.close"
+msgstr "Close"
+
+msgid "ui.start.settings"
+msgstr "Settings"
+
+msgid "overlay.settings"
+msgstr "Settings"
+
+msgid "bar.mute_tip"
+msgstr "Mute all sound"
+
+msgid "bar.unmute_tip"
+msgstr "Turn sound back on"

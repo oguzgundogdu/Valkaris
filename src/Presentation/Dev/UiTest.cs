@@ -569,6 +569,7 @@ public partial class UiTest : Control
         await Frames();
         TestCulture();
         await TestLanguage();
+        await TestSettingsFromStart();
 
         await TestFullscreenKey();
         await TestStartVillageName();
@@ -2286,6 +2287,7 @@ public partial class UiTest : Control
         await TestMatchResults(data);
         await TestRealInput(data);
         await TestSounds(data);
+        await TestSettings(data);
         await TestGodMode(data);
         await TestLiveAi();
     }
@@ -3445,6 +3447,73 @@ public partial class UiTest : Control
         Sound.ApplySettings();
     }
 
+    private async Task TestSettingsFromStart()
+    {
+        var start = Find<StartScreen>();
+        var screen = start.GetNode<SettingsScreen>("%SettingsScreen");
+        await ClickAndSettle(start.GetNode<Button>("%Settings"));
+        Expect(screen.Visible, "The start screen opens the settings");
+        Expect(screen.GetGlobalRect().Encloses(GetViewportRect()), $"They cover the whole window, got {screen.GetGlobalRect()}");
+        Expect(!screen.GetNode<OptionButton>("%Language").Disabled && !screen.GetNode<Control>("%LanguageNote").Visible, "Language can change from the start screen");
+        CheckLayout("settings from start");
+        await Shot("settings-start");
+
+        screen.GetNode<CheckBox>("%Fullscreen").ButtonPressed = false;
+        await ClickAndSettle(screen.GetNode<Button>("%Close"));
+        Expect(!screen.Visible, "Close hides them");
+        await ClickAndSettle(start.GetNode<Button>("%Settings"));
+
+        var chosen = Language.Current;
+        screen.GetNode<OptionButton>("%Language").EmitSignal(OptionButton.SignalName.ItemSelected, Array.IndexOf(Language.Codes, chosen));
+        await Frames();
+        Expect(Find<StartScreen>() != start && Language.Current == chosen, "Choosing a language rebuilds the start screen");
+    }
+
+    /// <summary>Reachable from the in-game menu, and remembered.</summary>
+    private async Task TestSettings(GameData data)
+    {
+        var (game, _) = await StartMatch(data, null);
+        var pause = game.GetNode<Overlay>("%PauseOverlay");
+        var screen = game.GetNode<SettingsScreen>("%SettingsScreen");
+        var bar = game.GetNode<ResourceBar>("%ResourceBar");
+        var mute = bar.GetNode<Button>("%Mute");
+
+        await ClickAndSettle(mute);
+        Expect(Sound.IsMuted && UserSettings.Muted, "The top bar's button mutes, and it's remembered");
+        await ClickAndSettle(mute);
+        Expect(!Sound.IsMuted && !UserSettings.Muted, "It turns sound back on");
+
+        for (var i = 0; i < 2; i++)
+        {
+            await ClickAndSettle(bar.GetNode<Button>("%Pause"));
+            await ClickAndSettle(pause.GetNode<Button>("%Settings"));
+            Expect(screen.Visible && !pause.Visible, "The menu opens the settings");
+            Expect(screen.GetNode<OptionButton>("%Language").Disabled && screen.GetNode<Control>("%LanguageNote").Visible, "Language is locked during a match, with a note");
+            CheckLayout("settings");
+            await Shot("settings");
+
+            screen.GetNode<HSlider>("%Effects").Value = 0.4;
+            Expect(Mathf.IsEqualApprox(UserSettings.EffectsVolume, 0.4f), "The effects volume is remembered");
+            Expect(Mathf.IsEqualApprox(AudioServer.GetBusVolumeDb(AudioServer.GetBusIndex("Effects")), Mathf.LinearToDb(0.4f), 0.01f), "It reaches its bus");
+
+            await ClickAndSettle(screen.GetNode<CheckBox>("%Mute"));
+            Expect(Sound.IsMuted, "The settings mute too");
+            await Frames();
+            await ClickAndSettle(screen.GetNode<CheckBox>("%Mute"));
+
+            if (i == 0)
+                await ClickAndSettle(screen.GetNode<Button>("%Close"));
+            else
+                await EscapeAndSettle();
+            Expect(!screen.Visible && pause.Visible, "Closing returns to the menu");
+            await ClickAndSettle(pause.GetNode<Button>("%Action"));
+            await CheckClicksWork(game, "closing the settings");
+        }
+
+        UserSettings.EffectsVolume = 0.8f;
+        Sound.ApplySettings();
+    }
+
     private async Task RealInputOnly()
     {
         UseSettings("user://uitest_settings.cfg");
@@ -3452,8 +3521,10 @@ public partial class UiTest : Control
         _main.IdleOpponents = true;
         AddChild(_main);
         await Frames();
+        await TestSettingsFromStart();
         await TestRealInput(GameData.Load(new GodotDataSource()));
         await TestSounds(GameData.Load(new GodotDataSource()));
+        await TestSettings(GameData.Load(new GodotDataSource()));
     }
 
     /// <summary>
